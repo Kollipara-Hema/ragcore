@@ -101,6 +101,38 @@ celery==5.3.6          # Background task queue — handles async file ingestion
 
 
 # =============================================================================
+# REQUIRED — RAG Components
+# =============================================================================
+
+tiktoken==0.6.0         # Token counting and chunking
+faiss-cpu==1.8.0        # FAISS vector search library
+rank-bm25==0.2.2        # BM25 sparse retrieval
+langchain==0.1.16       # LangChain framework
+langgraph==0.0.40       # LangGraph for agentic workflows
+pandas==2.2.1           # Data manipulation for CSV and evaluation
+plotly==5.19.0          # Interactive charts for UIs
+rouge-score==0.1.2      # ROUGE metrics for evaluation
+bert-score==0.3.13      # BERTScore for evaluation
+
+
+# =============================================================================
+# REQUIRED — UI Frameworks
+# =============================================================================
+
+streamlit==1.31.1       # Streamlit dashboard
+chainlit==1.0.400       # Chainlit chat interface
+gradio==4.19.2          # Gradio comparison lab
+
+
+# =============================================================================
+# REQUIRED — Testing and Linting
+# =============================================================================
+
+pytest==8.0.2           # Unit testing framework
+ruff==0.3.0             # Fast Python linter
+
+
+# =============================================================================
 # OPTIONAL — Monitoring and tracing
 # Only needed if ENABLE_TRACING=true and you have a Langfuse account
 # =============================================================================

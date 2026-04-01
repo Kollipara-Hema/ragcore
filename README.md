@@ -3,6 +3,12 @@
 A scalable document intelligence system with intelligent retrieval routing,
 hybrid search, reranking, and grounded answer generation.
 
+![CI](https://github.com/Kollipara-Hema/ragcore/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.11+-blue)
+![LangChain](https://img.shields.io/badge/LangChain-enabled-green)
+![Streamlit](https://img.shields.io/badge/Streamlit-demo-red)
+![HF Spaces](https://img.shields.io/badge/🤗-Spaces-yellow)
+
 ---
 
 ## Architecture Overview
