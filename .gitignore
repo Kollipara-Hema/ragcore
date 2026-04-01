@@ -210,3 +210,14 @@ __marimo__/
 **/.chainlit/translations/
 chroma_db/
 ui_chainlit/.files/
+
+# Virtual environment
+venv311/
+
+# Vector store files
+faiss_index.idx
+faiss_metadata.pkl
+
+# Chainlit config
+.chainlit/
+chainlit.md
