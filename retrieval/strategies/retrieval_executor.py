@@ -1,53 +1,131 @@
 """
-Retrieval executor — runs the strategy selected by QueryRouter.
-
-Supported strategies:
-  - SEMANTIC: pure vector similarity
-  - KEYWORD: BM25 full-text
-  - HYBRID: vector + BM25 with RRF or native fusion
-  - METADATA_FILTER: structured filter + vector search
-  - MULTI_QUERY: parallel retrieval for each expanded query, then merge
-  - PARENT_CHILD: retrieve child chunks, return parent context
+Retrieval strategies implementation.
 """
 from __future__ import annotations
-import asyncio
 import logging
 import time
-from typing import Optional
+from typing import List, Dict, Any, Optional
 
-from config.settings import settings
-from utils.models import (
-    Chunk, RetrievedChunk, RetrievalRequest, RetrievalResult, RetrievalStrategy
-)
-from embeddings.embedder import BaseEmbedder, get_embedder
-from vectorstore.vector_store import BaseVectorStore, get_vector_store
-from retrieval.router.query_router import RoutingDecision
+import numpy as np
+from rank_bm25 import BM25Okapi
+
+from embeddings.embedder import get_embedder
+from vectorstore.vector_store import get_vector_store
 
 logger = logging.getLogger(__name__)
 
 
 class RetrievalExecutor:
-    def __init__(
-        self,
-        vector_store: Optional[BaseVectorStore] = None,
-        embedder: Optional[BaseEmbedder] = None,
-    ):
-        self._store = vector_store or get_vector_store()
-        self._embedder = embedder or get_embedder()
+    """Executes retrieval strategies."""
 
-    async def execute(
-        self,
-        decision: RoutingDecision,
-        top_k: Optional[int] = None,
-    ) -> RetrievalResult:
-        top_k = top_k or settings.retrieval_top_k
-        start = time.monotonic()
+    def __init__(self):
+        self.embedder = get_embedder()
+        self.vector_store = get_vector_store()
+        self.bm25 = None
+        self.corpus = []
+        self.metadata = []
 
-        request = RetrievalRequest(
-            query=decision.expanded_queries[0],
-            query_type=decision.query_type,
-            strategy=decision.primary_strategy,
-            top_k=top_k,
+    def index_chunks(self, chunks: List[Dict[str, Any]]):
+        """Index chunks for BM25."""
+        self.corpus = [chunk["text"] for chunk in chunks]
+        self.metadata = chunks
+        tokenized_corpus = [doc.split() for doc in self.corpus]
+        self.bm25 = BM25Okapi(tokenized_corpus)
+
+    def dense_retrieval(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        """Dense retrieval using vector similarity."""
+        start_time = time.time()
+        query_emb = self.embedder.embed_query(query)
+        results = self.vector_store.search(query_emb, top_k)
+        latency = time.time() - start_time
+
+        retrieved = []
+        for i, res in enumerate(results):
+            retrieved.append({
+                "rank": i + 1,
+                "score": res["score"],
+                "source_doc": res["metadata"]["source_doc"],
+                "page": res["metadata"].get("page", 1),
+                "text_preview": res["metadata"]["text"][:200] + "..."
+            })
+
+        return {
+            "results": retrieved,
+            "latency": latency
+        }
+
+    def sparse_retrieval(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        """Sparse retrieval using BM25."""
+        if not self.bm25:
+            return {"results": [], "latency": 0}
+
+        start_time = time.time()
+        tokenized_query = query.split()
+        doc_scores = self.bm25.get_scores(tokenized_query)
+        top_indices = np.argsort(doc_scores)[::-1][:top_k]
+        latency = time.time() - start_time
+
+        retrieved = []
+        for rank, idx in enumerate(top_indices):
+            score = doc_scores[idx]
+            if score > 0:
+                retrieved.append({
+                    "rank": rank + 1,
+                    "score": float(score),
+                    "source_doc": self.metadata[idx]["source_doc"],
+                    "page": self.metadata[idx].get("page", 1),
+                    "text_preview": self.corpus[idx][:200] + "..."
+                })
+
+        return {
+            "results": retrieved,
+            "latency": latency
+        }
+
+    def hybrid_retrieval(self, query: str, top_k: int = 5, alpha: float = 0.5) -> Dict[str, Any]:
+        """Hybrid retrieval combining dense and sparse."""
+        dense_res = self.dense_retrieval(query, top_k * 2)
+        sparse_res = self.sparse_retrieval(query, top_k * 2)
+
+        # Combine scores
+        combined = {}
+        for res in dense_res["results"]:
+            key = res["source_doc"] + str(res["page"])
+            combined[key] = {
+                "score": alpha * res["score"],
+                "data": res
+            }
+
+        for res in sparse_res["results"]:
+            key = res["source_doc"] + str(res["page"])
+            if key in combined:
+                combined[key]["score"] += (1 - alpha) * res["score"]
+            else:
+                combined[key] = {
+                    "score": (1 - alpha) * res["score"],
+                    "data": res
+                }
+
+        # Sort and take top_k
+        sorted_combined = sorted(combined.items(), key=lambda x: x[1]["score"], reverse=True)[:top_k]
+
+        retrieved = []
+        for rank, (key, item) in enumerate(sorted_combined):
+            data = item["data"]
+            retrieved.append({
+                "rank": rank + 1,
+                "score": item["score"],
+                "source_doc": data["source_doc"],
+                "page": data["page"],
+                "text_preview": data["text_preview"]
+            })
+
+        latency = max(dense_res["latency"], sparse_res["latency"])
+
+        return {
+            "results": retrieved,
+            "latency": latency
+        }
             metadata_filter=decision.metadata_filter,
             expanded_queries=decision.expanded_queries,
         )
