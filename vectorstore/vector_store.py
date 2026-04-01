@@ -1,52 +1,97 @@
 """
-Vector store adapters — unified interface for Weaviate, Pinecone, Qdrant, and Chroma.
-Supports:
-  - Upsert (index) chunks
-  - Vector similarity search
-  - Hybrid search (vector + BM25)
-  - Metadata filtering
-  - Deletion
+FAISS vector store implementation.
 """
 from __future__ import annotations
+import json
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Optional
-from uuid import UUID
+import os
+import pickle
+from typing import List, Dict, Any, Optional
 
-from config.settings import settings, VectorStoreProvider
-from utils.models import Chunk, RetrievedChunk, RetrievalStrategy
+import faiss
+import numpy as np
+
+from utils.models import Chunk
 
 logger = logging.getLogger(__name__)
-COLLECTION_NAME = "document_chunks"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Base interface
-# ─────────────────────────────────────────────────────────────────────────────
+class FAISSVectorStore:
+    """FAISS local vector index."""
 
-class BaseVectorStore(ABC):
-    @abstractmethod
-    async def upsert(self, chunks: list[Chunk]) -> int:
-        """Index chunks. Returns count of successfully indexed chunks."""
-        ...
+    def __init__(self, index_file: str = "faiss_index.idx", metadata_file: str = "faiss_metadata.pkl"):
+        self.index_file = index_file
+        self.metadata_file = metadata_file
+        self.index = None
+        self.metadata = []  # list of dicts
+        self.load()
 
-    @abstractmethod
-    async def vector_search(
-        self,
-        query_embedding: list[float],
-        top_k: int = 20,
-        metadata_filter: Optional[dict] = None,
-    ) -> list[RetrievedChunk]:
-        ...
+    def load(self):
+        """Load index and metadata from disk."""
+        if os.path.exists(self.index_file):
+            self.index = faiss.read_index(self.index_file)
+        else:
+            self.index = None
 
-    @abstractmethod
-    async def keyword_search(
-        self,
-        query: str,
-        top_k: int = 20,
-        metadata_filter: Optional[dict] = None,
-    ) -> list[RetrievedChunk]:
-        ...
+        if os.path.exists(self.metadata_file):
+            with open(self.metadata_file, 'rb') as f:
+                self.metadata = pickle.load(f)
+        else:
+            self.metadata = []
+
+    def save(self):
+        """Save index and metadata to disk."""
+        if self.index:
+            faiss.write_index(self.index, self.index_file)
+        with open(self.metadata_file, 'wb') as f:
+            pickle.dump(self.metadata, f)
+
+    def add_embeddings(self, embeddings: List[List[float]], metadata: List[Dict[str, Any]]):
+        """Add embeddings with metadata."""
+        if not embeddings:
+            return
+
+        vectors = np.array(embeddings, dtype=np.float32)
+        # Normalize for cosine similarity
+        faiss.normalize_L2(vectors)
+
+        if self.index is None:
+            dim = vectors.shape[1]
+            self.index = faiss.IndexFlatIP(dim)  # Inner product for cosine
+
+        self.index.add(vectors)
+        self.metadata.extend(metadata)
+        self.save()
+
+    def search(self, query_embedding: List[float], top_k: int = 5, metadata_filter: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Search for similar vectors."""
+        if self.index is None or self.index.ntotal == 0:
+            return []
+
+        query = np.array([query_embedding], dtype=np.float32)
+        faiss.normalize_L2(query)
+
+        distances, indices = self.index.search(query, min(top_k, self.index.ntotal))
+
+        results = []
+        for dist, idx in zip(distances[0], indices[0]):
+            if idx == -1:
+                continue
+            meta = self.metadata[idx]
+            if metadata_filter:
+                if not all(meta.get(k) == v for k, v in metadata_filter.items()):
+                    continue
+            results.append({
+                "score": float(dist),
+                "metadata": meta
+            })
+
+        return results
+
+
+def get_vector_store() -> FAISSVectorStore:
+    """Get FAISS vector store instance."""
+    return FAISSVectorStore()
 
     async def hybrid_search(
         self,
