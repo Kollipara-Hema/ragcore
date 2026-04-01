@@ -1,72 +1,78 @@
 """
-Embedding service with three provider adapters.
+Multi-provider embedding service.
+Defaults to free sentence-transformers (no API key required).
 """
 from __future__ import annotations
 import logging
 import os
 import time
-from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 
-import numpy as np
 from sentence_transformers import SentenceTransformer
-import openai
 
 logger = logging.getLogger(__name__)
 
 
-class BaseEmbedder(ABC):
-    """All embedding providers implement this interface."""
+class BaseEmbedder:
+    """Base embedding interface."""
 
-    @abstractmethod
     def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        """Embed a batch of texts, return dict with embeddings, dimensions, time, etc."""
-        ...
-
-    def embed_query(self, query: str) -> List[float]:
-        """Embed a single query."""
-        result = self.embed_texts([query])
-        return result["embeddings"][0]
+        """Embed texts, return dict with embeddings, dimensions, time, etc."""
+        raise NotImplementedError
 
 
 class OpenAIEmbedder(BaseEmbedder):
     """OpenAI text-embedding-3-small."""
 
-    def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = "text-embedding-3-small"
         self.dimensions = 1536
 
     def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        if not os.getenv("OPENAI_API_KEY"):
-            # Demo mode
-            return self._mock_embed(texts)
+        if not self.api_key:
+            return self._fallback_embed(texts)
 
+        try:
+            import openai
+            client = openai.OpenAI(api_key=self.api_key)
+            start_time = time.time()
+            response = client.embeddings.create(input=texts, model=self.model)
+            embeddings = [data.embedding for data in response.data]
+            elapsed = time.time() - start_time
+            vector_size = len(embeddings) * self.dimensions * 4
+
+            return {
+                "embeddings": embeddings,
+                "dimensions": self.dimensions,
+                "time_taken": elapsed,
+                "vector_size": vector_size,
+                "provider": "OpenAI"
+            }
+        except Exception as e:
+            logger.warning(f"OpenAI embedding failed: {e}, falling back to free model")
+            return self._fallback_embed(texts)
+
+    def _fallback_embed(self, texts: List[str]) -> Dict[str, Any]:
+        """Fall back to free MiniLM model."""
+        model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.dimensions = 384
         start_time = time.time()
-        response = self.client.embeddings.create(input=texts, model=self.model)
-        embeddings = [data.embedding for data in response.data]
+        embeddings = model.encode(texts, convert_to_numpy=True).tolist()
         elapsed = time.time() - start_time
-        vector_size = len(embeddings) * self.dimensions * 4  # float32
+        vector_size = len(embeddings) * self.dimensions * 4
 
         return {
             "embeddings": embeddings,
             "dimensions": self.dimensions,
             "time_taken": elapsed,
-            "vector_size": vector_size
-        }
-
-    def _mock_embed(self, texts: List[str]) -> Dict[str, Any]:
-        embeddings = [[0.1] * self.dimensions for _ in texts]
-        return {
-            "embeddings": embeddings,
-            "dimensions": self.dimensions,
-            "time_taken": 0.1,
-            "vector_size": len(texts) * self.dimensions * 4
+            "vector_size": vector_size,
+            "provider": "MiniLM (free fallback)"
         }
 
 
 class BGEEmbedder(BaseEmbedder):
-    """BGE-large-en."""
+    """BGE-large-en (free, no API key needed)."""
 
     def __init__(self):
         self.model = SentenceTransformer('BAAI/bge-large-en-v1.5')
@@ -82,12 +88,13 @@ class BGEEmbedder(BaseEmbedder):
             "embeddings": embeddings,
             "dimensions": self.dimensions,
             "time_taken": elapsed,
-            "vector_size": vector_size
+            "vector_size": vector_size,
+            "provider": "BGE (free)"
         }
 
 
 class MiniLMEmbedder(BaseEmbedder):
-    """all-MiniLM-L6-v2."""
+    """all-MiniLM-L6-v2 (free, no API key needed)."""
 
     def __init__(self):
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -103,20 +110,41 @@ class MiniLMEmbedder(BaseEmbedder):
             "embeddings": embeddings,
             "dimensions": self.dimensions,
             "time_taken": elapsed,
-            "vector_size": vector_size
+            "vector_size": vector_size,
+            "provider": "MiniLM (free)"
         }
 
 
-def get_embedder(provider: str = "openai") -> BaseEmbedder:
-    """Get embedder by provider."""
+def get_embedder(provider: str = "minilm", api_key: str = None) -> BaseEmbedder:
+    """Get embedder by provider. Defaults to free MiniLM."""
+    provider = provider.lower()
     if provider == "openai":
-        return OpenAIEmbedder()
+        return OpenAIEmbedder(api_key=api_key)
     elif provider == "bge":
         return BGEEmbedder()
-    elif provider == "minilm":
-        return MiniLMEmbedder()
     else:
-        raise ValueError(f"Unknown embedding provider: {provider}")
+        return MiniLMEmbedder()
+
+
+# Embedding provider metadata
+EMBEDDING_PROVIDERS = {
+    "minilm": {
+        "name": "all-MiniLM-L6-v2 (FREE)",
+        "dimensions": 384,
+        "requires_key": False,
+        "recommended": True
+    },
+    "bge": {
+        "name": "BGE-large-en-v1.5 (FREE)",
+        "dimensions": 1024,
+        "requires_key": False
+    },
+    "openai": {
+        "name": "OpenAI text-embedding-3-small",
+        "dimensions": 1536,
+        "requires_key": True
+    }
+}
 
         for chunk, embedding in zip(to_embed, embeddings):
             chunk.embedding = embedding
