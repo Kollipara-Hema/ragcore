@@ -211,3 +211,6 @@ if celery_app:
         except Exception as exc:
             logger.error("Ingestion task failed: %s", exc)
             self.retry(exc=exc)
+else:
+    # Fallback when Celery is not available
+    ingest_file_task = None
