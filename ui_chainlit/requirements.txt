@@ -1,0 +1,3 @@
+# Requirements for Chainlit UI only
+chainlit==1.1.202
+requests==2.31.0
