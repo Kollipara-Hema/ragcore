@@ -44,12 +44,13 @@ async def start():
         
         if provider == "demo":
             await cl.Message(content="✅ Running in Demo Mode — all responses are simulated").send()
+            cl.user_session.set("api_key", "demo")
         else:
             # Ask for API key
             api_key = await cl.AskUserMessage(
                 content=f"Enter your {provider.upper()} API key (or leave blank for demo mode):"
             ).send()
-            cl.user_session.set("llm_api_key", api_key.content if api_key else "")
+            cl.user_session.set("api_key", api_key.content if api_key else "")
             
             if api_key and api_key.content:
                 await cl.Message(content=f"✅ Connected to {provider.upper()}").send()
