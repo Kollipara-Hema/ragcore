@@ -15,7 +15,7 @@ import time
 import requests
 from pathlib import Path
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "http://localhost:8001"
 
 @cl.on_chat_start
 async def start():
