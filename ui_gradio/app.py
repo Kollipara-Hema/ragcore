@@ -1,5 +1,15 @@
 """
 Gradio strategy comparison lab with multi-provider LLM support.
+
+FEATURES:
+- ⚙️ API Configuration at top of page
+- Provider selection with dynamic model dropdown
+- API key input for authentication
+- Side-by-side RAG strategy comparison
+- Test different chunking, embedding, and retrieval combinations
+- Winner badge showing best performing configuration
+- Example queries for quick testing
+- Demo mode for zero-setup exploration
 """
 import gradio as gr
 import os
