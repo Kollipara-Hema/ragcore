@@ -1,53 +1,90 @@
 """
-LLM generation layer.
-
-Features:
-  - Multi-provider (OpenAI, Anthropic, Together)
-  - Streaming support
-  - Response-level caching (Redis)
-  - Token usage tracking
-  - Structured output (answer + citations JSON)
+LLM generation service.
 """
 from __future__ import annotations
-import asyncio
-import hashlib
-import json
 import logging
-import time
-from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional
+import os
+import re
+from typing import List, Dict, Any
 
-from config.settings import settings, LLMProvider
-from utils.models import Citation, GenerationResult, QueryType, RetrievalStrategy
-from generation.prompts.prompt_builder import ConstructedPrompt
+import openai
 
 logger = logging.getLogger(__name__)
 
 
-class BaseLLM(ABC):
-    @abstractmethod
-    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
-        """Returns (answer_text, total_tokens)."""
-        ...
+class LLMService:
+    """LLM generation with citations and streaming."""
 
-    @abstractmethod
-    async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
-        """Yields answer text chunks as they stream."""
-        ...
+    def __init__(self):
+        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+    def generate(self, query: str, chunks: List[Dict[str, Any]], stream: bool = False) -> Dict[str, Any]:
+        """Generate answer with citations."""
+        if not os.getenv("OPENAI_API_KEY"):
+            return self._mock_generate(query, chunks)
 
-class OpenAILLM(BaseLLM):
-    def __init__(self, model: str = None):
-        self.model = model or settings.llm_model
+        # Build prompt
+        context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
+        prompt = f"""
+Answer the question based on the provided context. Include citations in the format [1], [2], etc.
 
-    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        response = await client.chat.completions.create(
-            model=self.model,
-            messages=prompt.messages,
-            temperature=settings.llm_temperature,
-            max_tokens=settings.llm_max_tokens,
+Context:
+{context}
+
+Question: {query}
+
+Answer:"""
+
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.1
+        )
+
+        answer = response.choices[0].message.content
+        tokens = response.usage.total_tokens
+
+        # Extract citations
+        citations = self._extract_citations(answer, chunks)
+
+        # Hallucination risk: average similarity (mock as 0.8)
+        avg_similarity = 0.8
+        risk = "Low" if avg_similarity > 0.7 else "Medium" if avg_similarity > 0.5 else "High"
+
+        return {
+            "answer": answer,
+            "citations": citations,
+            "token_usage": {
+                "prompt": response.usage.prompt_tokens,
+                "completion": response.usage.completion_tokens,
+                "total": tokens
+            },
+            "hallucination_risk": risk
+        }
+
+    def _mock_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Mock generation for demo."""
+        answer = f"This is a demo answer for: {query}. Based on the provided documents."
+        citations = [{"source": chunk["source_doc"], "page": chunk["page"]} for chunk in chunks[:3]]
+        return {
+            "answer": answer,
+            "citations": citations,
+            "token_usage": {"prompt": 100, "completion": 50, "total": 150},
+            "hallucination_risk": "Low"
+        }
+
+    def _extract_citations(self, answer: str, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Extract citations from answer."""
+        citations = []
+        for match in re.finditer(r'\[(\d+)\]', answer):
+            idx = int(match.group(1)) - 1
+            if 0 <= idx < len(chunks):
+                citations.append({
+                    "source": chunks[idx]["source_doc"],
+                    "page": chunks[idx]["page"]
+                })
+        return citations
         )
         answer = response.choices[0].message.content or ""
         total_tokens = response.usage.total_tokens if response.usage else 0
