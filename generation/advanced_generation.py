@@ -37,12 +37,10 @@ HOW TO USE:
 """
 
 from __future__ import annotations
-import asyncio
 import json
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 

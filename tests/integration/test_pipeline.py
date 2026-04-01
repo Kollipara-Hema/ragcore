@@ -1,12 +1,8 @@
-"""
 """Integration tests — test the full RAG pipeline with mocks.
 Run with: pytest tests/integration/ -v
 """
-import pytest
-from uuid import uuid4
-
 from utils.models import (
-    QueryType, RetrievalStrategy, DocumentMetadata, Document,
+    DocumentMetadata, Document,
 )
 
 

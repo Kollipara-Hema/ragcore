@@ -21,7 +21,6 @@ from ingestion.loaders.document_loaders import loader_registry
 from ingestion.chunkers.chunkers import get_chunker
 from embeddings.embedder import get_embedder
 from vectorstore.vector_store import get_vector_store
-from utils.models import Chunk, Document, DocumentStatus
 
 logger = logging.getLogger(__name__)
 

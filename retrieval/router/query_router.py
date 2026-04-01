@@ -84,9 +84,9 @@ class HeuristicRouter:
 
     def extract_metadata_hints(self, query: str) -> dict:
         hints = {}
-        for field, pattern in self.METADATA_PATTERNS.items():
+        for field_name, pattern in self.METADATA_PATTERNS.items():
             if re.search(pattern, query, re.IGNORECASE):
-                hints[field] = True  # signal that this filter type may be relevant
+                hints[field_name] = True  # signal that this filter type may be relevant
         return hints
 
 

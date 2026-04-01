@@ -3,12 +3,29 @@ Multi-provider LLM generation service.
 Supports: Groq, OpenAI, Anthropic, Ollama
 """
 from __future__ import annotations
+import hashlib
+import json
 import logging
 import os
 import re
-from typing import List, Dict, Any, Optional
+import time
+from typing import AsyncIterator, List, Dict, Any, Optional
+
+from config.settings import settings
+from generation.prompts.prompt_builder import ConstructedPrompt
+from utils.models import GenerationResult, QueryType, RetrievalStrategy
 
 logger = logging.getLogger(__name__)
+
+
+class BaseLLM:
+    """Minimal base class for LLM wrappers."""
+
+    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
+        raise NotImplementedError
+
+    async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
+        raise NotImplementedError
 
 
 class LLMService:
@@ -227,7 +244,23 @@ PROVIDERS = {
         "free": True
     }
 }
+
+
+class OpenAILLM(BaseLLM):
+    def __init__(self, model: str = "gpt-4o-mini"):
+        self.model = model
+
+    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+        response = await client.chat.completions.create(
+            model=self.model,
+            messages=prompt.messages,
+            temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
         )
+
         answer = response.choices[0].message.content or ""
         total_tokens = response.usage.total_tokens if response.usage else 0
         return answer, total_tokens

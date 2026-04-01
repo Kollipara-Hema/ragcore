@@ -34,9 +34,8 @@ HOW TO USE:
 """
 
 from __future__ import annotations
+import json
 import logging
-import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,6 @@ class MatryoshkaEmbedder:
             List of embedding vectors, each of length self.dimension
         """
         import asyncio
-        import numpy as np
 
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._sync_embed, texts)
@@ -133,7 +131,6 @@ class MatryoshkaEmbedder:
         truncated = full_embeddings[:, :self.dimension]
 
         # Re-normalize after truncation (truncation breaks normalization)
-        import numpy as np
         norms = np.linalg.norm(truncated, axis=1, keepdims=True)
         norms = np.where(norms == 0, 1, norms)  # Avoid division by zero
         truncated = truncated / norms
@@ -459,7 +456,6 @@ class EmbeddingFineTuner:
                 continue
 
         # Save to file for reuse (avoid regenerating every time)
-        import json
         with open(output_file, "w") as f:
             json.dump(all_pairs, f, indent=2)
 
@@ -468,6 +464,3 @@ class EmbeddingFineTuner:
             len(all_pairs), output_file
         )
         return all_pairs
-
-
-import json  # Needed for generate_training_data

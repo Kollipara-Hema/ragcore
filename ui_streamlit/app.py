@@ -13,8 +13,8 @@ FEATURES:
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import os
+import requests
 from pathlib import Path
 import time
 
@@ -211,83 +211,88 @@ with tab6:
         col3.metric("Faithfulness", f"{metrics['faithfulness']:.2f}")
         col4.metric("Hallucination", f"{metrics['hallucination']:.2f}")
 
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e9ecef;
-    }
+    st.markdown(
+        """
+        <style>
+        /* Sidebar styling */
+        [data-testid='stSidebar'] {
+            background-color: #ffffff;
+            border-right: 1px solid #e9ecef;
+        }
 
-    /* Chat message styling */
-    [data-testid="stChatMessage"] {
-        background-color: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #e9ecef;
-        padding: 4px;
-        margin-bottom: 8px;
-    }
+        /* Chat message styling */
+        [data-testid='stChatMessage'] {
+            background-color: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            padding: 4px;
+            margin-bottom: 8px;
+        }
 
-    /* User message bubble */
-    [data-testid="stChatMessage"][data-testid*="user"] {
-        background-color: #e8f4fd;
-    }
+        /* User message bubble */
+        [data-testid='stChatMessage'][data-testid*='user'] {
+            background-color: #e8f4fd;
+        }
 
-    /* Citation card */
-    .citation-card {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-left: 3px solid #4a90d9;
-        border-radius: 6px;
-        padding: 8px 12px;
-        margin: 4px 0;
-        font-size: 13px;
-    }
+        /* Citation card */
+        .citation-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-left: 3px solid #4a90d9;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 4px 0;
+            font-size: 13px;
+        }
 
-    .citation-source {
-        color: #4a90d9;
-        font-weight: 600;
-        font-size: 12px;
-    }
+        .citation-source {
+            color: #4a90d9;
+            font-weight: 600;
+            font-size: 12px;
+        }
 
-    .citation-excerpt {
-        color: #6c757d;
-        font-size: 12px;
-        margin-top: 4px;
-    }
+        .citation-excerpt {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 4px;
+        }
 
-    /* Stats badges */
-    .stat-badge {
-        display: inline-block;
-        background: #e8f4fd;
-        color: #1a6fa8;
-        border-radius: 99px;
-        padding: 2px 10px;
-        font-size: 12px;
-        margin-right: 6px;
-    }
+        /* Stats badges */
+        .stat-badge {
+            display: inline-block;
+            background: #e8f4fd;
+            color: #1a6fa8;
+            border-radius: 99px;
+            padding: 2px 10px;
+            font-size: 12px;
+            margin-right: 6px;
+        }
 
-    /* Upload area */
-    [data-testid="stFileUploader"] {
-        border: 2px dashed #dee2e6;
-        border-radius: 8px;
-        padding: 8px;
-    }
+        /* Upload area */
+        [data-testid='stFileUploader'] {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 8px;
+        }
 
-    /* Input box */
-    [data-testid="stChatInput"] {
-        border-radius: 24px;
-    }
+        /* Input box */
+        [data-testid='stChatInput'] {
+            border-radius: 24px;
+        }
 
-    /* Strategy tag */
-    .strategy-tag {
-        background: #e8f5e9;
-        color: #2e7d32;
-        border-radius: 4px;
-        padding: 1px 8px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-</style>
-""", unsafe_allow_html=True)
+        /* Strategy tag */
+        .strategy-tag {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 4px;
+            padding: 1px 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # =============================================================================
 # BACKEND URL — where your FastAPI is running

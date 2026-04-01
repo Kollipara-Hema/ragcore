@@ -409,7 +409,6 @@ class SPLADEEmbedder:
         if self._model is None:
             try:
                 from transformers import AutoModelForMaskedLM, AutoTokenizer
-                import torch
 
                 logger.info("Loading SPLADE model: %s", self.model_name)
 

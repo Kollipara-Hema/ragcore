@@ -3,13 +3,11 @@ Document loaders — one adapter per source type.
 Each loader returns a list of Document objects with extracted text + metadata.
 """
 from __future__ import annotations
-import io
 import logging
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
-from uuid import uuid4
 
 import pandas as pd
 import pdfplumber
@@ -226,7 +224,6 @@ def get_loader(source: str | Path) -> Optional[BaseLoader]:
     def _ocr_page(self, page) -> str:
         try:
             import pytesseract  # pip install pytesseract
-            from PIL import Image  # pip install Pillow
 
             img = page.to_image(resolution=200).original
             return pytesseract.image_to_string(img)

@@ -32,12 +32,10 @@ from config.settings import settings   # All configuration from .env file
 
 # Domain models — shared data structures used across the system
 from utils.models import (
-    GenerationResult,      # Holds the LLM's answer + metadata
     QueryRequest,          # Incoming query from the user (via API)
     QueryResponse,         # Final response sent back to the user
     QueryType,             # Enum: FACTUAL, SEMANTIC, MULTI_HOP, etc.
     RetrievalStrategy,     # Enum: SEMANTIC, HYBRID, KEYWORD, etc.
-    RetrievedChunk,        # A document chunk with its relevance score
 )
 
 # The five pipeline modules (one per step)

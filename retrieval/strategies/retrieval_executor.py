@@ -2,14 +2,18 @@
 Retrieval strategies implementation.
 """
 from __future__ import annotations
+import asyncio
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 import numpy as np
 from rank_bm25 import BM25Okapi
 
 from embeddings.embedder import get_embedder
+from retrieval.router.query_router import RoutingDecision
+from utils.models import RetrievalRequest, RetrievalResult, RetrievedChunk, RetrievalStrategy
+from config.settings import settings
 from vectorstore.vector_store import get_vector_store
 
 logger = logging.getLogger(__name__)
@@ -126,12 +130,12 @@ class RetrievalExecutor:
             "results": retrieved,
             "latency": latency
         }
-            metadata_filter=decision.metadata_filter,
-            expanded_queries=decision.expanded_queries,
-        )
 
+    async def execute(self, decision: RoutingDecision, top_k: int = 5) -> RetrievalResult:
+        start = time.monotonic()
         try:
             chunks = await self._dispatch(decision, top_k)
+            fallback_used = False
         except Exception as e:
             logger.error("Primary retrieval failed (%s): %s — trying fallback", decision.primary_strategy, e)
             try:
@@ -143,7 +147,6 @@ class RetrievalExecutor:
                     metadata_filter=None,  # relax filter on fallback
                 )
                 chunks = await self._dispatch(fallback_decision, top_k)
-                request.strategy = decision.fallback_strategy
                 fallback_used = True
             except Exception as e2:
                 logger.error("Fallback retrieval also failed: %s", e2)
@@ -152,11 +155,20 @@ class RetrievalExecutor:
         else:
             fallback_used = False
 
-        latency = (time.monotonic() - start) * 1000
+        latency_ms = (time.monotonic() - start) * 1000
+        request = RetrievalRequest(
+            query=decision.expanded_queries[0] if decision.expanded_queries else "",
+            query_type=decision.query_type,
+            strategy=decision.primary_strategy,
+            top_k=top_k,
+            metadata_filter=decision.metadata_filter,
+            expanded_queries=decision.expanded_queries,
+        )
+
         return RetrievalResult(
             request=request,
             chunks=chunks,
-            latency_ms=latency,
+            latency_ms=latency_ms,
             fallback_used=fallback_used,
         )
 
