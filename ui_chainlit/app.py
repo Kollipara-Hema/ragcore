@@ -1,33 +1,74 @@
 """
-Chainlit conversational AI assistant.
+Chainlit conversational AI assistant with multi-provider LLM support.
 """
 import chainlit as cl
 import time
 
 @cl.on_chat_start
 async def start():
+    # Ask for LLM provider
+    actions = [
+        cl.Action(name="groq", value="groq", description="Groq (Recommended — fast and free)"),
+        cl.Action(name="openai", value="openai", description="OpenAI"),
+        cl.Action(name="anthropic", value="anthropic", description="Anthropic Claude"),
+        cl.Action(name="demo", value="demo", description="Demo Mode (no API key needed)"),
+    ]
+    
+    await cl.Message(
+        content="Which LLM would you like to use? Choose below:",
+        actions=actions
+    ).send()
+    
+    # Wait for user selection
+    res = await cl.AskActionMessage(
+        content="Select a provider:",
+        actions=actions
+    ).send()
+    
+    if res:
+        provider = res.get("value", "demo")
+        cl.user_session.set("llm_provider", provider)
+        
+        if provider == "demo":
+            await cl.Message(content="✅ Running in Demo Mode — all responses are simulated").send()
+        else:
+            # Ask for API key
+            api_key = await cl.AskUserMessage(
+                content=f"Enter your {provider.upper()} API key (or leave blank for demo mode):"
+            ).send()
+            cl.user_session.set("llm_api_key", api_key.content if api_key else "")
+            
+            if api_key and api_key.content:
+                await cl.Message(content=f"✅ Connected to {provider.upper()}").send()
+            else:
+                await cl.Message(content="⚠️ Running in Demo Mode").send()
+    
     await cl.Message(content="Welcome to DocIntel Assistant. Upload your documents and ask me anything about them.").send()
+
 
 @cl.on_message
 async def main(message: cl.Message):
     # Mock processing
     await cl.Message(content="Analyzing your query...").send()
-    time.sleep(0.5)
+    time.sleep(0.3)
     await cl.Message(content="Searching documents...").send()
-    time.sleep(0.5)
+    time.sleep(0.3)
     await cl.Message(content="Generating answer...").send()
-    time.sleep(0.5)
+    time.sleep(0.3)
 
+    provider = cl.user_session.get("llm_provider", "demo")
+    
     # Mock answer
-    answer = f"Here's the answer to: {message.content}"
+    answer = f"Here's the answer to: {message.content} (via {provider})"
     citations = "📎 Sources: doc1.pdf (Page 2), doc2.txt (Page 1)"
-    steps = "🔍 Retrieval: Dense search, 0.23s latency"
+    steps = "🔍 Retrieval: Dense search, 0.23s latency | 📊 Strategy: Hybrid"
 
     await cl.Message(content=f"{answer}\n\n{citations}\n\n{steps}").send()
 
+
 @cl.on_file_upload
 async def on_file_upload(file: cl.File):
-    await cl.Message(content=f"✅ Indexed {file.name} — ready to answer").send()
+    await cl.Message(content=f"✅ Indexed {file.name} — ready to answer your questions").send()
     try:
         import httpx
         async with httpx.AsyncClient() as client:
