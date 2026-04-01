@@ -1,52 +1,181 @@
 """
-=============================================================================
-ingestion/chunkers/chunkers.py — ALL Chunking Strategies (Single File)
-=============================================================================
-PURPOSE:
-    Splits documents into smaller pieces before embedding and indexing.
-    This is the ONLY chunking file — advanced_chunkers.py is removed.
-
-ALL 7 STRATEGIES:
-
-    BASIC:
-    1. FixedSizeChunker         — splits every N characters. Fastest.
-    2. SemanticChunker          — splits at topic boundaries. Best default.
-    3. HierarchicalChunker      — parent + child chunks. Best for long PDFs.
-    4. SentenceWindowChunker    — indexes sentences, stores surrounding context.
-
-    ADVANCED (Phase 1):
-    5. PropositionalChunker     — LLM extracts atomic facts. Most precise.
-    6. TableAwareChunker        — detects and preserves tables intact.
-    7. DocumentStructureChunker — splits at section headings.
-
-SET IN .env:
-    CHUNKING_STRATEGY=semantic        (recommended default)
-    CHUNKING_STRATEGY=fixed           (fastest, good for testing)
-    CHUNKING_STRATEGY=hierarchical    (best for long PDFs)
-    CHUNKING_STRATEGY=sentence        (dense technical text)
-    CHUNKING_STRATEGY=propositional   (precise Q&A, costs LLM calls)
-    CHUNKING_STRATEGY=table_aware     (financial reports with tables)
-    CHUNKING_STRATEGY=structure       (manuals, wikis with headings)
-
-HOW TO USE:
-    from ingestion.chunkers.chunkers import get_chunker
-    chunker = get_chunker()               # reads CHUNKING_STRATEGY from .env
-    chunker = get_chunker("table_aware")  # override directly
-    chunks  = chunker.chunk(my_document)
-=============================================================================
+Chunking strategies for document splitting.
 """
-
 from __future__ import annotations
-import asyncio     # For running async LLM calls from sync context
-import json        # For parsing LLM JSON responses
-import logging     # For log messages
-import re          # For regex pattern matching
+import logging
+import re
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Dict, Any
 from uuid import uuid4
 
-from utils.models import Chunk, Document
-from config.settings import settings
+import tiktoken
+from sentence_transformers import SentenceTransformer, util
+
+from utils.models import Document
+
+logger = logging.getLogger(__name__)
+
+# Initialize tokenizer
+tokenizer = tiktoken.get_encoding("cl100k_base")  # GPT-4 tokenizer
+
+# For semantic chunking
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+
+class BaseChunker(ABC):
+    @abstractmethod
+    def chunk(self, document: Document) -> List[Dict[str, Any]]:
+        """Chunk the document and return list of chunk dicts."""
+        ...
+
+
+class FixedChunker(BaseChunker):
+    """Fixed size chunking by token count."""
+
+    def __init__(self, chunk_size: int = 512, overlap: int = 50):
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+
+    def chunk(self, document: Document) -> List[Dict[str, Any]]:
+        tokens = tokenizer.encode(document.content)
+        chunks = []
+        start = 0
+        while start < len(tokens):
+            end = min(start + self.chunk_size, len(tokens))
+            chunk_tokens = tokens[start:end]
+            text = tokenizer.decode(chunk_tokens)
+            chunks.append({
+                "chunk_id": str(uuid4()),
+                "source_doc": document.metadata.source,
+                "token_count": len(chunk_tokens),
+                "text": text
+            })
+            start += self.chunk_size - self.overlap
+        return chunks
+
+
+class RecursiveChunker(BaseChunker):
+    """Recursive chunking by separators."""
+
+    def __init__(self, chunk_size: int = 512, separators: List[str] = None):
+        self.chunk_size = chunk_size
+        self.separators = separators or ["\n\n", "\n", ". ", " ", ""]
+
+    def chunk(self, document: Document) -> List[Dict[str, Any]]:
+        def split_text(text: str, separators: List[str]) -> List[str]:
+            if not separators:
+                return [text]
+            sep = separators[0]
+            parts = text.split(sep)
+            result = []
+            for part in parts:
+                if len(tokenizer.encode(part)) > self.chunk_size:
+                    result.extend(split_text(part, separators[1:]))
+                else:
+                    result.append(part)
+            return result
+
+        texts = split_text(document.content, self.separators)
+        chunks = []
+        for text in texts:
+            if text.strip():
+                tokens = tokenizer.encode(text)
+                chunks.append({
+                    "chunk_id": str(uuid4()),
+                    "source_doc": document.metadata.source,
+                    "token_count": len(tokens),
+                    "text": text.strip()
+                })
+        return chunks
+
+
+class SlidingWindowChunker(BaseChunker):
+    """Sliding window with overlap."""
+
+    def __init__(self, window_size: int = 512, overlap: int = 128):
+        self.window_size = window_size
+        self.overlap = overlap
+
+    def chunk(self, document: Document) -> List[Dict[str, Any]]:
+        tokens = tokenizer.encode(document.content)
+        chunks = []
+        start = 0
+        while start < len(tokens):
+            end = min(start + self.window_size, len(tokens))
+            chunk_tokens = tokens[start:end]
+            text = tokenizer.decode(chunk_tokens)
+            chunks.append({
+                "chunk_id": str(uuid4()),
+                "source_doc": document.metadata.source,
+                "token_count": len(chunk_tokens),
+                "text": text
+            })
+            if end == len(tokens):
+                break
+            start += self.window_size - self.overlap
+        return chunks
+
+
+class SemanticChunker(BaseChunker):
+    """Semantic chunking by meaning."""
+
+    def __init__(self, threshold: float = 0.5):
+        self.threshold = threshold
+
+    def chunk(self, document: Document) -> List[Dict[str, Any]]:
+        sentences = re.split(r'(?<=[.!?])\s+', document.content)
+        if len(sentences) < 2:
+            tokens = tokenizer.encode(document.content)
+            return [{
+                "chunk_id": str(uuid4()),
+                "source_doc": document.metadata.source,
+                "token_count": len(tokens),
+                "text": document.content
+            }]
+
+        embeddings = model.encode(sentences)
+        chunks = []
+        current_chunk = [sentences[0]]
+        for i in range(1, len(sentences)):
+            similarity = util.cos_sim(embeddings[i-1], embeddings[i]).item()
+            if similarity < self.threshold:
+                # Split here
+                text = ' '.join(current_chunk)
+                tokens = tokenizer.encode(text)
+                chunks.append({
+                    "chunk_id": str(uuid4()),
+                    "source_doc": document.metadata.source,
+                    "token_count": len(tokens),
+                    "text": text
+                })
+                current_chunk = [sentences[i]]
+            else:
+                current_chunk.append(sentences[i])
+
+        if current_chunk:
+            text = ' '.join(current_chunk)
+            tokens = tokenizer.encode(text)
+            chunks.append({
+                "chunk_id": str(uuid4()),
+                "source_doc": document.metadata.source,
+                "token_count": len(tokens),
+                "text": text
+            })
+        return chunks
+
+
+def get_chunker(strategy: str = "fixed", **kwargs) -> BaseChunker:
+    """Get chunker by strategy."""
+    if strategy == "fixed":
+        return FixedChunker(**kwargs)
+    elif strategy == "recursive":
+        return RecursiveChunker(**kwargs)
+    elif strategy == "sliding_window":
+        return SlidingWindowChunker(**kwargs)
+    elif strategy == "semantic":
+        return SemanticChunker(**kwargs)
+    else:
+        raise ValueError(f"Unknown chunking strategy: {strategy}")
 
 logger = logging.getLogger(__name__)
 

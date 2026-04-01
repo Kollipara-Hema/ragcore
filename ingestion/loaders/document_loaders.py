@@ -5,11 +5,15 @@ Each loader returns a list of Document objects with extracted text + metadata.
 from __future__ import annotations
 import io
 import logging
+import time
 from abc import ABC, abstractmethod
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
+
+import pandas as pd
+import pdfplumber
+from docx import Document as DocxDocument
 
 from utils.models import Document, DocumentMetadata
 
@@ -35,18 +39,161 @@ class BaseLoader(ABC):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PDF loader (handles both digital and scanned via OCR fallback)
+# PDF loader
 # ─────────────────────────────────────────────────────────────────────────────
 
 class PDFLoader(BaseLoader):
     """
     Loads PDFs using pdfplumber for digital PDFs.
-    Falls back to pytesseract OCR for scanned images.
-    Preserves page numbers in metadata.
     """
 
-    def supports(self, source) -> bool:
+    def supports(self, source: str | Path) -> bool:
         return str(source).lower().endswith(".pdf")
+
+    def load(self, source: str | bytes | Path, **kwargs) -> list[Document]:
+        start_time = time.time()
+        filename = str(source) if isinstance(source, Path) else source
+
+        with pdfplumber.open(source) as pdf:
+            text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+
+            page_count = len(pdf.pages)
+            word_count = len(text.split())
+            load_time = time.time() - start_time
+
+            metadata = DocumentMetadata(
+                source=filename,
+                doc_type="pdf",
+                page_count=page_count,
+                custom={"word_count": word_count, "load_time": load_time}
+            )
+
+            return [Document(content=text.strip(), metadata=metadata)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DOCX loader
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DOCXLoader(BaseLoader):
+    """
+    Loads Microsoft Word documents.
+    """
+
+    def supports(self, source: str | Path) -> bool:
+        return str(source).lower().endswith(".docx")
+
+    def load(self, source: str | bytes | Path, **kwargs) -> list[Document]:
+        start_time = time.time()
+        filename = str(source) if isinstance(source, Path) else source
+
+        doc = DocxDocument(source)
+        text = ""
+        for para in doc.paragraphs:
+            text += para.text + "\n"
+
+        page_count = None  # DOCX doesn't have pages easily
+        word_count = len(text.split())
+        load_time = time.time() - start_time
+
+        metadata = DocumentMetadata(
+            source=filename,
+            doc_type="docx",
+            page_count=page_count,
+            custom={"word_count": word_count, "load_time": load_time}
+        )
+
+        return [Document(content=text.strip(), metadata=metadata)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TXT loader
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TXTLoader(BaseLoader):
+    """
+    Loads plain text files.
+    """
+
+    def supports(self, source: str | Path) -> bool:
+        return str(source).lower().endswith(".txt")
+
+    def load(self, source: str | bytes | Path, **kwargs) -> list[Document]:
+        start_time = time.time()
+        filename = str(source) if isinstance(source, Path) else source
+
+        with open(source, 'r', encoding='utf-8') as f:
+            text = f.read()
+
+        page_count = None
+        word_count = len(text.split())
+        load_time = time.time() - start_time
+
+        metadata = DocumentMetadata(
+            source=filename,
+            doc_type="txt",
+            page_count=page_count,
+            custom={"word_count": word_count, "load_time": load_time}
+        )
+
+        return [Document(content=text.strip(), metadata=metadata)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CSV loader
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CSVLoader(BaseLoader):
+    """
+    Loads CSV files as text.
+    """
+
+    def supports(self, source: str | Path) -> bool:
+        return str(source).lower().endswith(".csv")
+
+    def load(self, source: str | bytes | Path, **kwargs) -> list[Document]:
+        start_time = time.time()
+        filename = str(source) if isinstance(source, Path) else source
+
+        df = pd.read_csv(source)
+        text = df.to_string()
+
+        page_count = None
+        word_count = len(text.split())
+        load_time = time.time() - start_time
+
+        metadata = DocumentMetadata(
+            source=filename,
+            doc_type="csv",
+            page_count=page_count,
+            custom={"word_count": word_count, "load_time": load_time}
+        )
+
+        return [Document(content=text.strip(), metadata=metadata)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Loader registry
+# ─────────────────────────────────────────────────────────────────────────────
+
+loader_registry = [
+    PDFLoader(),
+    DOCXLoader(),
+    TXTLoader(),
+    CSVLoader(),
+]
+
+
+def get_loader(source: str | Path) -> Optional[BaseLoader]:
+    """Get the appropriate loader for the source."""
+    for loader in loader_registry:
+        if loader.supports(source):
+            return loader
+    return None
 
     def load(self, source, **kwargs) -> list[Document]:
         import pdfplumber  # pip install pdfplumber
