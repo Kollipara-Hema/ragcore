@@ -1,5 +1,14 @@
 """
 Chainlit conversational AI assistant with multi-provider LLM support.
+
+FEATURES:
+- 🤖 LLM provider selection on startup
+- Choose from: Groq / OpenAI / Anthropic / Demo Mode
+- Optional API key input for non-demo providers
+- Conversational memory for follow-up questions
+- Document upload and indexing
+- Streaming responses
+- Multi-step retrieval for complex queries
 """
 import chainlit as cl
 import time
