@@ -21,10 +21,10 @@ BACKEND_URL = "http://localhost:8000"
 async def start():
     # Ask for LLM provider
     actions = [
-        cl.Action(name="groq", value="groq", description="Groq (Recommended — fast and free)"),
-        cl.Action(name="openai", value="openai", description="OpenAI"),
-        cl.Action(name="anthropic", value="anthropic", description="Anthropic Claude"),
-        cl.Action(name="demo", value="demo", description="Demo Mode (no API key needed)"),
+        cl.Action(name="groq", payload={"value": "groq"}, label="Groq (Recommended — fast and free)"),
+        cl.Action(name="openai", payload={"value": "openai"}, label="OpenAI"),
+        cl.Action(name="anthropic", payload={"value": "anthropic"}, label="Anthropic Claude"),
+        cl.Action(name="demo", payload={"value": "demo"}, label="Demo Mode (no API key needed)"),
     ]
     
     await cl.Message(
