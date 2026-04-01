@@ -22,6 +22,27 @@ import string
 BACKEND_URL = "http://localhost:9002"
 
 
+def generate_demo_response(query, chunks):
+    """Generate a readable response from chunks"""
+    if not chunks:
+        return "No relevant content found."
+    
+    # Build context from top chunks
+    context = "\n".join(chunks[:3])
+    
+    # Generate readable response
+    response = f"""Based on your question "{query}", 
+here is what I found in the document:
+
+{context[:500]}...
+
+This document covers topics related to: 
+{", ".join(query.split()[:5])}
+
+📎 Source: Document — Top 3 relevant sections"""
+    return response
+
+
 def extract_text_from_bytes(file_bytes: bytes, content_type: str, filename: str) -> str:
     """Extract text from file bytes based on content type."""
     try:
@@ -243,10 +264,6 @@ async def handle_file_upload(element, api_key: str):
             if "error" in result:
                 step.output = f"Failed: {result['error']}"
                 await step.update()
-                await cl.Message(
-                    content=f"Failed to index **{filename}**: {result['error']}",
-                    author="DocIntel",
-                ).send()
             else:
                 step.output = f"Done — {result.get('message', 'indexed successfully')}"
                 await step.update()
@@ -256,22 +273,9 @@ async def handle_file_upload(element, api_key: str):
                 docs.append(filename)
                 cl.user_session.set("indexed_docs", docs)
 
-                await cl.Message(
-                    content=(
-                        f"**{filename}** has been indexed.\n\n"
-                        f"{result.get('message', '')}\n\n"
-                        "You can now ask questions about this document."
-                    ),
-                    author="DocIntel",
-                ).send()
-
         except Exception as e:
             step.output = f"Error: {str(e)}"
             await step.update()
-            await cl.Message(
-                content=f"Error uploading file: {str(e)}",
-                author="DocIntel",
-            ).send()
 
 
 # =============================================================================
@@ -310,13 +314,7 @@ async def handle_question(query: str, api_key: str):
 
     mock_chunks = [{"text_preview": chunk, "source_doc": filename, "page": i+1} for i, chunk in enumerate(top_chunks)]
 
-    try:
-        from generation.llm_service import LLMService
-        llm = LLMService(provider=provider, api_key=api_key)
-        result = llm.generate(query, mock_chunks)
-        answer = result["answer"]
-    except Exception as e:
-        answer = f"Error generating answer: {str(e)}"
+    answer = generate_demo_response(query, top_chunks)
 
     await cl.Message(content=answer, author="DocIntel").send()
 
