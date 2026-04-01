@@ -1,10 +1,11 @@
 """
-Streamlit 6-tab RAG pipeline dashboard.
+Streamlit 6-tab RAG pipeline dashboard with multi-provider LLM support.
 """
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import os
 from pathlib import Path
 import time
 
@@ -19,7 +20,7 @@ def mock_chunk(strategy, size, overlap):
     ]
 
 def mock_embed(model):
-    return {"dimensions": 1536, "time": 1.2, "vectors": 10}
+    return {"dimensions": 1536 if "3-small" in model else 1024, "time": 1.2, "vectors": 10}
 
 def mock_retrieve(query, strategy, alpha):
     return [
@@ -27,12 +28,9 @@ def mock_retrieve(query, strategy, alpha):
         {"rank": 2, "score": 0.89, "source": "doc2.txt", "page": 1, "preview": "Another text..."},
     ]
 
-def mock_rerank(before, after):
-    return before, after
-
-def mock_generate(query, chunks):
+def mock_generate(query, provider, model):
     return {
-        "answer": f"Answer for: {query}",
+        "answer": f"Answer for: {query} (via {provider})",
         "citations": ["doc1.pdf — Page 2", "doc2.txt — Page 1"],
         "tokens": {"prompt": 100, "completion": 50, "total": 150},
         "risk": "Low"
@@ -46,22 +44,100 @@ def mock_evaluate(csv):
         "hallucination": 0.12
     }
 
-# UI
+# UI Setup
 st.set_page_config(page_title="DocIntel — RAG Pipeline", layout="wide")
 st.markdown("""
 <style>
 .stApp { background-color: #0f1724; color: white; }
-.tab { background-color: #2E75B6; color: white; }
+.demo-banner { background-color: #ff9800; color: black; padding: 12px; border-radius: 6px; margin: 10px 0; }
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize session state
+if "llm_provider" not in st.session_state:
+    st.session_state.llm_provider = "groq"
+if "llm_api_key" not in st.session_state:
+    st.session_state.llm_api_key = os.getenv("GROQ_API_KEY", "")
+if "embedding_provider" not in st.session_state:
+    st.session_state.embedding_provider = "minilm"
+if "connection_status" not in st.session_state:
+    st.session_state.connection_status = None
+
 st.title("DocIntel — Enterprise RAG Pipeline")
 
-# Sidebar
-st.sidebar.title("Pipeline Status")
-st.sidebar.markdown("✅ Ingest | ⏳ Chunk | ⬜ Embed | ⬜ Retrieve | ⬜ Generate")
-st.sidebar.selectbox("Model Config", ["OpenAI", "BGE", "MiniLM"])
-st.sidebar.button("Reset Pipeline")
+# Sidebar - API Configuration
+with st.sidebar:
+    st.markdown("### ⚙️ API Configuration")
+    
+    # Provider selection
+    provider = st.selectbox(
+        "LLM Provider",
+        ["groq", "openai", "anthropic", "ollama", "demo"],
+        index=["groq", "openai", "anthropic", "ollama", "demo"].index(st.session_state.llm_provider),
+        key="provider_select"
+    )
+    st.session_state.llm_provider = provider
+    
+    # API Key input
+    if provider != "demo" and provider != "ollama":
+        api_key = st.text_input(
+            "API Key",
+            value=st.session_state.llm_api_key,
+            type="password",
+            key="api_key_input"
+        )
+        st.session_state.llm_api_key = api_key
+    
+    # Model selection
+    models = {
+        "groq": ["llama3-70b-8192", "mixtral-8x7b", "gemma2-9b"],
+        "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
+        "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
+        "ollama": ["llama3", "mistral", "phi3"],
+        "demo": ["demo"]
+    }
+    selected_model = st.selectbox("Model", models.get(provider, ["demo"]), key="model_select")
+    
+    # Test connection button
+    if st.button("🔌 Test Connection"):
+        if provider == "demo":
+            st.session_state.connection_status = "✅ Demo Mode"
+        elif provider == "ollama":
+            st.session_state.connection_status = "✅ Connected (Local)"
+        elif st.session_state.llm_api_key:
+            st.session_state.connection_status = "✅ Connected"
+        else:
+            st.session_state.connection_status = "❌ No API Key"
+    
+    if st.session_state.connection_status:
+        if "✅" in st.session_state.connection_status:
+            st.success(st.session_state.connection_status)
+        else:
+            st.error(st.session_state.connection_status)
+    
+    # Embedding provider
+    st.markdown("### 📊 Embedding Provider")
+    embedding_provider = st.selectbox(
+        "Model",
+        ["minilm (FREE)", "bge (FREE)", "openai"],
+        index=0,
+        key="embedding_select"
+    )
+    
+    st.markdown("---")
+    st.markdown("### 📊 Pipeline Status")
+    st.markdown("✅ Ingest | ⏳ Chunk | ⬜ Embed | ⬜ Retrieve | ⬜ Generate")
+    
+    if st.button("Reset Pipeline"):
+        st.rerun()
+
+# Demo mode banner
+if st.session_state.llm_provider == "demo" or not st.session_state.llm_api_key:
+    st.markdown("""
+    <div class="demo-banner">
+    ⚠️ <b>Running in Demo Mode</b> — Enter API key in sidebar for real AI responses
+    </div>
+    """, unsafe_allow_html=True)
 
 # Tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["01 Ingest", "02 Chunk", "03 Embed", "04 Retrieve", "05 Generate", "06 Evaluate"])
@@ -91,37 +167,33 @@ with tab2:
 
 with tab3:
     st.header("Embedding")
-    model = st.selectbox("Model", ["OpenAI text-embedding-3-small", "BGE-large", "all-MiniLM-L6-v2"])
+    model = st.selectbox("Model", ["all-MiniLM-L6-v2 (FREE)", "BGE-large (FREE)", "OpenAI text-embedding-3-small"])
     if st.button("Embed Chunks"):
         result = mock_embed(model)
         st.write(f"Dimensions: {result['dimensions']}, Time: {result['time']}s")
-        st.write(f"Vectors: {result['vectors']} x {result['dimensions']} = {result['vectors']*result['dimensions']*4/1024:.1f} KB")
 
 with tab4:
     st.header("Retrieval")
     query = st.text_input("Query")
     strategy = st.selectbox("Strategy", ["Dense", "Sparse BM25", "Hybrid"])
     alpha = st.slider("Hybrid Alpha", 0.0, 1.0, 0.5)
-    rerank = st.checkbox("Rerank")
     if query:
         results = mock_retrieve(query, strategy, alpha)
         for res in results:
-            st.write(f"Rank {res['rank']}: {res['score']:.2f} — {res['source']} P{res['page']} — {res['preview']}")
+            st.write(f"Rank {res['rank']}: {res['score']:.2f} — {res['source']} P{res['page']}")
 
 with tab5:
     st.header("Generation")
-    if query:
-        gen = mock_generate(query, [])
+    if st.button("Generate Answer"):
+        gen = mock_generate("Sample query", st.session_state.llm_provider, selected_model)
         st.write(gen["answer"])
         st.write("Citations:")
         for cit in gen["citations"]:
             st.write(f"[1] {cit}")
-        st.write(f"Tokens: {gen['tokens']}")
-        st.write(f"Hallucination Risk: {gen['risk']}")
 
 with tab6:
     st.header("Evaluation")
-    csv = st.file_uploader("Upload Golden Q&A CSV")
+    csv = st.file_uploader("Upload Golden Q&A CSV", type=["csv"])
     if csv:
         metrics = mock_evaluate(csv)
         col1, col2, col3, col4 = st.columns(4)
@@ -129,9 +201,6 @@ with tab6:
         col2.metric("Relevance", f"{metrics['relevance']:.2f}")
         col3.metric("Faithfulness", f"{metrics['faithfulness']:.2f}")
         col4.metric("Hallucination", f"{metrics['hallucination']:.2f}")
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=list(metrics.keys()), y=list(metrics.values())))
-        st.plotly_chart(fig)
 
     /* Sidebar styling */
     [data-testid="stSidebar"] {
