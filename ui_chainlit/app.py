@@ -27,19 +27,36 @@ def generate_demo_response(query, chunks):
     if not chunks:
         return "No relevant content found."
     
-    # Build context from top chunks
-    context = "\n".join(chunks[:3])
+    # Check if it's a summary question
+    summary_keywords = ["summary", "summarize", "overview", "what is this", "what is the document", "tell me about"]
+    is_summary = any(k in query.lower() for k in summary_keywords)
     
-    # Generate readable response
-    response = f"""Based on your question "{query}", 
-here is what I found in the document:
-
-{context[:500]}...
-
-This document covers topics related to: 
-{", ".join(query.split()[:5])}
-
-📎 Source: Document — Top 3 relevant sections"""
+    if is_summary:
+        # Create a summary
+        all_text = " ".join(chunks)
+        # Extract key sentences or topics
+        # For simplicity, take first 200 chars and format
+        summary = all_text[:200] + "..." if len(all_text) > 200 else all_text
+        response = f"📄 Document Summary:\n{summary}"
+    else:
+        # Extract relevant sentences
+        query_words = query.lower().split()
+        relevant_sentences = []
+        for chunk in chunks:
+            sentences = chunk.split('.')
+            for sentence in sentences:
+                if any(w in sentence.lower() for w in query_words):
+                    relevant_sentences.append(sentence.strip() + '.')
+                    if len(relevant_sentences) >= 3:
+                        break
+            if len(relevant_sentences) >= 3:
+                break
+        if relevant_sentences:
+            response = f"Based on your question \"{query}\", here is what the document says:\n\n" + "\n".join(f"- {s}" for s in relevant_sentences[:3])
+        else:
+            response = f"Based on your question \"{query}\", the document doesn't contain specific information about that topic. Here is some general content:\n\n{chunks[0][:300]}..."
+    
+    response += f"\n\n📎 Source: Document — Relevant sections"
     return response
 
 
