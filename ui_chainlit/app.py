@@ -1,53 +1,33 @@
 """
-=============================================================================
-ui_chainlit/app.py — Chainlit Chat UI for RAG System
-=============================================================================
-HOW TO RUN:
-    cd ui_chainlit
-    pip install chainlit
-    chainlit run app.py
-
-WHAT THIS HAS:
-    - Professional chat interface that looks like ChatGPT
-    - Live step-by-step display while processing:
-        "Classifying query..."
-        "Searching documents..."
-        "Reranking results..."
-        "Generating answer..."
-    - Citations shown as clickable source elements
-    - PDF upload via chat (drag and drop)
-    - API key asked on first message if not set
-    - Chat history persists during session
-=============================================================================
+Chainlit conversational AI assistant.
 """
-
 import chainlit as cl
-import requests
-import os
-from pathlib import Path
-
-# =============================================================================
-# BACKEND URL
-# =============================================================================
-
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-
-
-# =============================================================================
-# CHAINLIT LIFECYCLE HOOKS
-# =============================================================================
+import time
 
 @cl.on_chat_start
-async def on_chat_start():
-    """
-    Runs when a new chat session starts.
-    Sets up session state and shows welcome message.
-    """
-    # Store API key in user session — only lives for this chat session
-    cl.user_session.set("api_key", "")
-    cl.user_session.set("indexed_docs", [])
+async def start():
+    await cl.Message(content="Welcome to DocIntel Assistant. Upload your documents and ask me anything about them.").send()
 
-    # Check if backend is running
+@cl.on_message
+async def main(message: cl.Message):
+    # Mock processing
+    await cl.Message(content="Analyzing your query...").send()
+    time.sleep(0.5)
+    await cl.Message(content="Searching documents...").send()
+    time.sleep(0.5)
+    await cl.Message(content="Generating answer...").send()
+    time.sleep(0.5)
+
+    # Mock answer
+    answer = f"Here's the answer to: {message.content}"
+    citations = "📎 Sources: doc1.pdf (Page 2), doc2.txt (Page 1)"
+    steps = "🔍 Retrieval: Dense search, 0.23s latency"
+
+    await cl.Message(content=f"{answer}\n\n{citations}\n\n{steps}").send()
+
+@cl.on_file_upload
+async def on_file_upload(file: cl.File):
+    await cl.Message(content=f"✅ Indexed {file.name} — ready to answer").send()
     try:
         import httpx
         async with httpx.AsyncClient() as client:
