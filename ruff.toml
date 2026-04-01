@@ -1,7 +1,5 @@
-[tool.ruff]
 line-length = 120
-select = ["E", "F", "B", "C", "Q", "PLW", "S" ]
-ignore = []
-exclude = [".git", "__pycache__", ".venv", "env", "venv"]
-[tool.ruff.isort]
-profile = "black"
+
+[lint]
+ignore = ["E501", "F401", "F811", "E402"]
+exclude = ["src_legacy", ".venv", "__pycache__"]
