@@ -17,6 +17,7 @@ from pathlib import Path
 from io import BytesIO
 import pdfplumber
 from docx import Document
+import string
 
 BACKEND_URL = "http://localhost:9002"
 
@@ -289,42 +290,35 @@ async def handle_question(query: str, api_key: str):
         return
 
     # Simple keyword search
-    query_words = query.lower().split()
-    scored_chunks = []
-    for chunk in chunks:
-        score = sum(1 for word in query_words if word in chunk.lower())
-        scored_chunks.append((score, chunk))
-    scored_chunks.sort(reverse=True)
-    top_chunks = [c for _, c in scored_chunks[:3]]
+    scored = []
+    for i, chunk in enumerate(chunks):
+        words = [w.strip(string.punctuation) for w in query.lower().split() if w.strip(string.punctuation)]
+        chunk_clean = chunk.lower().translate(str.maketrans('', '', string.punctuation))
+        score = sum(1 for w in words if w in chunk_clean)
+        scored.append((score, i, chunk))
+    scored.sort(reverse=True)
+    # Get top 3 different chunks
+    top_chunks = [c for _, _, c in scored[:3]]
     
     # If nothing found, use first 3 chunks anyway
-    if not top_chunks or all(s == 0 for s, _ in scored_chunks[:3]):
+    if not top_chunks or all(s == 0 for s, _, _ in scored[:3]):
         top_chunks = chunks[:3]
 
     provider = cl.user_session.get("llm_provider", "demo")
     docs = cl.user_session.get("indexed_docs", [])
     filename = docs[-1] if docs else "document"
 
-    if provider == "demo":
-        content = "Based on the document, here is what I found:\n\n"
-        for i, chunk in enumerate(top_chunks):
-            content += f"**Chunk {i+1}:**\n{chunk[:500]}{'...' if len(chunk) > 500 else ''}\n\n"
-        content += f"Sources: {filename} — Chunk 1"
-        await cl.Message(content=content, author="DocIntel").send()
-    else:
-        # Call LLM with retrieved context
-        try:
-            from generation.llm_service import LLMService
-            llm = LLMService(provider=provider, api_key=api_key)
-            context = "\n\n".join(top_chunks)
-            prompt = f"Based on the following context, answer the question.\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
-            answer = llm.generate(prompt)
-            await cl.Message(content=answer, author="DocIntel").send()
-        except Exception as e:
-            await cl.Message(
-                content=f"Error generating answer: {str(e)}",
-                author="DocIntel",
-            ).send()
+    mock_chunks = [{"text_preview": chunk, "source_doc": filename, "page": i+1} for i, chunk in enumerate(top_chunks)]
+
+    try:
+        from generation.llm_service import LLMService
+        llm = LLMService(provider=provider, api_key=api_key)
+        result = llm.generate(query, mock_chunks)
+        answer = result["answer"]
+    except Exception as e:
+        answer = f"Error generating answer: {str(e)}"
+
+    await cl.Message(content=answer, author="DocIntel").send()
 
 
 # =============================================================================
