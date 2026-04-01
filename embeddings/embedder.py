@@ -3,12 +3,14 @@ Multi-provider embedding service.
 Defaults to free sentence-transformers (no API key required).
 """
 from __future__ import annotations
+import asyncio
+import hashlib
+import json
 import logging
-import os
-import time
-from typing import List, Dict, Any
+from typing import List, Optional, Union
 
-from sentence_transformers import SentenceTransformer
+from config.settings import settings, EmbeddingProvider
+from utils.models import Chunk
 
 logger = logging.getLogger(__name__)
 
@@ -16,161 +18,38 @@ logger = logging.getLogger(__name__)
 class BaseEmbedder:
     """Base embedding interface."""
 
-    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        """Embed texts, return dict with embeddings, dimensions, time, etc."""
+    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of texts and return embeddings."""
         raise NotImplementedError
+
+    async def embed_query(self, query: str) -> List[float]:
+        """Embed a single query."""
+        raise NotImplementedError
+
+    async def embed_chunks(self, chunks: List[Chunk]) -> List[Chunk]:
+        """Embed chunk objects in place."""
+        embeddings = await self.embed_texts([chunk.content for chunk in chunks])
+        for chunk, embedding in zip(chunks, embeddings):
+            chunk.embedding = embedding
+        return chunks
 
 
 class OpenAIEmbedder(BaseEmbedder):
     """OpenAI text-embedding-3-small."""
 
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = "text-embedding-3-small"
-        self.dimensions = 1536
-
-    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        if not self.api_key:
-            return self._fallback_embed(texts)
-
-        try:
-            import openai
-            client = openai.OpenAI(api_key=self.api_key)
-            start_time = time.time()
-            response = client.embeddings.create(input=texts, model=self.model)
-            embeddings = [data.embedding for data in response.data]
-            elapsed = time.time() - start_time
-            vector_size = len(embeddings) * self.dimensions * 4
-
-            return {
-                "embeddings": embeddings,
-                "dimensions": self.dimensions,
-                "time_taken": elapsed,
-                "vector_size": vector_size,
-                "provider": "OpenAI"
-            }
-        except Exception as e:
-            logger.warning(f"OpenAI embedding failed: {e}, falling back to free model")
-            return self._fallback_embed(texts)
-
-    def _fallback_embed(self, texts: List[str]) -> Dict[str, Any]:
-        """Fall back to free MiniLM model."""
-        model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.dimensions = 384
-        start_time = time.time()
-        embeddings = model.encode(texts, convert_to_numpy=True).tolist()
-        elapsed = time.time() - start_time
-        vector_size = len(embeddings) * self.dimensions * 4
-
-        return {
-            "embeddings": embeddings,
-            "dimensions": self.dimensions,
-            "time_taken": elapsed,
-            "vector_size": vector_size,
-            "provider": "MiniLM (free fallback)"
-        }
-
-
-class BGEEmbedder(BaseEmbedder):
-    """BGE-large-en (free, no API key needed)."""
-
-    def __init__(self):
-        self.model = SentenceTransformer('BAAI/bge-large-en-v1.5')
-        self.dimensions = 1024
-
-    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        start_time = time.time()
-        embeddings = self.model.encode(texts, convert_to_numpy=True).tolist()
-        elapsed = time.time() - start_time
-        vector_size = len(embeddings) * self.dimensions * 4
-
-        return {
-            "embeddings": embeddings,
-            "dimensions": self.dimensions,
-            "time_taken": elapsed,
-            "vector_size": vector_size,
-            "provider": "BGE (free)"
-        }
-
-
-class MiniLMEmbedder(BaseEmbedder):
-    """all-MiniLM-L6-v2 (free, no API key needed)."""
-
-    def __init__(self):
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.dimensions = 384
-
-    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
-        start_time = time.time()
-        embeddings = self.model.encode(texts, convert_to_numpy=True).tolist()
-        elapsed = time.time() - start_time
-        vector_size = len(embeddings) * self.dimensions * 4
-
-        return {
-            "embeddings": embeddings,
-            "dimensions": self.dimensions,
-            "time_taken": elapsed,
-            "vector_size": vector_size,
-            "provider": "MiniLM (free)"
-        }
-
-
-def get_embedder(provider: str = "minilm", api_key: str = None) -> BaseEmbedder:
-    """Get embedder by provider. Defaults to free MiniLM."""
-    provider = provider.lower()
-    if provider == "openai":
-        return OpenAIEmbedder(api_key=api_key)
-    elif provider == "bge":
-        return BGEEmbedder()
-    else:
-        return MiniLMEmbedder()
-
-
-# Embedding provider metadata
-EMBEDDING_PROVIDERS = {
-    "minilm": {
-        "name": "all-MiniLM-L6-v2 (FREE)",
-        "dimensions": 384,
-        "requires_key": False,
-        "recommended": True
-    },
-    "bge": {
-        "name": "BGE-large-en-v1.5 (FREE)",
-        "dimensions": 1024,
-        "requires_key": False
-    },
-    "openai": {
-        "name": "OpenAI text-embedding-3-small",
-        "dimensions": 1536,
-        "requires_key": True
-    }
-}
-
-        for chunk, embedding in zip(to_embed, embeddings):
-            chunk.embedding = embedding
-
-        return chunks
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# OpenAI adapter
-# ─────────────────────────────────────────────────────────────────────────────
-
-class OpenAIEmbedder(BaseEmbedder):
     def __init__(self, model: str = None, batch_size: int = None):
         self.model = model or settings.embedding_model_openai
         self.batch_size = batch_size or settings.embedding_batch_size
 
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
         try:
             from openai import AsyncOpenAI
         except ImportError:
             raise ImportError("Run: pip install openai")
 
         client = AsyncOpenAI(api_key=settings.openai_api_key)
-        all_embeddings: list[list[float]] = []
+        all_embeddings: List[List[float]] = []
 
-        # Batch to respect rate limits
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
             response = await client.embeddings.create(
@@ -183,26 +62,19 @@ class OpenAIEmbedder(BaseEmbedder):
 
         return all_embeddings
 
-    async def embed_query(self, query: str) -> list[float]:
-        # OpenAI: no special instruction prefix needed
+    async def embed_query(self, query: str) -> List[float]:
         return (await self.embed_texts([query]))[0]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# BGE (local sentence-transformers) adapter
-# ─────────────────────────────────────────────────────────────────────────────
-
 class BGEEmbedder(BaseEmbedder):
-    """
-    Uses sentence-transformers (BAAI/bge-large-en-v1.5).
-    BGE requires a task instruction prefix for queries (not for docs).
-    """
+    """Uses sentence-transformers (BAAI/bge-large-en-v1.5)."""
+
     QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
     def __init__(self, model_name: str = None, batch_size: int = None):
         self.model_name = model_name or settings.embedding_model_bge
         self.batch_size = batch_size or settings.embedding_batch_size
-        self._model = None  # lazy-loaded
+        self._model = None
 
     def _get_model(self):
         if self._model is None:
@@ -211,12 +83,11 @@ class BGEEmbedder(BaseEmbedder):
             self._model = SentenceTransformer(self.model_name)
         return self._model
 
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        # Run in thread pool to avoid blocking the event loop
+    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._sync_embed, texts)
 
-    def _sync_embed(self, texts: list[str]) -> list[list[float]]:
+    def _sync_embed(self, texts: List[str]) -> List[List[float]]:
         model = self._get_model()
         embeddings = model.encode(
             texts,
@@ -226,34 +97,26 @@ class BGEEmbedder(BaseEmbedder):
         )
         return embeddings.tolist()
 
-    async def embed_query(self, query: str) -> list[float]:
-        # BGE prepends instruction for query embeddings
+    async def embed_query(self, query: str) -> List[float]:
         prefixed = self.QUERY_PREFIX + query
         return (await self.embed_texts([prefixed]))[0]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Cohere adapter
-# ─────────────────────────────────────────────────────────────────────────────
-
 class CohereEmbedder(BaseEmbedder):
-    """
-    Uses Cohere's embed-english-v3.0 or multilingual model.
-    Cohere embed v3 uses input_type for document vs query distinction.
-    """
+    """Cohere embedder for multilingual use."""
 
     def __init__(self, model: str = None, batch_size: int = None):
         self.model = model or settings.embedding_model_cohere
         self.batch_size = batch_size or settings.embedding_batch_size
 
-    async def embed_texts(self, texts: list[str], input_type: str = "search_document") -> list[list[float]]:
+    async def embed_texts(self, texts: List[str], input_type: str = "search_document") -> List[List[float]]:
         try:
             import cohere
         except ImportError:
             raise ImportError("Run: pip install cohere")
 
-        client = cohere.AsyncClient(api_key=settings.openai_api_key)  # reuse key field
-        all_embeddings: list[list[float]] = []
+        client = cohere.AsyncClient(api_key=settings.openai_api_key)
+        all_embeddings: List[List[float]] = []
 
         for i in range(0, len(texts), self.batch_size):
             batch = texts[i:i + self.batch_size]
@@ -266,19 +129,12 @@ class CohereEmbedder(BaseEmbedder):
 
         return all_embeddings
 
-    async def embed_query(self, query: str) -> list[float]:
+    async def embed_query(self, query: str) -> List[float]:
         return (await self.embed_texts([query], input_type="search_query"))[0]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Cached wrapper
-# ─────────────────────────────────────────────────────────────────────────────
-
 class CachedEmbedder(BaseEmbedder):
-    """
-    Wraps any embedder with Redis-based caching.
-    Cache key = SHA256(model_name + text).
-    """
+    """Wraps any embedder with Redis caching."""
 
     def __init__(self, embedder: BaseEmbedder):
         self._embedder = embedder
@@ -300,16 +156,14 @@ class CachedEmbedder(BaseEmbedder):
         payload = f"{model_name}:{text}".encode()
         return f"embed:{hashlib.sha256(payload).hexdigest()}"
 
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
         redis = await self._get_redis()
-        results: list[Optional[list[float]]] = [None] * len(texts)
-        missing_indices: list[int] = []
+        results: List[Optional[List[float]]] = [None] * len(texts)
+        missing_indices: List[int] = []
 
-        # Skip cache if Redis not available
         if redis is None:
             return await self._embedder.embed_texts(texts)
 
-        # Check cache
         for i, text in enumerate(texts):
             key = self._cache_key(text)
             try:
@@ -321,7 +175,6 @@ class CachedEmbedder(BaseEmbedder):
             except Exception:
                 missing_indices.append(i)
 
-        # Embed only cache misses
         if missing_indices:
             missing_texts = [texts[i] for i in missing_indices]
             new_embeddings = await self._embedder.embed_texts(missing_texts)
@@ -335,26 +188,32 @@ class CachedEmbedder(BaseEmbedder):
 
         return results  # type: ignore
 
-    async def embed_query(self, query: str) -> list[float]:
+    async def embed_query(self, query: str) -> List[float]:
         return (await self.embed_texts([query]))[0]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Factory
-# ─────────────────────────────────────────────────────────────────────────────
+def get_embedder(provider: Union[str, EmbeddingProvider, None] = None, cached: bool = True) -> BaseEmbedder:
+    if provider is None:
+        provider = settings.embedding_provider
 
-def get_embedder(provider: EmbeddingProvider = None, cached: bool = True) -> BaseEmbedder:
-    provider = provider or settings.embedding_provider
+    if isinstance(provider, str):
+        provider_key = provider.lower()
+        if provider_key in ("minilm", "mini", "sentence-transformer", "sentence_transformer"):
+            provider = EmbeddingProvider.BGE
+        else:
+            provider = EmbeddingProvider(provider_key)
+
     mapping = {
         EmbeddingProvider.OPENAI: OpenAIEmbedder,
         EmbeddingProvider.BGE: BGEEmbedder,
         EmbeddingProvider.COHERE: CohereEmbedder,
     }
-    cls = mapping.get(provider)
-    if not cls:
+
+    embedder_cls = mapping.get(provider)
+    if not embedder_cls:
         raise ValueError(f"Unknown embedding provider: {provider}")
 
-    embedder = cls()
+    embedder = embedder_cls()
     if cached:
         return CachedEmbedder(embedder)
     return embedder

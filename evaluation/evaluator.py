@@ -3,7 +3,9 @@ RAG evaluation metrics.
 """
 from __future__ import annotations
 import logging
-from typing import List, Dict, Any
+import time
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional
 
 import pandas as pd
 
@@ -54,6 +56,28 @@ class CostMetrics:
     estimated_cost_usd: float = 0.0
     cost_per_query_usd: float = 0.0
     cache_hit_rate: float = 0.0
+
+
+@dataclass
+class RetrievalMetrics:
+    hit_rate: float = 0.0
+    mrr: float = 0.0
+    ndcg_at_5: float = 0.0
+    context_precision: float = 0.0
+    context_recall: float = 0.0
+    sample_count: int = 0
+
+
+@dataclass
+class EvalSample:
+    query: str
+    ground_truth: str
+    retrieved_doc_ids: List[str] = field(default_factory=list)
+    relevant_doc_ids: List[str] = field(default_factory=list)
+    retrieved_contexts: List[str] = field(default_factory=list)
+    generated_answer: Optional[str] = None
+    latency_ms: Optional[float] = None
+    total_tokens: Optional[int] = None
 
 
 @dataclass

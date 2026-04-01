@@ -12,7 +12,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from config.settings import settings
 from utils.models import QueryType, RetrievedChunk, Citation
 
 logger = logging.getLogger(__name__)

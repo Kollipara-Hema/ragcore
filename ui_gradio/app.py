@@ -12,7 +12,6 @@ FEATURES:
 - Demo mode for zero-setup exploration
 """
 import gradio as gr
-import os
 
 def compare_configs(chunk_a, embed_a, retrieve_a, rerank_a, chunk_b, embed_b, retrieve_b, rerank_b, provider, api_key, model, document, query):
     # Mock comparison

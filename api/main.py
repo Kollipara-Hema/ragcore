@@ -29,7 +29,6 @@ from __future__ import annotations
 import logging     # For writing log messages
 import os          # For file path operations and environment
 import tempfile    # For saving uploaded files temporarily
-import time        # For measuring response time
 import uuid        # For generating unique IDs
 
 # contextlib.asynccontextmanager — used for startup/shutdown lifecycle
@@ -49,8 +48,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Allows browsers on other domains to call this API
 # e.g. your React frontend at localhost:3000 calling this API at localhost:8000
 
-from fastapi.responses import JSONResponse, StreamingResponse
-# JSONResponse     = returns data as JSON
+from fastapi.responses import StreamingResponse
 # StreamingResponse = streams data token by token (for chat-like UX)
 
 # --- Internal modules ---

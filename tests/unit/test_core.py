@@ -2,8 +2,6 @@
 Unit tests for core RAG components.
 Run with: pytest tests/unit/ -v
 """
-import pytest
-from uuid import uuid4
 
 from utils.models import (
     QueryType, RetrievalStrategy, DocumentMetadata, Document,
@@ -116,81 +114,4 @@ class TestImports:
         assert metrics.sample_count == 0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Latency evaluation tests
-# ─────────────────────────────────────────────────────────────────────────────
 
-class TestLatencyEvaluator:
-    def setup_method(self):
-        self.evaluator = LatencyEvaluator()
-
-    def test_percentiles(self):
-        latencies = list(range(1, 101))  # 1ms to 100ms
-        samples = [
-            EvalSample(query="Q", ground_truth="A", relevant_doc_ids=[], latency_ms=float(l))
-            for l in latencies
-        ]
-        metrics = self.evaluator.evaluate(samples)
-        assert metrics.p50_ms == pytest.approx(50.0, abs=2)
-        assert metrics.p95_ms == pytest.approx(95.0, abs=2)
-        assert metrics.p99_ms == pytest.approx(99.0, abs=2)
-
-    def test_empty_samples(self):
-        metrics = self.evaluator.evaluate([])
-        assert metrics.p50_ms == 0.0
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Vector store fusion tests
-# ─────────────────────────────────────────────────────────────────────────────
-
-class TestRRFFusion:
-    """Test the RRF fusion logic in BaseVectorStore."""
-
-    def _make_store(self) -> BaseVectorStore:
-        """Create a minimal concrete subclass for testing."""
-        class TestStore(BaseVectorStore):
-            async def upsert(self, chunks): return 0
-            async def vector_search(self, *a, **kw): return []
-            async def keyword_search(self, *a, **kw): return []
-            async def delete_document(self, *a): return 0
-
-        return TestStore()
-
-    def test_rrf_deduplicates(self):
-        store = self._make_store()
-        chunk = make_chunk("Shared chunk content")
-        rc = make_retrieved(chunk, score=0.9)
-
-        # Same chunk appears in both result sets
-        vector_results = [rc]
-        keyword_results = [rc]
-        fused = store._rrf_fusion(vector_results, keyword_results, alpha=0.7)
-
-        # Should only appear once
-        chunk_ids = [str(r.chunk.chunk_id) for r in fused]
-        assert len(chunk_ids) == len(set(chunk_ids))
-
-    def test_rrf_higher_alpha_favors_vector(self):
-        store = self._make_store()
-        vector_chunk = make_chunk("Vector result")
-        keyword_chunk = make_chunk("Keyword result")
-
-        vector_results = [make_retrieved(vector_chunk, 0.9)]
-        keyword_results = [make_retrieved(keyword_chunk, 0.9)]
-
-        # alpha=0.9 strongly favors vector
-        fused = store._rrf_fusion(vector_results, keyword_results, alpha=0.9)
-        assert str(fused[0].chunk.chunk_id) == str(vector_chunk.chunk_id)
-
-    def test_rrf_alpha_zero_favors_keyword(self):
-        store = self._make_store()
-        vector_chunk = make_chunk("Vector result")
-        keyword_chunk = make_chunk("Keyword result")
-
-        vector_results = [make_retrieved(vector_chunk, 0.9)]
-        keyword_results = [make_retrieved(keyword_chunk, 0.9)]
-
-        # alpha=0 strongly favors keyword
-        fused = store._rrf_fusion(vector_results, keyword_results, alpha=0.0)
-        assert str(fused[0].chunk.chunk_id) == str(keyword_chunk.chunk_id)

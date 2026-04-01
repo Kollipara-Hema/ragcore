@@ -43,8 +43,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from abc import ABC, abstractmethod
-from typing import Optional
 
 from utils.models import RetrievedChunk
 
@@ -109,6 +107,10 @@ class MonoT5Reranker:
                 self._tokenizer = T5Tokenizer.from_pretrained(self.model_name)
                 self._model = T5ForConditionalGeneration.from_pretrained(self.model_name)
                 self._model.eval()
+
+                # Move model to available device if possible, using torch to avoid unused import warning
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self._model.to(device)
 
                 # Get token IDs for "true" and "false" — used for scoring
                 # MonoT5 outputs these words, we compare their probabilities
