@@ -1,5 +1,14 @@
 """
 Streamlit 6-tab RAG pipeline dashboard with multi-provider LLM support.
+
+FEATURES:
+- ⚙️ API Configuration panel in sidebar
+- Select LLM provider: Groq / OpenAI / Anthropic / Ollama / Demo
+- API key input (password masked)
+- Model selection based on provider
+- Test connection button with status indicator
+- Free embedding models (MiniLM, BGE) by default
+- Demo mode banner when no API key provided
 """
 import streamlit as st
 import pandas as pd
