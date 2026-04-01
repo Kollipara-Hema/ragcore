@@ -1,77 +1,184 @@
 """
-LLM generation service.
+Multi-provider LLM generation service.
+Supports: Groq, OpenAI, Anthropic, Ollama
 """
 from __future__ import annotations
 import logging
 import os
 import re
-from typing import List, Dict, Any
-
-import openai
+from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """LLM generation with citations and streaming."""
+    """Multi-provider LLM generation with citations and streaming."""
 
-    def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    def __init__(self, provider: str = "groq", model: str = None, api_key: str = None):
+        self.provider = provider.lower()
+        self.api_key = api_key or os.getenv(f"{provider.upper()}_API_KEY")
+        self.model = model or self._get_default_model(provider)
+
+    def _get_default_model(self, provider: str) -> str:
+        defaults = {
+            "groq": "llama3-70b-8192",
+            "openai": "gpt-4o-mini",
+            "anthropic": "claude-3-5-sonnet-20241022",
+            "ollama": "llama3"
+        }
+        return defaults.get(provider.lower(), "llama3-70b-8192")
 
     def generate(self, query: str, chunks: List[Dict[str, Any]], stream: bool = False) -> Dict[str, Any]:
         """Generate answer with citations."""
-        if not os.getenv("OPENAI_API_KEY"):
+        if not self.api_key and self.provider != "ollama":
             return self._mock_generate(query, chunks)
 
-        # Build prompt
-        context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
-        prompt = f"""
-Answer the question based on the provided context. Include citations in the format [1], [2], etc.
+        try:
+            if self.provider == "groq":
+                return self._groq_generate(query, chunks)
+            elif self.provider == "openai":
+                return self._openai_generate(query, chunks)
+            elif self.provider == "anthropic":
+                return self._anthropic_generate(query, chunks)
+            elif self.provider == "ollama":
+                return self._ollama_generate(query, chunks)
+            else:
+                return self._mock_generate(query, chunks)
+        except Exception as e:
+            logger.error(f"Generation error with {self.provider}: {e}")
+            return self._mock_generate(query, chunks)
 
-Context:
-{context}
+    def _groq_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate using Groq API."""
+        try:
+            from groq import Groq
+            client = Groq(api_key=self.api_key)
+            context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
+            prompt = f"Answer based on context:\n{context}\n\nQ: {query}\nA:"
 
-Question: {query}
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.1
+            )
 
-Answer:"""
+            answer = response.choices[0].message.content
+            citations = self._extract_citations(answer, chunks)
 
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.1
-        )
+            return {
+                "answer": answer,
+                "citations": citations,
+                "token_usage": {"prompt": 0, "completion": 0, "total": 0},
+                "hallucination_risk": "Low",
+                "provider": "Groq " + self.model
+            }
+        except Exception as e:
+            logger.error(f"Groq error: {e}")
+            return self._mock_generate(query, chunks)
 
-        answer = response.choices[0].message.content
-        tokens = response.usage.total_tokens
+    def _openai_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate using OpenAI API."""
+        try:
+            import openai
+            client = openai.OpenAI(api_key=self.api_key)
+            context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
+            prompt = f"Answer based on context:\n{context}\n\nQ: {query}\nA:"
 
-        # Extract citations
-        citations = self._extract_citations(answer, chunks)
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=500,
+                temperature=0.1
+            )
 
-        # Hallucination risk: average similarity (mock as 0.8)
-        avg_similarity = 0.8
-        risk = "Low" if avg_similarity > 0.7 else "Medium" if avg_similarity > 0.5 else "High"
+            answer = response.choices[0].message.content
+            citations = self._extract_citations(answer, chunks)
 
-        return {
-            "answer": answer,
-            "citations": citations,
-            "token_usage": {
-                "prompt": response.usage.prompt_tokens,
-                "completion": response.usage.completion_tokens,
-                "total": tokens
-            },
-            "hallucination_risk": risk
-        }
+            return {
+                "answer": answer,
+                "citations": citations,
+                "token_usage": {
+                    "prompt": response.usage.prompt_tokens,
+                    "completion": response.usage.completion_tokens,
+                    "total": response.usage.total_tokens
+                },
+                "hallucination_risk": "Low",
+                "provider": "OpenAI " + self.model
+            }
+        except Exception as e:
+            logger.error(f"OpenAI error: {e}")
+            return self._mock_generate(query, chunks)
+
+    def _anthropic_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate using Anthropic Claude API."""
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=self.api_key)
+            context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
+            prompt = f"Answer based on context:\n{context}\n\nQ: {query}\nA:"
+
+            response = client.messages.create(
+                model=self.model,
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            answer = response.content[0].text
+            citations = self._extract_citations(answer, chunks)
+
+            return {
+                "answer": answer,
+                "citations": citations,
+                "token_usage": {
+                    "prompt": response.usage.input_tokens,
+                    "completion": response.usage.output_tokens,
+                    "total": response.usage.input_tokens + response.usage.output_tokens
+                },
+                "hallucination_risk": "Low",
+                "provider": "Anthropic " + self.model
+            }
+        except Exception as e:
+            logger.error(f"Anthropic error: {e}")
+            return self._mock_generate(query, chunks)
+
+    def _ollama_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate using local Ollama (no API key needed)."""
+        try:
+            import requests
+            context = "\n\n".join([f"[{i+1}] {chunk['text_preview']}" for i, chunk in enumerate(chunks)])
+            prompt = f"Answer based on context:\n{context}\n\nQ: {query}\nA:"
+
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={"model": self.model, "prompt": prompt, "stream": False},
+                timeout=30
+            )
+            response.raise_for_status()
+            answer = response.json().get("response", "")
+            citations = self._extract_citations(answer, chunks)
+
+            return {
+                "answer": answer,
+                "citations": citations,
+                "token_usage": {"prompt": 0, "completion": 0, "total": 0},
+                "hallucination_risk": "Low",
+                "provider": "Ollama " + self.model
+            }
+        except Exception as e:
+            logger.error(f"Ollama error: {e}")
+            return self._mock_generate(query, chunks)
 
     def _mock_generate(self, query: str, chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Mock generation for demo."""
-        answer = f"This is a demo answer for: {query}. Based on the provided documents."
+        """Mock generation for demo mode."""
+        answer = f"This is a demo answer for: {query}. Based on the provided documents, here are the key insights."
         citations = [{"source": chunk["source_doc"], "page": chunk["page"]} for chunk in chunks[:3]]
         return {
             "answer": answer,
             "citations": citations,
             "token_usage": {"prompt": 100, "completion": 50, "total": 150},
-            "hallucination_risk": "Low"
+            "hallucination_risk": "Low",
+            "provider": "DEMO MODE"
         }
 
     def _extract_citations(self, answer: str, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -85,6 +192,41 @@ Answer:"""
                     "page": chunks[idx]["page"]
                 })
         return citations
+
+
+# Provider metadata
+PROVIDERS = {
+    "groq": {
+        "name": "Groq (Recommended)",
+        "models": ["llama3-70b-8192", "mixtral-8x7b", "gemma2-9b"],
+        "requires_key": True,
+        "free": True
+    },
+    "openai": {
+        "name": "OpenAI",
+        "models": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
+        "requires_key": True,
+        "free": False
+    },
+    "anthropic": {
+        "name": "Anthropic Claude",
+        "models": ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
+        "requires_key": True,
+        "free": False
+    },
+    "ollama": {
+        "name": "Ollama (Local)",
+        "models": ["llama3", "mistral", "phi3"],
+        "requires_key": False,
+        "free": True
+    },
+    "demo": {
+        "name": "Demo Mode",
+        "models": ["demo"],
+        "requires_key": False,
+        "free": True
+    }
+}
         )
         answer = response.choices[0].message.content or ""
         total_tokens = response.usage.total_tokens if response.usage else 0
