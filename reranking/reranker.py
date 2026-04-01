@@ -1,53 +1,51 @@
 """
-Reranking layer — improves retrieval precision by scoring (query, chunk) pairs.
-
-Two backends:
-  1. Cross-encoder (local): ms-marco-MiniLM — fast, free, good quality
-  2. Cohere Rerank API: highest quality, low latency, paid
-
-Reranking runs AFTER initial vector/hybrid retrieval (two-stage retrieval):
-  Stage 1: Retrieve top-K candidates with fast ANN (large recall set)
-  Stage 2: Rerank with cross-encoder, return top-N to LLM (high precision)
+Cross-encoder reranker.
 """
 from __future__ import annotations
-import asyncio
 import logging
-from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Dict, Any
 
-from config.settings import settings
-from utils.models import RetrievedChunk
+from sentence_transformers import CrossEncoder
 
 logger = logging.getLogger(__name__)
 
 
-class BaseReranker(ABC):
-    @abstractmethod
-    async def rerank(
-        self,
-        query: str,
-        chunks: list[RetrievedChunk],
-        top_k: int,
-    ) -> list[RetrievedChunk]:
-        ...
+class Reranker:
+    """Cross-encoder reranker."""
 
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
+        self.model = CrossEncoder(model_name)
 
-class CrossEncoderReranker(BaseReranker):
-    """
-    Local cross-encoder reranker using sentence-transformers.
-    Model: cross-encoder/ms-marco-MiniLM-L-6-v2 (~22MB, runs on CPU)
-    
-    Tradeoff: Slightly slower than Cohere API but free and private.
-    """
+    def rerank(self, query: str, chunks: List[Dict[str, Any]], top_k: int = 5) -> Dict[str, Any]:
+        """Rerank chunks for the query."""
+        if not chunks:
+            return {"before": [], "after": []}
 
-    def __init__(self, model_name: str = None):
-        self.model_name = model_name or settings.reranker_model
-        self._model = None
+        # Before scores
+        before = [{"rank": c["rank"], "score": c["score"], "text": c["text_preview"]} for c in chunks]
 
-    def _get_model(self):
-        if self._model is None:
-            from sentence_transformers import CrossEncoder
-            logger.info("Loading cross-encoder: %s", self.model_name)
+        # Prepare pairs
+        pairs = [[query, chunk["text_preview"]] for chunk in chunks]
+
+        # Rerank
+        scores = self.model.predict(pairs)
+
+        # Sort by new scores
+        scored_chunks = list(zip(chunks, scores))
+        scored_chunks.sort(key=lambda x: x[1], reverse=True)
+
+        after = []
+        for rank, (chunk, score) in enumerate(scored_chunks[:top_k]):
+            after.append({
+                "rank": rank + 1,
+                "score": float(score),
+                "text": chunk["text_preview"]
+            })
+
+        return {
+            "before": before,
+            "after": after
+        }
             self._model = CrossEncoder(self.model_name)
         return self._model
 
