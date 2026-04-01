@@ -1,53 +1,122 @@
 """
-Embedding service with three provider adapters:
-  - OpenAI (text-embedding-3-large) — cloud, high quality
-  - BGE (BAAI/bge-large-en-v1.5) — open source, on-prem
-  - Cohere (embed-v3) — multilingual
-
-All adapters implement BaseEmbedder.
-Includes batching, caching, and retry logic.
+Embedding service with three provider adapters.
 """
 from __future__ import annotations
-import asyncio
-import hashlib
-import json
 import logging
+import os
+import time
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Dict, Any
 
 import numpy as np
-
-from config.settings import settings, EmbeddingProvider
-from utils.models import Chunk
+from sentence_transformers import SentenceTransformer
+import openai
 
 logger = logging.getLogger(__name__)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Base interface
-# ─────────────────────────────────────────────────────────────────────────────
 
 class BaseEmbedder(ABC):
     """All embedding providers implement this interface."""
 
     @abstractmethod
-    async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of texts, return list of float vectors."""
+    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
+        """Embed a batch of texts, return dict with embeddings, dimensions, time, etc."""
         ...
 
-    async def embed_query(self, query: str) -> list[float]:
-        """Embed a single query string. Can be overridden for query-specific instructions."""
-        results = await self.embed_texts([query])
-        return results[0]
+    def embed_query(self, query: str) -> List[float]:
+        """Embed a single query."""
+        result = self.embed_texts([query])
+        return result["embeddings"][0]
 
-    async def embed_chunks(self, chunks: list[Chunk]) -> list[Chunk]:
-        """Embed all chunks in-place, skip already embedded ones."""
-        to_embed = [c for c in chunks if c.embedding is None]
-        if not to_embed:
-            return chunks
 
-        texts = [c.content for c in to_embed]
-        embeddings = await self.embed_texts(texts)
+class OpenAIEmbedder(BaseEmbedder):
+    """OpenAI text-embedding-3-small."""
+
+    def __init__(self):
+        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.model = "text-embedding-3-small"
+        self.dimensions = 1536
+
+    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
+        if not os.getenv("OPENAI_API_KEY"):
+            # Demo mode
+            return self._mock_embed(texts)
+
+        start_time = time.time()
+        response = self.client.embeddings.create(input=texts, model=self.model)
+        embeddings = [data.embedding for data in response.data]
+        elapsed = time.time() - start_time
+        vector_size = len(embeddings) * self.dimensions * 4  # float32
+
+        return {
+            "embeddings": embeddings,
+            "dimensions": self.dimensions,
+            "time_taken": elapsed,
+            "vector_size": vector_size
+        }
+
+    def _mock_embed(self, texts: List[str]) -> Dict[str, Any]:
+        embeddings = [[0.1] * self.dimensions for _ in texts]
+        return {
+            "embeddings": embeddings,
+            "dimensions": self.dimensions,
+            "time_taken": 0.1,
+            "vector_size": len(texts) * self.dimensions * 4
+        }
+
+
+class BGEEmbedder(BaseEmbedder):
+    """BGE-large-en."""
+
+    def __init__(self):
+        self.model = SentenceTransformer('BAAI/bge-large-en-v1.5')
+        self.dimensions = 1024
+
+    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
+        start_time = time.time()
+        embeddings = self.model.encode(texts, convert_to_numpy=True).tolist()
+        elapsed = time.time() - start_time
+        vector_size = len(embeddings) * self.dimensions * 4
+
+        return {
+            "embeddings": embeddings,
+            "dimensions": self.dimensions,
+            "time_taken": elapsed,
+            "vector_size": vector_size
+        }
+
+
+class MiniLMEmbedder(BaseEmbedder):
+    """all-MiniLM-L6-v2."""
+
+    def __init__(self):
+        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.dimensions = 384
+
+    def embed_texts(self, texts: List[str]) -> Dict[str, Any]:
+        start_time = time.time()
+        embeddings = self.model.encode(texts, convert_to_numpy=True).tolist()
+        elapsed = time.time() - start_time
+        vector_size = len(embeddings) * self.dimensions * 4
+
+        return {
+            "embeddings": embeddings,
+            "dimensions": self.dimensions,
+            "time_taken": elapsed,
+            "vector_size": vector_size
+        }
+
+
+def get_embedder(provider: str = "openai") -> BaseEmbedder:
+    """Get embedder by provider."""
+    if provider == "openai":
+        return OpenAIEmbedder()
+    elif provider == "bge":
+        return BGEEmbedder()
+    elif provider == "minilm":
+        return MiniLMEmbedder()
+    else:
+        raise ValueError(f"Unknown embedding provider: {provider}")
 
         for chunk, embedding in zip(to_embed, embeddings):
             chunk.embedding = embedding
