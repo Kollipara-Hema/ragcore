@@ -1,52 +1,137 @@
 """
-=============================================================================
-ui_streamlit/app.py — Streamlit Chat UI for RAG System
-=============================================================================
-HOW TO RUN:
-    cd ui_streamlit
-    streamlit run app.py
-
-WHAT THIS HAS:
-    - Proper chat bubbles (st.chat_message) — looks like a real chat app
-    - API key input in sidebar — user pastes key, it is never saved anywhere
-    - PDF/DOCX/TXT upload with progress bar
-    - Citations shown as expandable cards below each answer
-    - Retrieval strategy selector
-    - Stats panel (latency, tokens, strategy used)
-    - Works locally AND on Streamlit Cloud
-=============================================================================
+Streamlit 6-tab RAG pipeline dashboard.
 """
-
 import streamlit as st
-import requests
-import json
-import time
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from pathlib import Path
+import time
 
-# =============================================================================
-# PAGE CONFIG — must be first Streamlit command
-# =============================================================================
+# Mock data for demo
+def mock_ingest(file):
+    return f"✅ {file.name} — 5 pages, 1200 words, loaded in 0.2s"
 
-st.set_page_config(
-    page_title="DocIntel — RAG System",
-    page_icon="docs/favicon.png" if Path("docs/favicon.png").exists() else "📄",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+def mock_chunk(strategy, size, overlap):
+    return [
+        {"id": 1, "source": "doc1.pdf", "tokens": 512, "preview": "This is chunk 1..."},
+        {"id": 2, "source": "doc2.txt", "tokens": 480, "preview": "This is chunk 2..."},
+    ]
 
-# =============================================================================
-# CUSTOM CSS — proper chat bubbles and clean styling
-# =============================================================================
+def mock_embed(model):
+    return {"dimensions": 1536, "time": 1.2, "vectors": 10}
 
+def mock_retrieve(query, strategy, alpha):
+    return [
+        {"rank": 1, "score": 0.95, "source": "doc1.pdf", "page": 2, "preview": "Relevant text..."},
+        {"rank": 2, "score": 0.89, "source": "doc2.txt", "page": 1, "preview": "Another text..."},
+    ]
+
+def mock_rerank(before, after):
+    return before, after
+
+def mock_generate(query, chunks):
+    return {
+        "answer": f"Answer for: {query}",
+        "citations": ["doc1.pdf — Page 2", "doc2.txt — Page 1"],
+        "tokens": {"prompt": 100, "completion": 50, "total": 150},
+        "risk": "Low"
+    }
+
+def mock_evaluate(csv):
+    return {
+        "recall": 0.85,
+        "relevance": 0.78,
+        "faithfulness": 0.82,
+        "hallucination": 0.12
+    }
+
+# UI
+st.set_page_config(page_title="DocIntel — RAG Pipeline", layout="wide")
 st.markdown("""
 <style>
-    /* Hide default Streamlit header and footer */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+.stApp { background-color: #0f1724; color: white; }
+.tab { background-color: #2E75B6; color: white; }
+</style>
+""", unsafe_allow_html=True)
 
-    /* Main background */
-    .stApp { background-color: #f8f9fa; }
+st.title("DocIntel — Enterprise RAG Pipeline")
+
+# Sidebar
+st.sidebar.title("Pipeline Status")
+st.sidebar.markdown("✅ Ingest | ⏳ Chunk | ⬜ Embed | ⬜ Retrieve | ⬜ Generate")
+st.sidebar.selectbox("Model Config", ["OpenAI", "BGE", "MiniLM"])
+st.sidebar.button("Reset Pipeline")
+
+# Tabs
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["01 Ingest", "02 Chunk", "03 Embed", "04 Retrieve", "05 Generate", "06 Evaluate"])
+
+with tab1:
+    st.header("Document Ingestion")
+    uploaded = st.file_uploader("Upload documents", accept_multiple_files=True, type=["pdf", "txt", "docx", "csv"])
+    if uploaded:
+        for file in uploaded:
+            st.write(mock_ingest(file))
+        st.success("All files loaded!")
+
+with tab2:
+    st.header("Chunking")
+    col1, col2 = st.columns(2)
+    with col1:
+        strategy = st.selectbox("Strategy", ["Fixed", "Recursive", "Sliding Window", "Semantic"])
+        size = st.slider("Chunk Size", 128, 1024, 512)
+        overlap = st.slider("Overlap", 0, 256, 50)
+    with col2:
+        chunks = mock_chunk(strategy, size, overlap)
+        st.write(f"Total chunks: {len(chunks)}")
+        df = pd.DataFrame(chunks)
+        st.dataframe(df)
+        fig = px.bar(df, x="id", y="tokens", title="Chunk Size Distribution")
+        st.plotly_chart(fig)
+
+with tab3:
+    st.header("Embedding")
+    model = st.selectbox("Model", ["OpenAI text-embedding-3-small", "BGE-large", "all-MiniLM-L6-v2"])
+    if st.button("Embed Chunks"):
+        result = mock_embed(model)
+        st.write(f"Dimensions: {result['dimensions']}, Time: {result['time']}s")
+        st.write(f"Vectors: {result['vectors']} x {result['dimensions']} = {result['vectors']*result['dimensions']*4/1024:.1f} KB")
+
+with tab4:
+    st.header("Retrieval")
+    query = st.text_input("Query")
+    strategy = st.selectbox("Strategy", ["Dense", "Sparse BM25", "Hybrid"])
+    alpha = st.slider("Hybrid Alpha", 0.0, 1.0, 0.5)
+    rerank = st.checkbox("Rerank")
+    if query:
+        results = mock_retrieve(query, strategy, alpha)
+        for res in results:
+            st.write(f"Rank {res['rank']}: {res['score']:.2f} — {res['source']} P{res['page']} — {res['preview']}")
+
+with tab5:
+    st.header("Generation")
+    if query:
+        gen = mock_generate(query, [])
+        st.write(gen["answer"])
+        st.write("Citations:")
+        for cit in gen["citations"]:
+            st.write(f"[1] {cit}")
+        st.write(f"Tokens: {gen['tokens']}")
+        st.write(f"Hallucination Risk: {gen['risk']}")
+
+with tab6:
+    st.header("Evaluation")
+    csv = st.file_uploader("Upload Golden Q&A CSV")
+    if csv:
+        metrics = mock_evaluate(csv)
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Recall @5", f"{metrics['recall']:.2f}")
+        col2.metric("Relevance", f"{metrics['relevance']:.2f}")
+        col3.metric("Faithfulness", f"{metrics['faithfulness']:.2f}")
+        col4.metric("Hallucination", f"{metrics['hallucination']:.2f}")
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=list(metrics.keys()), y=list(metrics.values())))
+        st.plotly_chart(fig)
 
     /* Sidebar styling */
     [data-testid="stSidebar"] {
