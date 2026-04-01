@@ -14,8 +14,37 @@ import chainlit as cl
 import time
 import requests
 from pathlib import Path
+from io import BytesIO
+import pdfplumber
+from docx import Document
 
-BACKEND_URL = "http://localhost:8001"
+BACKEND_URL = "http://localhost:9002"
+
+
+def extract_text_from_bytes(file_bytes: bytes, content_type: str, filename: str) -> str:
+    """Extract text from file bytes based on content type."""
+    try:
+        if content_type == "application/pdf":
+            with pdfplumber.open(BytesIO(file_bytes)) as pdf:
+                text = ""
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                return text
+        elif content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = Document(BytesIO(file_bytes))
+            text = "\n".join([para.text for para in doc.paragraphs if para.text])
+            return text
+        elif content_type in ["text/plain", "text/markdown", "text/html", "text/csv"]:
+            return file_bytes.decode('utf-8', errors='ignore')
+        else:
+            # Try to decode as text
+            return file_bytes.decode('utf-8', errors='ignore')
+    except Exception as e:
+        print(f"Error extracting text from {filename}: {e}")
+        return ""
+
 
 @cl.on_chat_start
 async def start():
@@ -182,6 +211,17 @@ async def handle_file_upload(element, api_key: str):
             }
             content_type = content_type_map.get(suffix, "application/octet-stream")
 
+            # Extract text and create chunks
+            text = extract_text_from_bytes(file_bytes, content_type, filename)
+            if text:
+                # Split into chunks by paragraphs or fixed size
+                chunks = [chunk for chunk in text.split('\n\n') if chunk.strip()]
+                if not chunks:
+                    chunks = [text[i:i+1000] for i in range(0, len(text), 1000) if text[i:i+1000].strip()]
+                existing_chunks = cl.user_session.get("chunks", [])
+                existing_chunks.extend(chunks)
+                cl.user_session.set("chunks", existing_chunks)
+
             step.output = "Chunking and embedding..."
             await step.update()
 
@@ -238,108 +278,53 @@ async def handle_file_upload(element, api_key: str):
 # =============================================================================
 
 async def handle_question(query: str, api_key: str):
-    """
-    Process a user question through the RAG pipeline.
-    Shows live steps as they happen — this is what makes Chainlit special.
-    """
+    """Process a user question using simple keyword search and generation."""
+    
+    chunks = cl.user_session.get("chunks", [])
+    if not chunks:
+        await cl.Message(
+            content="No documents have been indexed yet. Please upload a document first.",
+            author="DocIntel",
+        ).send()
+        return
 
-    # ── Step 1: Query classification ─────────────────────────────────────────
-    async with cl.Step(name="Classifying query") as step:
-        step.output = f'Query: "{query[:60]}..."'
-        await step.update()
+    # Simple keyword search
+    query_words = query.lower().split()
+    scored_chunks = []
+    for chunk in chunks:
+        score = sum(1 for word in query_words if word in chunk.lower())
+        scored_chunks.append((score, chunk))
+    scored_chunks.sort(reverse=True)
+    top_chunks = [c for _, c in scored_chunks[:3]]
+    
+    # If nothing found, use first 3 chunks anyway
+    if not top_chunks or all(s == 0 for s, _ in scored_chunks[:3]):
+        top_chunks = chunks[:3]
 
+    provider = cl.user_session.get("llm_provider", "demo")
+    docs = cl.user_session.get("indexed_docs", [])
+    filename = docs[-1] if docs else "document"
+
+    if provider == "demo":
+        content = "Based on the document, here is what I found:\n\n"
+        for i, chunk in enumerate(top_chunks):
+            content += f"**Chunk {i+1}:**\n{chunk[:500]}{'...' if len(chunk) > 500 else ''}\n\n"
+        content += f"Sources: {filename} — Chunk 1"
+        await cl.Message(content=content, author="DocIntel").send()
+    else:
+        # Call LLM with retrieved context
         try:
-            headers = {
-                "Content-Type": "application/json",
-                "X-API-Key": api_key,
-            }
-            payload = {"query": query}
-
-            # Step 2: Retrieval ────────────────────────────────────────────────
-            async with cl.Step(name="Searching documents") as search_step:
-                search_step.output = "Running hybrid search..."
-                await search_step.update()
-
-                # Step 3: Generation ──────────────────────────────────────────
-                async with cl.Step(name="Generating answer") as gen_step:
-                    gen_step.output = "Calling LLM..."
-                    await gen_step.update()
-
-                    # Make the actual API call
-                    response = requests.post(
-                        f"{BACKEND_URL}/query",
-                        json=payload,
-                        headers=headers,
-                        timeout=60,
-                    )
-                    result = response.json()
-
-                    if "error" in result:
-                        gen_step.output = f"Error: {result['error']}"
-                        await gen_step.update()
-                        await cl.Message(
-                            content=f"Error: {result['error']}",
-                            author="DocIntel",
-                        ).send()
-                        return
-
-                    # Update steps with actual results
-                    strategy = result.get("strategy_used", "hybrid")
-                    query_type = result.get("query_type", "unknown")
-                    latency = result.get("latency_ms", 0)
-                    tokens = result.get("total_tokens", 0)
-                    citations = result.get("citations", [])
-                    cached = result.get("cached", False)
-
-                    step.output = f"Type: {query_type}"
-                    await step.update()
-
-                    search_step.output = (
-                        f"Strategy: {strategy} · "
-                        f"Found {len(citations)} sources"
-                    )
-                    await search_step.update()
-
-                    gen_step.output = (
-                        f"{tokens} tokens · "
-                        f"{latency:.0f}ms"
-                        f"{' · cached' if cached else ''}"
-                    )
-                    await gen_step.update()
-
+            from generation.llm_service import LLMService
+            llm = LLMService(provider=provider, api_key=api_key)
+            context = "\n\n".join(top_chunks)
+            prompt = f"Based on the following context, answer the question.\n\nContext:\n{context}\n\nQuestion: {query}\n\nAnswer:"
+            answer = llm.generate(prompt)
+            await cl.Message(content=answer, author="DocIntel").send()
         except Exception as e:
             await cl.Message(
-                content=f"Error connecting to backend: {str(e)}\n\nMake sure the backend is running.",
+                content=f"Error generating answer: {str(e)}",
                 author="DocIntel",
             ).send()
-            return
-
-    # ── Send the answer ────────────────────────────────────────────────────
-    answer = result.get("answer", "No answer returned.")
-
-    # Build citation elements to attach to the message
-    citation_elements = []
-    for i, cite in enumerate(citations):
-        source = cite.get("source", "Unknown")
-        filename = Path(source).name if source else cite.get("title", f"Source {i+1}")
-        excerpt = cite.get("excerpt", "")
-        score = cite.get("score", 0)
-
-        # Create a text element for each citation
-        citation_elements.append(
-            cl.Text(
-                name=f"[{i+1}] {filename}",
-                content=f"Relevance: {score:.0%}\n\n{excerpt}",
-                display="side",     # Shows in a side panel when clicked
-            )
-        )
-
-    # Send the answer with citations attached
-    await cl.Message(
-        content=answer,
-        elements=citation_elements,
-        author="DocIntel",
-    ).send()
 
 
 # =============================================================================
