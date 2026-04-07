@@ -217,6 +217,10 @@ Key knobs:
 | `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
 | `RERANK_TOP_K` | `5` | Final chunks sent to LLM |
 | `ENABLE_QUERY_EXPANSION` | `true` | Multi-query for complex questions |
+| `ENABLE_EVALUATION` | `false` | Enable LLM-based answer evaluation |
+| `EVAL_STRATEGY` | `heuristic` | `heuristic` or `ragas` for evaluation |
+| `RAGAS_ENABLED` | `false` | Use RAGAS library for advanced metrics |
+| `ENABLE_TRACING` | `false` | Send traces to Langfuse for observability |
 | `AZURE_OPENAI_ENDPOINT` | - | Azure OpenAI resource endpoint |
 | `AZURE_OPENAI_API_KEY` | - | Azure OpenAI API key |
 | `AZURE_OPENAI_DEPLOYMENT` | - | Azure OpenAI model deployment name |
@@ -241,6 +245,17 @@ pytest tests/ --cov=rag_system --cov-report=html
 
 ## Evaluation
 
+The system includes comprehensive RAG evaluation metrics and observability features.
+
+### Evaluation Metrics
+
+- **Retrieval**: Hit rate, MRR, NDCG@5, precision/recall
+- **Generation**: Faithfulness, answer relevance, hallucination rate (with RAGAS)
+- **Latency**: P50/P95/P99 percentiles
+- **Cost**: Token usage and USD cost estimation
+
+### Running Evaluation
+
 ```python
 from rag_system.evaluation.evaluator import RAGEvaluator, EvalSample
 from rag_system.orchestrator import RAGOrchestrator
@@ -263,6 +278,51 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Sample Dataset
+
+A sample golden dataset is available for testing:
+
+```python
+from rag_system.evaluation.dataset import get_sample_dataset
+dataset = get_sample_dataset()
+```
+
+### Observability & Tracing
+
+Enable tracing to monitor query execution:
+
+```bash
+# In .env
+ENABLE_TRACING=true
+LANGFUSE_PUBLIC_KEY=your-key
+LANGFUSE_SECRET_KEY=your-secret
+```
+
+Retrieve traces programmatically:
+
+```python
+# Get trace by ID
+import requests
+trace = requests.get("http://localhost:8000/trace/{trace_id}").json()
+print(f"Query: {trace['query']}")
+print(f"Total time: {trace['total_duration_ms']}ms")
+for event in trace['events']:
+    print(f"- {event['node']}: {event['duration_ms']}ms")
+```
+
+### Agent Evaluation
+
+The agent evaluator uses configurable strategies:
+
+```bash
+# In .env
+ENABLE_EVALUATION=true
+EVAL_STRATEGY=ragas  # or 'heuristic'
+RAGAS_ENABLED=true   # requires: pip install ragas
+```
+
+This enables LLM-based confidence scoring during agent execution.
 
 ---
 

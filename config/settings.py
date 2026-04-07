@@ -121,6 +121,11 @@ class Settings(BaseSettings):
     langfuse_host: str = "https://cloud.langfuse.com"
     enable_tracing: bool = False
 
+    # Evaluation
+    enable_evaluation: bool = False
+    eval_strategy: str = "heuristic"  # heuristic | ragas
+    ragas_enabled: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

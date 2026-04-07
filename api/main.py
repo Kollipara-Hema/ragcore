@@ -73,6 +73,9 @@ from vectorstore.vector_store import get_vector_store
 # Rate limiting middleware (prevents abuse)
 from api.middleware.rate_limit import RateLimitMiddleware
 
+# Monitoring tracer
+from monitoring.tracer import get_tracer
+
 # Logger for this module
 logger = logging.getLogger(__name__)
 
@@ -656,3 +659,42 @@ async def get_agent_trace(trace_id: str):
             detail=f"Trace {trace_id} not found"
         )
     return trace
+
+
+@app.get(
+    "/trace/{trace_id}",
+    response_model=QueryTrace,
+    tags=["tracing"],
+    summary="Get trace for any query",
+    description="Retrieve detailed execution trace for a query (orchestrator or agent)."
+)
+async def get_trace(trace_id: str):
+    """
+    Retrieve the execution trace for a specific query.
+
+    Checks both agent traces and orchestrator traces.
+
+    Args:
+        trace_id: Unique identifier returned in the query response
+
+    Returns:
+        QueryTrace object with full execution details
+
+    Raises:
+        404: If trace_id not found
+    """
+    # Check agent traces first
+    trace = _trace_store.get(trace_id)
+    if trace:
+        return trace
+
+    # Check orchestrator traces via tracer
+    tracer = get_tracer()
+    trace = tracer.get_trace(trace_id)
+    if trace:
+        return trace
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Trace {trace_id} not found"
+    )

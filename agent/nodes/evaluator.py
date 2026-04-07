@@ -6,6 +6,8 @@ Scoring heuristics (no LLM call required):
   - Answer references "could not find" → low score
   - At least one citation → higher score
   - Answer length proportional to query complexity → bonus
+
+If evaluation is enabled, uses RAGAS for LLM-based scoring.
 """
 from __future__ import annotations
 
@@ -20,7 +22,14 @@ MAX_RETRIES = 2
 RETRY_THRESHOLD = 0.6   # retry if confidence below this
 
 
-def _calculate_confidence(state: AgentState) -> tuple[float, str]:
+async def _calculate_confidence(state: AgentState) -> tuple[float, str]:
+    if settings.enable_evaluation and settings.eval_strategy == "ragas":
+        return await _ragas_confidence(state)
+    else:
+        return _heuristic_confidence(state)
+
+
+def _heuristic_confidence(state: AgentState) -> tuple[float, str]:
     answer = state.get("answer", "")
     citations = state.get("citations", [])
     query_type = state.get("query_type", "semantic")
@@ -48,10 +57,48 @@ def _calculate_confidence(state: AgentState) -> tuple[float, str]:
     return min(score, 1.0), "Answer meets quality threshold"
 
 
+async def _ragas_confidence(state: AgentState) -> tuple[float, str]:
+    """Use RAGAS for LLM-based evaluation of single sample."""
+    try:
+        from ragas import evaluate
+        from ragas.metrics import faithfulness, answer_relevancy
+        from datasets import Dataset
+
+        query = state.get("query", "")
+        answer = state.get("answer", "")
+        contexts = [c.get("excerpt", "") for c in state.get("citations", [])]
+
+        if not answer or not contexts:
+            return 0.1, "Missing answer or contexts for RAGAS evaluation"
+
+        data = {
+            "question": [query],
+            "answer": [answer],
+            "contexts": [contexts],
+        }
+        dataset = Dataset.from_dict(data)
+        result = evaluate(dataset, metrics=[faithfulness, answer_relevancy])
+
+        faithfulness_score = result["faithfulness"]
+        relevance_score = result["answer_relevancy"]
+
+        # Combine scores: average of faithfulness and relevance
+        confidence = (faithfulness_score + relevance_score) / 2.0
+
+        return confidence, f"RAGAS: faithfulness={faithfulness_score:.2f}, relevance={relevance_score:.2f}"
+
+    except ImportError:
+        logger.warning("RAGAS not installed; falling back to heuristics.")
+        return _heuristic_confidence(state)
+    except Exception as e:
+        logger.error("RAGAS evaluation failed: %s", e)
+        return _heuristic_confidence(state)
+
+
 async def evaluator_node(state: AgentState) -> dict:
     """Score the answer and flag for retry if quality is insufficient."""
     retry_count = state.get("retry_count", 0)
-    confidence, reasoning = _calculate_confidence(state)
+    confidence, reasoning = await _calculate_confidence(state)
 
     needs_retry = confidence < RETRY_THRESHOLD and retry_count < MAX_RETRIES
     if needs_retry:
