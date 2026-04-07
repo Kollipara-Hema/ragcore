@@ -56,7 +56,7 @@ def generate_demo_response(query, chunks):
         else:
             response = f"Based on your question \"{query}\", the document doesn't contain specific information about that topic. Here is some general content:\n\n{chunks[0][:300]}..."
     
-    response += f"\n\n📎 Source: Document — Relevant sections"
+    response += "\n\n📎 Source: Document — Relevant sections"
     return response
 
 
