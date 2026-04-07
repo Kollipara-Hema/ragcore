@@ -17,10 +17,10 @@ from config.settings import settings
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 2
-RETRY_THRESHOLD = 0.4   # retry if score below this
+RETRY_THRESHOLD = 0.6   # retry if confidence below this
 
 
-def _score_answer(state: AgentState) -> tuple[float, str]:
+def _calculate_confidence(state: AgentState) -> tuple[float, str]:
     answer = state.get("answer", "")
     citations = state.get("citations", [])
     query_type = state.get("query_type", "semantic")
@@ -51,19 +51,19 @@ def _score_answer(state: AgentState) -> tuple[float, str]:
 async def evaluator_node(state: AgentState) -> dict:
     """Score the answer and flag for retry if quality is insufficient."""
     retry_count = state.get("retry_count", 0)
-    score, reasoning = _score_answer(state)
+    confidence, reasoning = _calculate_confidence(state)
 
-    needs_retry = score < RETRY_THRESHOLD and retry_count < MAX_RETRIES
+    needs_retry = confidence < RETRY_THRESHOLD and retry_count < MAX_RETRIES
     if needs_retry:
         logger.info(
-            "evaluator: score=%.2f below threshold — scheduling retry %d/%d",
-            score, retry_count + 1, MAX_RETRIES,
+            "evaluator: confidence=%.2f below threshold — scheduling retry %d/%d",
+            confidence, retry_count + 1, MAX_RETRIES,
         )
     else:
-        logger.info("evaluator: score=%.2f — answer accepted", score)
+        logger.info("evaluator: confidence=%.2f — answer accepted", confidence)
 
     return {
-        "answer_score": score,
+        "confidence": confidence,
         "eval_reasoning": reasoning,
         "needs_retry": needs_retry,
         "retry_count": retry_count + (1 if needs_retry else 0),
