@@ -186,3 +186,54 @@ class IngestResponse(BaseModel):
     doc_id: str
     status: DocumentStatus
     message: str
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Agent API models — for the LangGraph-based agent endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+class AgentQueryRequest(BaseModel):
+    query: str = PField(..., min_length=3, max_length=2000, description="User question")
+    session_id: Optional[str] = PField(None, description="Optional session ID for memory context")
+    metadata_filter: Optional[dict[str, Any]] = PField(None, description="Optional document filters")
+    trace_enabled: bool = PField(True, description="Enable tracing for this query")
+
+    model_config = {"json_schema_extra": {
+        "example": {
+            "query": "What are the main findings?",
+            "session_id": "user-123",
+            "metadata_filter": {"doc_type": "report"},
+            "trace_enabled": True
+        }
+    }}
+
+
+class AgentQueryResponse(BaseModel):
+    answer: str = PField(..., description="Generated answer")
+    citations: list[dict] = PField(default_factory=list, description="Source references")
+    confidence: float = PField(..., ge=0.0, le=1.0, description="Answer confidence (0-1)")
+    retry_count: int = PField(default=0, description="Number of retries performed")
+    model_used: str = PField(..., description="LLM model used for generation")
+    latency_ms: float = PField(..., description="Total processing latency in milliseconds")
+    trace_id: str = PField(..., description="Unique trace ID for this request")
+
+
+class TraceEvent(BaseModel):
+    node: str = PField(..., description="Node name (router, retriever, etc.)")
+    timestamp: datetime = PField(default_factory=datetime.utcnow)
+    duration_ms: float = PField(default=0.0, description="Node execution time")
+    status: str = PField(default="success", description="Status: success, error, skipped")
+    details: dict[str, Any] = PField(default_factory=dict, description="Node-specific details")
+
+
+class QueryTrace(BaseModel):
+    trace_id: str = PField(..., description="Unique trace ID")
+    query: str = PField(..., description="Original query")
+    session_id: Optional[str] = None
+    start_time: datetime = PField(default_factory=datetime.utcnow)
+    end_time: Optional[datetime] = None
+    total_duration_ms: float = PField(default=0.0, description="Total duration in milliseconds")
+    events: list[TraceEvent] = PField(default_factory=list, description="Sequence of node events")
+    final_answer: Optional[str] = None
+    confidence: float = PField(default=0.0, description="Answer confidence")
+    status: str = PField(default="pending", description="Query status: pending, completed, error")
