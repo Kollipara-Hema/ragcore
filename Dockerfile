@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Install Python dependencies first (better layer caching)
 COPY requirements.txt .
-# Install core dependencies only to avoid conflicts
+# Install core dependencies matching CI plus API packages
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     fastapi==0.110.0 \
@@ -36,7 +36,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
     beautifulsoup4==4.12.3 \
     numpy==1.26.4 \
     chromadb==0.4.24 \
-    redis==5.0.3
+    redis==5.0.3 \
+    pandas==2.2.1 \
+    rank-bm25==0.2.2 \
+    faiss-cpu==1.8.0 \
+    langgraph==0.0.40 \
+    typing_extensions
 
 COPY . .
 
