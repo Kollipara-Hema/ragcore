@@ -1,6 +1,7 @@
 """
 Generator node — builds a prompt from reranked chunks and calls the LLM.
 Wraps PromptBuilder + GenerationService; updates answer/citations in AgentState.
+Integrates short-term and long-term memory for context.
 """
 from __future__ import annotations
 
@@ -8,6 +9,8 @@ import logging
 import time
 
 from agent.state import AgentState
+from agent.memory.short_term import ShortTermMemory
+from agent.memory.long_term import LongTermMemory
 from generation.prompts.prompt_builder import PromptBuilder
 from generation.llm_service import get_generation_service
 from utils.models import QueryType, RetrievalStrategy, RetrievedChunk, Chunk
@@ -16,6 +19,8 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 _prompt_builder = None
 _generation = None
+_short_term_memory = None
+_long_term_memory = None
 
 
 def _get_prompt_builder():
@@ -30,6 +35,20 @@ def _get_generation():
     if _generation is None:
         _generation = get_generation_service()
     return _generation
+
+
+def _get_short_term_memory():
+    global _short_term_memory
+    if _short_term_memory is None:
+        _short_term_memory = ShortTermMemory(max_turns=10)
+    return _short_term_memory
+
+
+def _get_long_term_memory():
+    global _long_term_memory
+    if _long_term_memory is None:
+        _long_term_memory = LongTermMemory(prefix="ragcore_agent")
+    return _long_term_memory
 
 
 def _dict_to_retrieved_chunk(d: dict) -> RetrievedChunk:
@@ -48,7 +67,7 @@ def _dict_to_retrieved_chunk(d: dict) -> RetrievedChunk:
 
 
 async def generator_node(state: AgentState) -> dict:
-    """Generate an answer from the reranked context chunks."""
+    """Generate an answer from the reranked context chunks with memory context."""
     start = time.monotonic()
     chunks_dicts = state.get("reranked_chunks") or state.get("retrieved_chunks", [])
 
@@ -70,10 +89,17 @@ async def generator_node(state: AgentState) -> dict:
         strategy = RetrievalStrategy(state.get("primary_strategy", "semantic"))
         chunks = [_dict_to_retrieved_chunk(d) for d in chunks_dicts]
 
+        # Build memory context
+        short_term_context = _get_short_term_memory().get_context()
+        system_extra = ""
+        if short_term_context:
+            system_extra += f"Previous Conversation:\n{short_term_context}\n"
+
         prompt = _get_prompt_builder().build(
             query=state["query"],
             chunks=chunks,
             query_type=query_type,
+            system_extra=system_extra if system_extra else None,
         )
         result = await _get_generation().generate(
             query=state["query"],
@@ -92,6 +118,15 @@ async def generator_node(state: AgentState) -> dict:
             }
             for c in result.citations
         ]
+
+        # Add this turn to short-term memory
+        _get_short_term_memory().add(
+            query=state["query"],
+            answer=result.answer,
+            query_type=state.get("query_type", "semantic"),
+            citations=[c.dict() if hasattr(c, "dict") else c for c in result.citations],
+        )
+
         return {
             "answer": result.answer,
             "citations": citations,

@@ -1,6 +1,6 @@
 """Tests for individual graph nodes (unit-level, no real services)."""
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from agent.state import initial_state
 from agent.nodes.evaluator import evaluator_node, should_retry
@@ -152,6 +152,43 @@ class TestGeneratorNode:
 
         assert result["answer"] == "Generated answer"
         assert result["model_used"] == "gpt-4o-mini"
+
+    @patch("agent.nodes.generator._get_generation")
+    @patch("agent.nodes.generator._get_prompt_builder")
+    @patch("agent.nodes.generator._get_short_term_memory")
+    def test_generator_uses_short_term_memory(self, mock_get_stm, mock_get_prompt_builder, mock_get_generation):
+        # Mock short-term memory
+        mock_stm = AsyncMock()
+        mock_stm.get_context = MagicMock(return_value="Previous: Q1: What is AI? A1: AI is...")
+        mock_stm.add = MagicMock()
+        mock_get_stm.return_value = mock_stm
+
+        # Mock prompt builder
+        mock_pb = AsyncMock()
+        mock_prompt = AsyncMock()
+        mock_pb.build = MagicMock(return_value=mock_prompt)
+        mock_get_prompt_builder.return_value = mock_pb
+
+        # Mock generation
+        mock_gen = AsyncMock()
+        mock_result = AsyncMock()
+        mock_result.answer = "Answer with context"
+        mock_result.citations = []
+        mock_result.model_used = "gpt-4o-mini"
+        mock_result.total_tokens = 100
+        mock_result.cached = False
+        mock_gen.generate = AsyncMock(return_value=mock_result)
+        mock_get_generation.return_value = mock_gen
+
+        state = initial_state("What is Y?")
+        state.update({"reranked_chunks": [{"content": "content", "chunk_id": "12345678-1234-5678-9012-123456789012", "doc_id": "12345678-1234-5678-9012-123456789013", "score": 0.8, "rank": 1, "metadata": {}}], "query_type": "semantic", "primary_strategy": "hybrid"})
+        result = asyncio.run(generator_node(state))
+
+        # Verify memory context was retrieved
+        mock_stm.get_context.assert_called()
+        # Verify memory was updated with new turn
+        mock_stm.add.assert_called()
+        assert result["answer"] == "Answer with context"
 
 
 class TestShouldRetry:
