@@ -5,6 +5,7 @@ Can be used by the agent to look up specific information mid-reasoning.
 from __future__ import annotations
 
 from typing import Optional
+from langchain_core.tools import tool
 from retrieval.strategies.retrieval_executor import RetrievalExecutor
 from retrieval.router.query_router import RoutingDecision
 from utils.models import QueryType, RetrievalStrategy
@@ -19,6 +20,7 @@ def _get_executor():
     return _executor
 
 
+@tool
 async def search_docs(
     query: str,
     top_k: int = 5,
@@ -48,6 +50,7 @@ async def search_docs(
         fallback_strategy=RetrievalStrategy.SEMANTIC,
         metadata_filter=metadata_filter,
         expanded_queries=[query],
+        reasoning="",
     )
     result = await _get_executor().execute(decision, top_k=top_k)
     return [
