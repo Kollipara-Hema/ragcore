@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     tesseract-ocr \
     libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,7 +19,24 @@ WORKDIR /app
 
 # Install Python dependencies first (better layer caching)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install core dependencies only to avoid conflicts
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    fastapi==0.110.0 \
+    uvicorn[standard]==0.27.1 \
+    pydantic==2.6.3 \
+    pydantic-settings==2.2.1 \
+    python-multipart==0.0.9 \
+    httpx==0.27.0 \
+    openai==1.14.0 \
+    sentence-transformers==2.6.1 \
+    torch==2.2.1 \
+    pdfplumber==0.10.3 \
+    python-docx==1.1.0 \
+    beautifulsoup4==4.12.3 \
+    numpy==1.26.4 \
+    chromadb==0.4.24 \
+    redis==5.0.3
 
 COPY . .
 
