@@ -53,6 +53,9 @@ class NoOpReranker(BaseReranker):
         return chunks[:top_k]
 
 
+Reranker = CrossEncoderReranker
+
+
 def get_reranker(enabled: bool = None) -> BaseReranker:
     if enabled is None:
         enabled = settings.enable_reranking
