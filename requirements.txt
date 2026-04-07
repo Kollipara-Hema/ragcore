@@ -129,6 +129,7 @@ gradio==4.19.2          # Gradio comparison lab
 # =============================================================================
 
 pytest==8.0.2           # Unit testing framework
+pytest-cov==7.1.0       # Coverage plugin for pytest
 ruff==0.3.0             # Fast Python linter
 
 
