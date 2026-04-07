@@ -118,7 +118,8 @@ class TestEvaluator:
         self.evaluator = Evaluator()
 
     def test_empty_samples(self):
-        import tempfile, os
+        import tempfile
+        import os
         # Write a CSV with only a header (zero data rows)
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("query,answer\n")
