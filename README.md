@@ -32,6 +32,56 @@ Query → Understand → Route → Retrieve → Rerank → Prompt → Generate �
 
 ---
 
+## Multi-Agent Architecture
+
+The system includes an intelligent agent powered by LangGraph with conditional reasoning and tool use.
+
+### Agent Flow Diagram
+
+```
+User Query
+    ↓
+   Router Node
+   (Query Analysis)
+    ↓
+Retriever Node ←─────────┐
+(Vector + BM25)          │
+    ↓                    │
+Reranker Node            │
+(Cross-encoder)          │
+    ↓                    │
+Generator Node           │
+(LLM + Memory)           │
+    ↓                    │
+Evaluator Node           │
+(Confidence Check)       │
+    ↓                    │
+  Answer ✓             Confidence < 0.6?
+    ↓                        ↓
+ Citations              Retry Loop
+                          ↑
+```
+
+### Agent Capabilities
+
+- **Memory**: Short-term (10-turn conversation) + Long-term (Redis-backed)
+- **Tools**: Document search, summarization, comparison, metadata filtering
+- **Retry Logic**: Automatic re-retrieval when confidence < 0.6
+- **Tracing**: Detailed execution logs with node timing
+- **Session Context**: Conversation history maintained across queries
+
+### Node Responsibilities
+
+| Node | Purpose | Output |
+|------|---------|--------|
+| **Router** | Query type classification | Strategy selection |
+| **Retriever** | Multi-strategy document search | Ranked chunks |
+| **Reranker** | Cross-encoder relevance scoring | Top-5 chunks |
+| **Generator** | Answer synthesis with citations | Grounded response |
+| **Evaluator** | Quality assessment | Confidence score + retry decision |
+
+---
+
 ## Quick Start
 
 ### 1. Local setup (no Docker)
@@ -124,6 +174,33 @@ curl -X POST http://localhost:8000/query/stream \
   --no-buffer
 ```
 
+### Agent Query (with memory and tools)
+
+```bash
+# Intelligent agent with conversation memory
+curl -X POST http://localhost:8000/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What were the key findings in the Q3 report?",
+    "session_id": "user-123",
+    "trace_enabled": true
+  }'
+
+# Response includes citations, confidence, and trace_id
+{
+  "answer": "Q3 revenue was $4.2B, representing 15% YoY growth...",
+  "citations": [...],
+  "confidence": 0.87,
+  "retry_count": 0,
+  "model_used": "gpt-4o-mini",
+  "latency_ms": 1250,
+  "trace_id": "abc-123-def"
+}
+
+# Retrieve execution trace
+curl http://localhost:8000/agent/trace/abc-123-def
+```
+
 ---
 
 ## Configuration
@@ -140,6 +217,10 @@ Key knobs:
 | `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
 | `RERANK_TOP_K` | `5` | Final chunks sent to LLM |
 | `ENABLE_QUERY_EXPANSION` | `true` | Multi-query for complex questions |
+| `AZURE_OPENAI_ENDPOINT` | - | Azure OpenAI resource endpoint |
+| `AZURE_OPENAI_API_KEY` | - | Azure OpenAI API key |
+| `AZURE_OPENAI_DEPLOYMENT` | - | Azure OpenAI model deployment name |
+| `AZURE_OPENAI_API_VERSION` | `2024-02-15-preview` | Azure OpenAI API version |
 
 ---
 
