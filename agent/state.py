@@ -13,11 +13,16 @@ from utils.models import QueryType, RetrievalStrategy
 
 
 class AgentState(TypedDict, total=False):
+    # ── Conversation ────────────────────────────────────────────────────────
+    messages: list[dict]                # Full conversation turn history
+    tool_calls: list[dict]              # Tool invocations made this turn
+
     # ── Input ──────────────────────────────────────────────────────────────
     query: str                          # Original user question
     metadata_filter: Optional[dict]     # Optional structured filters
     strategy_override: Optional[str]    # Force a specific retrieval strategy
     top_k: int                          # Chunks to retrieve (default: 20)
+    metadata: dict                      # Arbitrary key-value metadata
 
     # ── Routing ────────────────────────────────────────────────────────────
     query_type: str                     # QueryType enum value
@@ -37,6 +42,7 @@ class AgentState(TypedDict, total=False):
 
     # ── Generation ─────────────────────────────────────────────────────────
     answer: str                         # LLM-generated answer text
+    final_answer: str                   # Post-evaluation finalized answer
     citations: list[dict]               # Source references
     model_used: str
     total_tokens: int
@@ -45,6 +51,7 @@ class AgentState(TypedDict, total=False):
 
     # ── Evaluation ─────────────────────────────────────────────────────────
     answer_score: float                 # 0.0–1.0 quality estimate
+    confidence: float                   # 0.0–1.0 confidence in the final answer
     needs_retry: bool                   # Evaluator requested another retrieval pass
     retry_count: int                    # How many retries have occurred
     eval_reasoning: str                 # Why the answer was accepted/rejected
@@ -62,16 +69,23 @@ def initial_state(
 ) -> AgentState:
     """Return a clean initial state for a new query."""
     return AgentState(
+        messages=[],
+        tool_calls=[],
         query=query,
-        top_k=top_k,
         metadata_filter=metadata_filter,
         strategy_override=strategy_override,
+        top_k=top_k,
+        metadata={},
         expanded_queries=[query],
         retrieved_chunks=[],
         reranked_chunks=[],
         citations=[],
-        retry_count=0,
+        answer="",
+        final_answer="",
+        confidence=0.0,
+        answer_score=0.0,
         needs_retry=False,
+        retry_count=0,
         retrieval_fallback_used=False,
         rerank_skipped=False,
         cached=False,
