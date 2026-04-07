@@ -55,10 +55,14 @@ from fastapi.responses import StreamingResponse
 from config.settings import settings    # App configuration from .env
 
 # Data models for request/response shapes
-from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest
+from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest, AgentQueryRequest, AgentQueryResponse, QueryTrace, TraceEvent
 
 # The main RAG pipeline orchestrator
 from orchestrator import RAGOrchestrator
+
+# Agent graph for LangGraph-based agents
+from agent.graph import build_graph
+from agent.state import initial_state
 
 # The document ingestion pipeline (loading, chunking, embedding, indexing)
 from ingestion.pipeline import IngestionPipeline, ingest_file_task
@@ -478,3 +482,177 @@ async def query_stream(request: QueryRequest):
             "X-Accel-Buffering": "no",        # Disable nginx buffering for streams
         },
     )
+
+
+# =============================================================================
+# AGENT ENDPOINTS — LangGraph-based agent API
+# =============================================================================
+
+# In-memory trace store (can be upgraded to Redis for distributed systems)
+_trace_store: dict[str, QueryTrace] = {}
+
+_agent_graph = None
+
+
+def _get_agent_graph():
+    """Get or initialize the agent graph."""
+    global _agent_graph
+    if _agent_graph is None:
+        _agent_graph = build_graph()
+    return _agent_graph
+
+
+@app.post(
+    "/agent/query",
+    response_model=AgentQueryResponse,
+    tags=["agent"],
+    summary="Query the LangGraph agent",
+    description="Send a question to the intelligent agent graph with memory and tool support."
+)
+async def agent_query(request: AgentQueryRequest):
+    """
+    Query the LangGraph agent with support for:
+    - Multi-step reasoning with tools
+    - Conversation history and memory
+    - Configurable retrieval strategies
+    - Confidence-based retry logic
+
+    Request schema:
+        query: str — the user's question
+        session_id: optional str — session ID for memory context
+        metadata_filter: optional dict — document filters
+        trace_enabled: bool — enable request tracing
+
+    Response includes:
+        answer: str — generated answer
+        citations: list — source references
+        confidence: float — answer confidence (0-1)
+        retry_count: int — number of retries
+        model_used: str — LLM model name
+        latency_ms: float — processing time
+        trace_id: str — unique trace identifier
+    """
+    import uuid
+    from datetime import datetime as dt
+
+    trace_id = str(uuid.uuid4())
+    start_time = dt.utcnow()
+
+    try:
+        # Build initial state from request
+        state = initial_state(
+            query=request.query,
+            metadata_filter=request.metadata_filter,
+        )
+        if request.session_id:
+            state["metadata"] = {"session_id": request.session_id}
+
+        # Run the agent graph with event streaming
+        graph = _get_agent_graph()
+
+        # Collect execution events
+        events = []
+        async for event in graph.astream_events(state, version="v2"):
+            if event["event"] in ("on_chain_start", "on_chain_end", "on_tool_start", "on_tool_end"):
+                events.append(event)
+
+        # Get final result
+        result = await graph.ainvoke(state)
+        # Process events into TraceEvent objects
+        trace_events = []
+        node_start_times = {}
+
+        for event in events:
+            node_name = event.get("name", "unknown")
+            event_type = event["event"]
+
+            if event_type == "on_chain_start":
+                node_start_times[node_name] = event.get("data", {}).get("timestamp") or dt.utcnow()
+            elif event_type == "on_chain_end" and node_name in node_start_times:
+                start_time = node_start_times[node_name]
+                end_time = event.get("data", {}).get("timestamp") or dt.utcnow()
+                duration_ms = (end_time - start_time).total_seconds() * 1000
+
+                trace_events.append(TraceEvent(
+                    node=node_name,
+                    timestamp=start_time,
+                    duration_ms=duration_ms,
+                    status="completed",
+                    details={
+                        "event_type": event_type,
+                        "data": event.get("data", {}),
+                    }
+                ))
+        # Build response
+        end_time = dt.utcnow()
+        latency_ms = (end_time - start_time).total_seconds() * 1000
+
+        response = AgentQueryResponse(
+            answer=result.get("answer", ""),
+            citations=result.get("citations", []),
+            confidence=result.get("confidence", 0.0),
+            retry_count=result.get("retry_count", 0),
+            model_used=result.get("model_used", "unknown"),
+            latency_ms=latency_ms,
+            trace_id=trace_id,
+        )
+
+        # Store trace if enabled
+        if request.trace_enabled:
+            trace = QueryTrace(
+                trace_id=trace_id,
+                query=request.query,
+                session_id=request.session_id,
+                start_time=start_time,
+                end_time=end_time,
+                total_duration_ms=latency_ms,
+                events=trace_events,
+                final_answer=result.get("answer", ""),
+                confidence=result.get("confidence", 0.0),
+                status="completed",
+            )
+            _trace_store[trace_id] = trace
+
+        return response
+
+    except Exception as e:
+        logger.error("Agent query failed: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agent query failed: {str(e)}"
+        )
+
+
+@app.get(
+    "/agent/trace/{trace_id}",
+    response_model=QueryTrace,
+    tags=["agent"],
+    summary="Get trace for agent query",
+    description="Retrieve detailed execution trace for a previous agent query."
+)
+async def get_agent_trace(trace_id: str):
+    """
+    Retrieve the execution trace for a specific agent query.
+
+    The trace includes:
+    - Query and response information
+    - Sequence of node executions
+    - Timing and status for each step
+    - Final answer and confidence
+
+    Args:
+        trace_id: Unique identifier returned in the query response
+
+    Returns:
+        QueryTrace object with full execution details
+
+    Raises:
+        404: If trace_id not found
+    """
+    trace = _trace_store.get(trace_id)
+    if not trace:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Trace {trace_id} not found"
+        )
+    return trace
