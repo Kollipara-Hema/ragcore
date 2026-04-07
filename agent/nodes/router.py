@@ -35,6 +35,7 @@ async def router_node(state: AgentState) -> dict:
             "expanded_queries": decision.expanded_queries,
             "routing_reasoning": decision.reasoning,
             "metadata_filter": decision.metadata_filter,
+            "metadata": {"strategy": decision.primary_strategy.value},
         }
     except Exception as exc:
         logger.error("router_node failed: %s", exc)
@@ -44,4 +45,5 @@ async def router_node(state: AgentState) -> dict:
             "fallback_strategy": "semantic",
             "expanded_queries": [state["query"]],
             "routing_reasoning": f"fallback due to error: {exc}",
+            "metadata": {"strategy": "vector"},
         }

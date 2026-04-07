@@ -251,8 +251,18 @@ class OpenAILLM(BaseLLM):
         self.model = model
 
     async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        import os
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        if azure_endpoint:
+            from openai import AsyncAzureOpenAI
+            client = AsyncAzureOpenAI(
+                azure_endpoint=azure_endpoint,
+                api_key=settings.openai_api_key,
+                api_version="2024-02-01"
+            )
+        else:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
 
         response = await client.chat.completions.create(
             model=self.model,
@@ -266,8 +276,18 @@ class OpenAILLM(BaseLLM):
         return answer, total_tokens
 
     async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        import os
+        azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        if azure_endpoint:
+            from openai import AsyncAzureOpenAI
+            client = AsyncAzureOpenAI(
+                azure_endpoint=azure_endpoint,
+                api_key=settings.openai_api_key,
+                api_version="2024-02-01"
+            )
+        else:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
         stream = await client.chat.completions.create(
             model=self.model,
             messages=prompt.messages,
