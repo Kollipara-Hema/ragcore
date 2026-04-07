@@ -18,8 +18,10 @@ import json
 import logging
 import time
 import uuid
+from typing import Optional
 
 from config.settings import settings
+from utils.models import QueryTrace, TraceEvent
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ class NoOpTracer:
     async def log_generation(self, trace_id, result): pass
     async def log_error(self, trace_id, error): pass
     async def end_trace(self, trace_id, latency_ms): pass
+    def get_trace(self, trace_id: str) -> Optional[QueryTrace]: return None
 
 
 class LangfuseTracer:
@@ -43,7 +46,7 @@ class LangfuseTracer:
 
     def __init__(self):
         self._client = None
-        self._traces: dict[str, dict] = {}
+        self._traces: dict[str, QueryTrace] = {}
 
     def _get_client(self):
         if self._client is None:
@@ -56,81 +59,133 @@ class LangfuseTracer:
         return self._client
 
     async def start_trace(self, query: str) -> str:
+        from datetime import datetime
         trace_id = str(uuid.uuid4())
-        self._traces[trace_id] = {
-            "query": query,
-            "start_time": time.monotonic(),
-            "steps": [],
-        }
+        trace = QueryTrace(
+            trace_id=trace_id,
+            query=query,
+            start_time=datetime.utcnow(),
+            events=[],
+        )
+        self._traces[trace_id] = trace
         try:
             client = self._get_client()
-            trace = client.trace(
+            lf_trace = client.trace(
                 id=trace_id,
                 name="rag_query",
                 input={"query": query},
                 metadata={"environment": settings.environment},
             )
-            self._traces[trace_id]["langfuse_trace"] = trace
+            # Store langfuse trace for later updates
+            trace.metadata = {"langfuse_id": lf_trace.id}
         except Exception as e:
             logger.debug("Langfuse trace start failed: %s", e)
         return trace_id
 
     async def log_routing(self, trace_id, decision):
-        self._record_step(trace_id, "routing", {
-            "query_type": decision.query_type.value,
-            "strategy": decision.primary_strategy.value,
-            "expanded_queries": len(decision.expanded_queries),
-        })
+        if trace_id in self._traces:
+            event = TraceEvent(
+                node="router",
+                duration_ms=0.0,  # Not measured
+                status="success",
+                details={
+                    "query_type": decision.query_type.value,
+                    "strategy": decision.primary_strategy.value,
+                    "expanded_queries": len(decision.expanded_queries),
+                }
+            )
+            self._traces[trace_id].events.append(event)
+        self._record_step(trace_id, "routing", event.details if 'event' in locals() else {})
 
     async def log_retrieval(self, trace_id, result):
-        self._record_step(trace_id, "retrieval", {
-            "chunks_retrieved": len(result.chunks),
-            "strategy": result.request.strategy.value,
-            "latency_ms": result.latency_ms,
-            "fallback_used": result.fallback_used,
-            "top_scores": [round(c.score, 4) for c in result.chunks[:5]],
-        })
+        if trace_id in self._traces:
+            event = TraceEvent(
+                node="retriever",
+                duration_ms=result.latency_ms,
+                status="success",
+                details={
+                    "chunks_retrieved": len(result.chunks),
+                    "strategy": result.request.strategy.value,
+                    "fallback_used": result.fallback_used,
+                    "top_scores": [round(c.score, 4) for c in result.chunks[:5]],
+                }
+            )
+            self._traces[trace_id].events.append(event)
+        self._record_step(trace_id, "retrieval", event.details if 'event' in locals() else {})
 
     async def log_reranking(self, trace_id, chunks):
-        self._record_step(trace_id, "reranking", {
-            "chunks_after_rerank": len(chunks),
-            "top_scores": [round(c.score, 4) for c in chunks[:3]],
-        })
+        if trace_id in self._traces:
+            event = TraceEvent(
+                node="reranker",
+                duration_ms=0.0,  # Not measured
+                status="success",
+                details={
+                    "chunks_after_rerank": len(chunks),
+                    "top_scores": [round(c.score, 4) for c in chunks[:3]],
+                }
+            )
+            self._traces[trace_id].events.append(event)
+        self._record_step(trace_id, "reranking", event.details if 'event' in locals() else {})
 
     async def log_generation(self, trace_id, result):
-        self._record_step(trace_id, "generation", {
-            "model": result.model_used,
-            "total_tokens": result.total_tokens,
-            "cached": result.cached,
-            "latency_ms": result.latency_ms,
-        })
+        if trace_id in self._traces:
+            event = TraceEvent(
+                node="generator",
+                duration_ms=result.latency_ms,
+                status="success",
+                details={
+                    "model": result.model_used,
+                    "total_tokens": result.total_tokens,
+                    "cached": result.cached,
+                }
+            )
+            self._traces[trace_id].events.append(event)
+        self._record_step(trace_id, "generation", event.details if 'event' in locals() else {})
 
     async def log_error(self, trace_id, error: str):
+        if trace_id in self._traces:
+            event = TraceEvent(
+                node="error",
+                duration_ms=0.0,
+                status="error",
+                details={"error": error}
+            )
+            self._traces[trace_id].events.append(event)
         self._record_step(trace_id, "error", {"error": error})
 
     async def end_trace(self, trace_id, latency_ms: float):
-        trace_data = self._traces.pop(trace_id, {})
-        steps = trace_data.get("steps", [])
+        if trace_id not in self._traces:
+            return
 
-        # Emit structured log regardless of Langfuse availability
+        from datetime import datetime
+        trace = self._traces[trace_id]
+        trace.end_time = datetime.utcnow()
+        trace.total_duration_ms = latency_ms
+        trace.status = "completed"
+
+        # Emit structured log
         logger.info(
             "RAG query completed",
             extra={
                 "trace_id": trace_id,
                 "total_latency_ms": round(latency_ms, 2),
-                "steps": steps,
+                "events": [e.dict() for e in trace.events],
             }
         )
 
         try:
-            langfuse_trace = trace_data.get("langfuse_trace")
-            if langfuse_trace:
-                langfuse_trace.update(
-                    output={"steps": steps},
+            langfuse_id = trace.metadata.get("langfuse_id") if trace.metadata else None
+            if langfuse_id and self._client:
+                self._client.trace(id=langfuse_id).update(
+                    output={"events": [e.dict() for e in trace.events]},
                     metadata={"total_latency_ms": latency_ms},
                 )
         except Exception as e:
             logger.debug("Langfuse trace end failed: %s", e)
+
+    def get_trace(self, trace_id: str) -> Optional[QueryTrace]:
+        """Retrieve a completed trace by ID."""
+        return self._traces.get(trace_id)
 
     def _record_step(self, trace_id: str, step_name: str, data: dict):
         if trace_id in self._traces:
