@@ -23,8 +23,8 @@ jobs:
       run: ruff check . --ignore=E501,F401,F841
 
   unit-tests:
-  runs-on: ubuntu-latest
-  steps:
+    runs-on: ubuntu-latest
+    steps:
     - uses: actions/checkout@v4
 
     - name: Set up Python
