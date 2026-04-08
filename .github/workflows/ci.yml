@@ -37,7 +37,8 @@ jobs:
     - name: Run basic import test
       run: python -c "from utils.models import Document; print('Import successful')"
     - name: Run unit tests with coverage
-      run: pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml --cov-omit="venv*,tests/*,*/__pycache__/*" 2>&1 || true
+      continue-on-error: true
+      run: pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml:coverage.xml --cov-omit="venv311/*,tests/*"
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
