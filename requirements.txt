@@ -18,7 +18,7 @@ fastapi==0.110.0          # Web framework — handles HTTP requests and response
 uvicorn[standard]==0.27.1 # Web server — runs the FastAPI application
 pydantic==2.6.3           # Data validation — ensures inputs are correct types
 pydantic-settings==2.2.1  # Reads settings from .env file into Python objects
-python-multipart==0.0.9   # Required for file upload endpoints in FastAPI
+python-multipart==0.0.6   # Required for file upload endpoints in FastAPI
 httpx==0.27.0             # HTTP client — used for fetching HTML documents
 
 

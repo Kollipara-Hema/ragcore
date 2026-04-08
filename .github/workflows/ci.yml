@@ -2,58 +2,95 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - fix/ci-coverage
   pull_request:
-    branches: [ main ]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install linter
-      run: |
-        python -m pip install --upgrade pip
-        pip install ruff==0.3.0
-    - name: Lint with ruff
-      run: ruff check . --ignore=E501,F401,F841
-
   unit-tests:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pytest==8.0.2 pytest-cov==7.1.0 fastapi pydantic==2.6.3 pydantic-settings==2.2.1 pandas==2.2.1 rank-bm25==0.2.2 sentence-transformers==2.6.1 faiss-cpu==1.8.0 langgraph==0.0.40 typing_extensions
-    - name: Run basic import test
-      run: python -c "from utils.models import Document; print('Import successful')"
-    - name: Run unit tests with coverage
-      run: python -m pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml:coverage.xml
-    - name: Verify coverage file exists
-      run: |
-        pwd
-        ls -la
-        test -f coverage.xml && echo "coverage.xml found"
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./coverage.xml
-        token: ${{ secrets.CODECOV_TOKEN }}
-        verbose: true
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            pytest==8.0.2 \
+            pytest-cov==7.1.0 \
+            fastapi==0.110.0 \
+            uvicorn==0.27.1 \
+            pydantic==2.6.3 \
+            pydantic-settings==2.2.1 \
+            python-multipart==0.0.9 \
+            httpx==0.27.0 \
+            pandas==2.2.1 \
+            numpy==1.26.4 \
+            rank-bm25==0.2.2 \
+            sentence-transformers==2.6.1 \
+            faiss-cpu==1.8.0 \
+            langgraph==0.0.40 \
+            langchain==0.1.16 \
+            plotly==5.19.0 \
+            rouge-score==0.1.2 \
+            bert-score==0.3.13 \
+            pdfplumber==0.10.3 \
+            python-docx==1.1.0 \
+            beautifulsoup4==4.12.3
+
+      - name: Run basic import test
+        run: python -c "from utils.models import Document; print('Import successful')"
+
+      - name: Run unit tests with coverage
+        run: python -m pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml:coverage.xml
+
+      - name: Verify coverage file exists
+        run: |
+          pwd
+          ls -la
+          test -f coverage.xml && echo "coverage.xml found"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install lint dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8
+
+      - name: Run flake8
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
   docker-build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Build Docker image
-      continue-on-error: true
-      run: docker build . --file Dockerfile --tag ragcore:test
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t ragcore:ci .
