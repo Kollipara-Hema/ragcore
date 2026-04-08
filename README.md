@@ -1,147 +1,267 @@
 # DocIntel — Production-Grade Multi-Strategy RAG System
 
-A scalable document intelligence system with intelligent retrieval routing,
-hybrid search, reranking, and grounded answer generation.
+> Plain LangChain RAG uses one retrieval strategy for every query. DocIntel doesn't.
+> It classifies each query, routes it to the optimal strategy (keyword, semantic, hybrid, or multi-query), fuses BM25 sparse retrieval with FAISS dense search, reranks results with a cross-encoder, and runs the whole pipeline through a LangGraph agent with memory and automatic retry. Built for developers who need something that holds up beyond a Jupyter notebook.
 
-![CI](https://github.com/Kollipara-Hema/ragcore/actions/workflows/ci.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.11+-blue)
-![LangChain](https://img.shields.io/badge/LangChain-enabled-green)
-![Streamlit](https://img.shields.io/badge/Streamlit-demo-red)
-![HF Spaces](https://img.shields.io/badge/🤗-Spaces-yellow)
-
----
-
-## Architecture Overview
-
-```
-Documents → Ingest → Clean → Chunk → Embed → Hybrid Index (Vector + BM25)
-                                                        ↓
-Query → Understand → Route → Retrieve → Rerank → Prompt → Generate → Answer + Citations
-```
-
-### Retrieval Strategies (auto-selected per query)
-
-| Query Type      | Primary Strategy    | When Used |
-|----------------|---------------------|-----------|
-| Factual         | Hybrid              | "What is X?" |
-| Lookup          | Keyword (BM25)      | "Find document by author/date" |
-| Semantic        | Vector              | "Explain how X relates to Y" |
-| Multi-hop       | Multi-query         | Questions requiring chaining |
-| Analytical      | Hybrid + Rerank     | "Compare A vs B" |
-| Comparative     | Multi-query         | "Differences between X and Y" |
+[![CI](https://github.com/Kollipara-Hema/ragcore/actions/workflows/ci.yml/badge.svg)](https://github.com/Kollipara-Hema/ragcore/actions)
+[![Coverage](https://codecov.io/gh/Kollipara-Hema/ragcore/branch/main/graph/badge.svg)](https://codecov.io/gh/Kollipara-Hema/ragcore)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
 ---
 
-## Multi-Agent Architecture
+## Table of Contents
 
-The system includes an intelligent agent powered by LangGraph with conditional reasoning and tool use.
+- [Features](#features)
+- [Architecture](#architecture)
+- [Retrieval Strategy Routing](#retrieval-strategy-routing)
+- [Multi-Agent Graph](#multi-agent-graph)
+- [Demo](#demo)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Evaluation](#evaluation)
+- [Cloud Deployment](#cloud-deployment)
+- [Roadmap](#roadmap)
 
-### Agent Flow Diagram
+---
 
+## Features
+
+| | |
+|---|---|
+| **6 retrieval strategies** | Auto-selected per query type: Hybrid, Keyword (BM25), Semantic, Multi-Query, Metadata Filter, Parent-Child |
+| **Hybrid BM25 + FAISS** | Configurable alpha fusion with L2-normalized cosine scores |
+| **Cross-encoder reranking** | Two-stage retrieval — broad recall first, precise reranking second |
+| **LangGraph agent** | Multi-node graph with confidence-gated retry loop and conversation memory |
+| **Multiple LLM providers** | Groq, OpenAI, Anthropic, Ollama — or `provider=demo` (no API key needed) |
+| **Multiple vector stores** | Weaviate (self-hosted), FAISS (built-in), Chroma (local dev) |
+| **3 UI frontends** | Chainlit (chat), Streamlit (dashboard), Gradio (quick demo) |
+| **Full Docker stack** | API + Celery workers + Redis + Prometheus + Grafana in one `docker-compose up` |
+| **84 tests passing** | Unit + integration coverage across all core components |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    subgraph Ingestion
+        A([Documents\nPDF · DOCX · TXT · HTML]) --> B[Load & Clean]
+        B --> C[Chunk\nfixed · semantic · hierarchical · sentence]
+        C --> D[Embed\nBGE · MiniLM]
+        D --> E[(Hybrid Index)]
+    end
+
+    subgraph Index ["Hybrid Index"]
+        E1[(FAISS\nDense Vectors)]
+        E2[(BM25\nSparse Index)]
+    end
+
+    subgraph Query Pipeline
+        G([User Query]) --> H[Query Router\nHeuristic → LLM fallback]
+        H --> I[Retrieval Executor]
+        I --> J[Reranker\nCross-Encoder]
+        J --> K[LLM Generator\n+ Citations]
+        K --> L([Answer])
+    end
+
+    E --> E1
+    E --> E2
+    E1 --> I
+    E2 --> I
 ```
-User Query
-    ↓
-   Router Node
-   (Query Analysis)
-    ↓
-Retriever Node ←─────────┐
-(Vector + BM25)          │
-    ↓                    │
-Reranker Node            │
-(Cross-encoder)          │
-    ↓                    │
-Generator Node           │
-(LLM + Memory)           │
-    ↓                    │
-Evaluator Node           │
-(Confidence Check)       │
-    ↓                    │
-  Answer ✓             Confidence < 0.6?
-    ↓                        ↓
- Citations              Retry Loop
-                          ↑
+
+---
+
+## Retrieval Strategy Routing
+
+The router runs in two passes: a fast regex heuristic catches obvious patterns (lookup, analytical, multi-hop), then falls back to a cheap LLM call (GPT-4o-mini, temp=0) for ambiguous queries.
+
+```mermaid
+flowchart LR
+    Q([Query]) --> R{Heuristic\nRouter}
+    R -->|uncertain| L[LLM Classifier\ngpt-4o-mini]
+    L --> S{Strategy\nMap}
+    R --> S
+
+    S -->|Factual| HY[Hybrid\nBM25 + FAISS · α=0.7]
+    S -->|Lookup| KW[BM25 Keyword]
+    S -->|Semantic| VE[Vector Search\nFAISS cosine]
+    S -->|Multi-Hop| MQ[Multi-Query\nRRF fusion]
+    S -->|Analytical| HY
+    S -->|Comparative| MQ
+
+    HY --> RE[Cross-Encoder\nReranker]
+    KW --> RE
+    VE --> RE
+    MQ --> RE
+    RE --> G[Generator]
 ```
 
-### Agent Capabilities
+| Query Type | Primary | Fallback | Triggered by |
+|-----------|---------|----------|-------------|
+| Factual | Hybrid (α=0.7) | Semantic | "What is X?" |
+| Lookup | BM25 Keyword | Semantic | "Find doc by author / date" |
+| Semantic | Vector (FAISS) | Hybrid | "Explain how X relates to Y" |
+| Multi-Hop | Multi-Query + RRF | Hybrid | "X which then affects Y" |
+| Analytical | Hybrid (α=0.7) | Semantic | "Summarize / analyze / compare" |
+| Comparative | Multi-Query + RRF | Hybrid | "Differences between X and Y" |
 
-- **Memory**: Short-term (10-turn conversation) + Long-term (Redis-backed)
-- **Tools**: Document search, summarization, comparison, metadata filtering
-- **Retry Logic**: Automatic re-retrieval when confidence < 0.6
-- **Tracing**: Detailed execution logs with node timing
-- **Session Context**: Conversation history maintained across queries
+---
+
+## Multi-Agent Graph
+
+```mermaid
+flowchart TD
+    Start([User Query]) --> Router[Router Node\nClassify query type\nSelect strategy]
+    Router --> Retriever[Retriever Node\nMulti-strategy search\nVector + BM25 + Hybrid]
+    Retriever --> Reranker[Reranker Node\nCross-encoder scoring\nTop-K selection]
+    Reranker --> Generator[Generator Node\nLLM synthesis\nCitations + memory]
+    Generator --> Evaluator[Evaluator Node\nConfidence scoring]
+    Evaluator -->|confidence ≥ 0.6| Answer([Answer + Citations])
+    Evaluator -->|confidence < 0.6\nretry_count < max| Retriever
+    Evaluator -->|max retries reached| Answer
+```
 
 ### Node Responsibilities
 
-| Node | Purpose | Output |
-|------|---------|--------|
-| **Router** | Query type classification | Strategy selection |
-| **Retriever** | Multi-strategy document search | Ranked chunks |
-| **Reranker** | Cross-encoder relevance scoring | Top-5 chunks |
-| **Generator** | Answer synthesis with citations | Grounded response |
-| **Evaluator** | Quality assessment | Confidence score + retry decision |
+| Node | Input | Output |
+|------|-------|--------|
+| **Router** | Raw query string | `RoutingDecision` — strategy + expanded queries |
+| **Retriever** | `RoutingDecision` | Ranked `RetrievedChunk` list |
+| **Reranker** | Retrieved chunks | Top-K reranked chunks (CrossEncoder or NoOp) |
+| **Generator** | Reranked chunks + history | `answer`, `citations`, `final_answer` |
+| **Evaluator** | Generated answer | `confidence` float, `needs_retry` bool |
+
+**Agent capabilities:**
+- **Memory** — short-term conversation buffer (10 turns) + Redis-backed long-term store
+- **Tools** — `search_docs`, `summarize_doc`, `compare_docs`, `get_metadata`
+- **Retry loop** — automatic re-retrieval when `confidence < 0.6`
+- **Tracing** — per-node timing, full execution logs via Langfuse (optional)
+
+---
+
+## Demo
+
+![Chainlit UI](docs/assets/chainlit_demo.gif)
+![Streamlit UI](docs/assets/streamlit_demo.png)
+
+> Run a UI locally — see [Quick Start](#quick-start) below.
 
 ---
 
 ## Quick Start
 
-### 1. Local setup (no Docker)
+### Option A — No Docker (FAISS, built-in)
+
+The fastest way to run locally. No Docker required — FAISS runs in-process.
 
 ```bash
-# Clone and install
-git clone <repo>
-cd rag-system
+git clone https://github.com/Kollipara-Hema/ragcore.git
+cd ragcore
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Configure environment
 cp .env.example .env
-# Edit .env — add OPENAI_API_KEY at minimum
+# Edit .env:
+#   VECTOR_STORE_PROVIDER=faiss       ← built-in, no Docker
+#   LLM_PROVIDER=demo                 ← no API key needed
+#   (or set GROQ_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY)
 
-# Start Weaviate (requires Docker for the vector store)
-docker run -d -p 8080:8080 semitechnologies/weaviate:1.24.1 \
+# Start Redis (needed for Celery async ingestion)
+docker run -d -p 6379:6379 redis:7-alpine
+
+uvicorn api.main:app --reload --port 8000
+# Docs: http://localhost:8000/docs
+```
+
+### Option B — Weaviate (recommended for production)
+
+Weaviate is the default vector store provider. Best feature set, horizontally scalable, self-hosted via Docker.
+
+```bash
+cp .env.example .env
+# Edit .env:
+#   VECTOR_STORE_PROVIDER=weaviate
+#   WEAVIATE_URL=http://localhost:8080
+#   LLM_PROVIDER=groq   (or openai / anthropic / ollama)
+
+# Start Weaviate
+docker run -d -p 8080:8080 \
   -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
-  -e DEFAULT_VECTORIZER_MODULE=none
+  -e DEFAULT_VECTORIZER_MODULE=none \
+  semitechnologies/weaviate:1.24.1
 
 # Start Redis
 docker run -d -p 6379:6379 redis:7-alpine
 
-# Run API
-uvicorn rag_system.api.main:app --reload --port 8000
+uvicorn api.main:app --reload --port 8000
 ```
 
-### 2. Full stack with Docker Compose
+### Option C — Chroma (local dev, no Docker)
+
+Simplest setup for development. Persists to a local directory, no server process needed.
+
+```bash
+# Edit .env:
+#   VECTOR_STORE_PROVIDER=chroma
+#   CHROMA_PERSIST_DIR=./chroma_db
+
+uvicorn api.main:app --reload --port 8000
+```
+
+### Full Stack with Docker Compose
+
+All services — API, Celery workers, Redis, Prometheus, Grafana — in one command.
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your LLM API key and preferred VECTOR_STORE_PROVIDER
 
 docker-compose up --build
 
 # Services:
-#   API:        http://localhost:8000
-#   API docs:   http://localhost:8000/docs
-#   Flower:     http://localhost:5555  (Celery monitoring)
-#   Grafana:    http://localhost:3000  (admin/admin)
-#   Weaviate:   http://localhost:8080
+#   API:      http://localhost:8000        (REST + streaming)
+#   Docs:     http://localhost:8000/docs   (Swagger UI)
+#   Flower:   http://localhost:5555        (Celery task monitoring)
+#   Grafana:  http://localhost:3000        (admin / admin)
+```
+
+### UI Frontends
+
+```bash
+# Chainlit — conversational chat
+cd ui_chainlit && pip install -r requirements.txt && chainlit run app.py
+
+# Streamlit — dashboard with file upload
+cd ui_streamlit && pip install -r requirements.txt && streamlit run app.py
+
+# Gradio — minimal comparison lab
+cd ui_gradio && pip install -r requirements.txt && python app.py
 ```
 
 ---
 
-## API Usage
+## API Reference
 
-### Ingest a document
+### Ingest
 
 ```bash
-# Async (default — returns job_id immediately)
+# Async (default) — returns job_id immediately, processes in background via Celery
 curl -X POST http://localhost:8000/ingest/file \
   -F "file=@report.pdf" \
   -F "title=Q3 Report 2024" \
   -F "tags=finance,quarterly"
 
-# Check status
+# Check job status
 curl http://localhost:8000/ingest/status/<job_id>
 
-# Synchronous (small files)
+# Synchronous — waits for completion (use for small files)
 curl -X POST http://localhost:8000/ingest/file \
   -F "file=@notes.txt" \
   -F "async_processing=false"
@@ -150,15 +270,12 @@ curl -X POST http://localhost:8000/ingest/file \
 ### Query
 
 ```bash
-# Standard query (auto-routes to best strategy)
+# Auto-routed query (system picks the best strategy)
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "What were the key findings in the Q3 report?",
-    "top_k": 5
-  }'
+  -d '{"query": "What were the key findings in the Q3 report?", "top_k": 5}'
 
-# With metadata filter
+# With strategy override and metadata filter
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -167,17 +284,16 @@ curl -X POST http://localhost:8000/query \
     "strategy_override": "keyword"
   }'
 
-# Streaming
+# Streaming response (SSE)
 curl -X POST http://localhost:8000/query/stream \
   -H "Content-Type: application/json" \
-  -d '{"query": "Summarize the main points of the report."}' \
+  -d '{"query": "Summarize the main points."}' \
   --no-buffer
 ```
 
-### Agent Query (with memory and tools)
+### Agent Query (with memory + tools + retry)
 
 ```bash
-# Intelligent agent with conversation memory
 curl -X POST http://localhost:8000/agent/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -185,144 +301,196 @@ curl -X POST http://localhost:8000/agent/query \
     "session_id": "user-123",
     "trace_enabled": true
   }'
+```
 
-# Response includes citations, confidence, and trace_id
+```json
 {
   "answer": "Q3 revenue was $4.2B, representing 15% YoY growth...",
-  "citations": [...],
+  "citations": [{"source": "Q3_report.pdf", "page": 4, "score": 0.91}],
   "confidence": 0.87,
   "retry_count": 0,
   "model_used": "gpt-4o-mini",
   "latency_ms": 1250,
   "trace_id": "abc-123-def"
 }
-
-# Retrieve execution trace
-curl http://localhost:8000/agent/trace/abc-123-def
 ```
 
 ---
 
 ## Configuration
 
-All settings are environment-variable driven (see `.env.example`).
+All settings are environment-variable driven. Copy `.env.example` → `.env`.
 
-Key knobs:
+### Retrieval
+
+| Setting | Default | Options / Effect |
+|---------|---------|-----------------|
+| `VECTOR_STORE_PROVIDER` | `weaviate` | `weaviate` · `faiss` · `chroma` |
+| `CHUNKING_STRATEGY` | `semantic` | `fixed` · `semantic` · `hierarchical` · `sentence` |
+| `HYBRID_ALPHA` | `0.7` | `0` = keyword only · `1` = vector only |
+| `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
+| `RERANK_TOP_K` | `5` | Final chunks sent to LLM |
+| `ENABLE_RERANKING` | `true` | Two-stage retrieval with cross-encoder |
+| `ENABLE_QUERY_EXPANSION` | `true` | Multi-query paraphrasing for complex questions |
+
+### Generation
+
+| Setting | Default | Options / Effect |
+|---------|---------|-----------------|
+| `LLM_PROVIDER` | `groq` | `groq` · `openai` · `anthropic` · `ollama` · `demo` |
+| `GROQ_API_KEY` | — | Required if `LLM_PROVIDER=groq` |
+| `OPENAI_API_KEY` | — | Required if `LLM_PROVIDER=openai` |
+| `ANTHROPIC_API_KEY` | — | Required if `LLM_PROVIDER=anthropic` |
+| `AZURE_OPENAI_ENDPOINT` | — | Azure OpenAI resource endpoint |
+| `AZURE_OPENAI_API_KEY` | — | Azure OpenAI API key |
+| `AZURE_OPENAI_DEPLOYMENT` | — | Model deployment name |
+| `AZURE_OPENAI_API_VERSION` | `2024-02-15-preview` | Azure API version |
+
+### Evaluation
 
 | Setting | Default | Effect |
 |---------|---------|--------|
-| `CHUNKING_STRATEGY` | `semantic` | `fixed/semantic/hierarchical/sentence` |
-| `HYBRID_ALPHA` | `0.7` | 0=keyword only, 1=vector only |
-| `ENABLE_RERANKING` | `true` | Two-stage retrieval with cross-encoder |
-| `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
-| `RERANK_TOP_K` | `5` | Final chunks sent to LLM |
-| `ENABLE_QUERY_EXPANSION` | `true` | Multi-query for complex questions |
-| `ENABLE_EVALUATION` | `false` | Enable LLM-based answer evaluation |
-| `EVAL_STRATEGY` | `heuristic` | `heuristic` or `ragas` for evaluation |
-| `RAGAS_ENABLED` | `false` | Use RAGAS library for advanced metrics |
-| `ENABLE_TRACING` | `false` | Send traces to Langfuse for observability |
-| `AZURE_OPENAI_ENDPOINT` | - | Azure OpenAI resource endpoint |
-| `AZURE_OPENAI_API_KEY` | - | Azure OpenAI API key |
-| `AZURE_OPENAI_DEPLOYMENT` | - | Azure OpenAI model deployment name |
-| `AZURE_OPENAI_API_VERSION` | `2024-02-15-preview` | Azure OpenAI API version |
+| `ENABLE_EVALUATION` | `false` | LLM-based confidence scoring per answer |
+| `EVAL_STRATEGY` | `heuristic` | `heuristic` · `ragas` (requires `pip install ragas==0.1.7`) |
+| `RAGAS_ENABLED` | `false` | Enable RAGAS faithfulness + relevance metrics |
+
+### Infrastructure
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for Celery + long-term memory |
+| `WEAVIATE_URL` | `http://localhost:8080` | Weaviate host |
+| `CHROMA_PERSIST_DIR` | `./chroma_db` | Local Chroma persistence directory |
+| `ENABLE_TRACING` | `false` | Send traces to Langfuse |
+| `LANGFUSE_PUBLIC_KEY` | — | Langfuse public key |
+| `LANGFUSE_SECRET_KEY` | — | Langfuse secret key |
+
+---
+
+## Project Structure
+
+<details>
+<summary>Expand directory tree</summary>
+
+```
+ragcore/
+├── agent/                  # LangGraph agent
+│   ├── graph.py            # Node wiring and conditional edges
+│   ├── state.py            # AgentState TypedDict (messages, confidence, retry_count, …)
+│   ├── nodes/              # router · retriever · reranker · generator · evaluator
+│   ├── tools/              # search_docs · summarize_doc · compare_docs · get_metadata
+│   └── memory/             # short_term.py (buffer) · long_term.py (Redis)
+│
+├── api/                    # FastAPI application
+│   ├── main.py             # /ingest · /query · /query/stream · /agent/query · /health
+│   └── middleware/         # Request middleware
+│
+├── config/
+│   └── settings.py         # Pydantic settings — all env vars with defaults
+│
+├── embeddings/             # BGEEmbedder · MiniLMEmbedder · embedder factory
+│
+├── evaluation/
+│   ├── evaluator.py        # Retrieval + generation metrics (hit rate, MRR, NDCG)
+│   └── dataset.py          # Sample golden Q&A dataset for benchmarking
+│
+├── generation/
+│   ├── llm_service.py      # Provider switcher: Groq / OpenAI / Anthropic / Ollama / demo
+│   └── prompts/            # Prompt templates
+│
+├── graph/
+│   └── agent.py            # Top-level LangGraph graph definition
+│
+├── ingestion/
+│   ├── chunkers/           # fixed · semantic · hierarchical · sentence chunkers
+│   └── loaders/            # PDF · DOCX · TXT · HTML loaders
+│
+├── monitoring/
+│   └── tracer.py           # Prometheus metrics + Langfuse tracing integration
+│
+├── reranking/
+│   └── reranker.py         # CrossEncoderReranker · NoOpReranker
+│
+├── retrieval/
+│   ├── router/
+│   │   └── query_router.py # HeuristicRouter · LLMQueryClassifier · STRATEGY_MAP
+│   └── strategies/
+│       └── retrieval_executor.py  # _dispatch → semantic / keyword / hybrid / multi-query
+│
+├── tests/
+│   ├── unit/               # Component tests — no external services required
+│   └── integration/        # Pipeline tests with mocks (FAISS in-memory)
+│
+├── ui_chainlit/            # Chainlit conversational chat interface
+├── ui_streamlit/           # Streamlit dashboard with file upload
+├── ui_gradio/              # Gradio comparison lab
+│
+├── utils/
+│   └── models.py           # Shared types: Chunk · Document · RetrievedChunk · AgentState
+│
+└── vectorstore/
+    └── vector_store.py     # FAISSVectorStore — vector_search · keyword_search · hybrid_search
+```
+
+</details>
 
 ---
 
 ## Testing
 
 ```bash
-# Unit tests (no external services needed)
+# Unit tests only (no external services needed)
 pytest tests/unit/ -v
 
-# Integration tests (requires Redis; vector store is mocked)
+# Integration tests (uses in-memory FAISS, no external services)
 pytest tests/integration/ -v
 
-# All tests with coverage
-pytest tests/ --cov=rag_system --cov-report=html
+# All tests with HTML coverage report
+pytest tests/ --cov=. --cov-report=html --cov-omit="venv*,tests/*"
+open htmlcov/index.html
 ```
+
+**Current status: 84 / 84 tests passing**
 
 ---
 
 ## Evaluation
 
-The system includes comprehensive RAG evaluation metrics and observability features.
+### Metrics available (rouge-score + bert-score, included in requirements)
 
-### Evaluation Metrics
+- **Retrieval**: Hit rate, MRR, NDCG@5, precision / recall
+- **Generation**: ROUGE-L, BERTScore, faithfulness, hallucination rate
+- **Advanced** (optional): RAGAS faithfulness + answer relevance — `pip install ragas==0.1.7`
+- **Latency**: P50 / P95 / P99 percentiles
 
-- **Retrieval**: Hit rate, MRR, NDCG@5, precision/recall
-- **Generation**: Faithfulness, answer relevance, hallucination rate (with RAGAS)
-- **Latency**: P50/P95/P99 percentiles
-- **Cost**: Token usage and USD cost estimation
-
-### Running Evaluation
+### Run against your golden dataset
 
 ```python
-from rag_system.evaluation.evaluator import RAGEvaluator, EvalSample
-from rag_system.orchestrator import RAGOrchestrator
-import asyncio
+from evaluation.evaluator import Evaluator
 
-golden_dataset = [
-    {
-        "query": "What was the Q3 revenue?",
-        "ground_truth": "Q3 revenue was $4.2B, up 15% YoY.",
-        "relevant_doc_ids": ["doc-abc123"],
-    },
-    # ... more examples
-]
-
-async def main():
-    orch = RAGOrchestrator()
-    evaluator = RAGEvaluator()
-    report = await evaluator.run_against_orchestrator(golden_dataset, orch)
-    print(report.summary())
-
-asyncio.run(main())
+evaluator = Evaluator()
+report = evaluator.evaluate("golden_dataset.csv")
+# CSV columns: query, ground_truth, relevant_doc_ids
+print(report)
 ```
 
-### Sample Dataset
-
-A sample golden dataset is available for testing:
+### Use the included sample dataset
 
 ```python
-from rag_system.evaluation.dataset import get_sample_dataset
+from evaluation.dataset import get_sample_dataset
+
 dataset = get_sample_dataset()
+# Returns list[dict] — keys: query, ground_truth, relevant_doc_ids
 ```
 
-### Observability & Tracing
-
-Enable tracing to monitor query execution:
+### Enable tracing
 
 ```bash
-# In .env
+# .env
 ENABLE_TRACING=true
 LANGFUSE_PUBLIC_KEY=your-key
 LANGFUSE_SECRET_KEY=your-secret
 ```
-
-Retrieve traces programmatically:
-
-```python
-# Get trace by ID
-import requests
-trace = requests.get("http://localhost:8000/trace/{trace_id}").json()
-print(f"Query: {trace['query']}")
-print(f"Total time: {trace['total_duration_ms']}ms")
-for event in trace['events']:
-    print(f"- {event['node']}: {event['duration_ms']}ms")
-```
-
-### Agent Evaluation
-
-The agent evaluator uses configurable strategies:
-
-```bash
-# In .env
-ENABLE_EVALUATION=true
-EVAL_STRATEGY=ragas  # or 'heuristic'
-RAGAS_ENABLED=true   # requires: pip install ragas
-```
-
-This enables LLM-based confidence scoring during agent execution.
 
 ---
 
@@ -331,63 +499,81 @@ This enables LLM-based confidence scoring during agent execution.
 ### AWS ECS (Fargate)
 
 ```bash
-# Build and push to ECR
-aws ecr get-login-password | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com
+aws ecr get-login-password | docker login --username AWS --password-stdin \
+  <account>.dkr.ecr.<region>.amazonaws.com
+
 docker build -t docintel .
 docker tag docintel:latest <account>.dkr.ecr.<region>.amazonaws.com/docintel:latest
 docker push <account>.dkr.ecr.<region>.amazonaws.com/docintel:latest
-
-# Deploy with Terraform or AWS CDK (see infra/ directory)
 ```
 
-Recommended AWS architecture:
-- **API**: ECS Fargate (2 vCPU, 4GB) × 2–4 tasks behind ALB
-- **Workers**: ECS Fargate (4 vCPU, 8GB) × 2–8 tasks
-- **Vector DB**: Weaviate on ECS or Pinecone managed
-- **Cache**: ElastiCache Redis (r7g.large)
-- **Storage**: S3 for raw documents, EFS for model weights
+Recommended architecture:
 
-### Scaling the vector database
-
-**Weaviate horizontal scaling:**
-```yaml
-# weaviate-cluster.yml
-replicationFactor: 3    # replicas for read scaling
-shards: 4               # shards for write scaling
-```
-
-**Pinecone**: managed scaling — just create a larger pod type or use serverless.
+| Component | Service | Size |
+|-----------|---------|------|
+| API | ECS Fargate | 2 vCPU · 4 GB × 2–4 tasks behind ALB |
+| Workers | ECS Fargate | 4 vCPU · 8 GB × 2–8 tasks |
+| Vector DB | Weaviate on ECS or Pinecone managed | — |
+| Cache | ElastiCache Redis | r7g.large |
+| Storage | S3 (raw docs) + EFS (model weights) | — |
 
 ---
 
-## Optimization Roadmap
+## Roadmap
 
-### Phase 1 — Chunking improvements
-- [ ] Implement `PropositionalChunker` (extract atomic propositions)
-- [ ] `TableAwareChunker` (detect and preserve table structure)
-- [ ] Document-structure-aware splitting (respect section headings)
+### Done ✅
 
-### Phase 2 — Embedding improvements
+- Hybrid BM25 + FAISS vector search with configurable alpha fusion
+- 6 retrieval strategies with auto-routing (heuristic + LLM fallback)
+- Multi-Query retrieval with Reciprocal Rank Fusion (RRF)
+- Cross-encoder reranking (`CrossEncoderReranker` + `NoOpReranker`)
+- LangGraph multi-node agent — retry loop with confidence gating
+- Agent memory — short-term buffer (10 turns) + Redis long-term store
+- Agent tools — `search_docs`, `summarize_doc`, `compare_docs`, `get_metadata`
+- LLM providers — Groq, OpenAI, Anthropic, Ollama, demo mode (no key)
+- Vector stores — Weaviate, FAISS, Chroma (configurable via env)
+- 4 chunking strategies — fixed, semantic, hierarchical, sentence
+- Streaming API (`/query/stream` — SSE)
+- Async document ingestion via Celery + Redis
+- Prometheus metrics + Grafana dashboards
+- 3 UI frontends — Chainlit, Streamlit, Gradio
+- CI/CD — GitHub Actions with lint + unit tests + Docker build
+
+### In Progress 🔄
+
+- **Real evaluation metrics** — `Evaluator` currently returns hardcoded values; ROUGE / BERTScore packages already in `requirements.txt`, wiring in progress
+- **Azure OpenAI** — settings and env vars defined in `config/settings.py`; not yet wired through `LLMService`
+- **Parent-child retrieval** — executor dispatch exists; fetch-by-parent-ID is a placeholder, not yet fully implemented
+
+### Planned 📋
+
+**Chunking**
+- [ ] `PropositionalChunker` — extract atomic propositions for denser indexing
+- [ ] `TableAwareChunker` — detect and preserve table structure
+
+**Embeddings**
 - [ ] Fine-tune BGE on domain-specific Q&A pairs
 - [ ] Matryoshka embeddings (variable-dimension at query time)
 - [ ] Late interaction models (ColBERT) for higher precision
 
-### Phase 3 — Hybrid search tuning
+**Hybrid Search Tuning**
 - [ ] BM25 parameter tuning (k1, b) via grid search on eval set
-- [ ] Adaptive alpha (tune `hybrid_alpha` per query type from eval data)
-- [ ] Sparse + dense fusion alternatives (SPLADE)
+- [ ] Adaptive alpha — tune `HYBRID_ALPHA` per query type from eval data
+- [ ] SPLADE sparse-dense fusion
 
-### Phase 4 — Reranking improvements
+**Reranking**
 - [ ] Fine-tune cross-encoder on domain data
-- [ ] MonoT5 reranker for better multilingual support
-- [ ] LLM-based reranking (use GPT-4o-mini to score pairs)
+- [ ] MonoT5 reranker for multilingual support
+- [ ] LLM-based reranking (GPT-4o-mini pair scoring)
 
-### Phase 5 — Generation
-- [ ] Self-RAG: generate answer, then verify claims against retrieved context
-- [ ] FLARE: generate → check → retrieve more if uncertain
-- [ ] Agentic RAG: multi-turn with tool use for complex analytical queries
+**Generation**
+- [ ] Self-RAG — generate → verify claims against retrieved context → retrieve more if needed
+- [ ] FLARE — forward-looking active retrieval
+- [ ] Multi-turn agentic RAG with tool use for complex analytical queries
 
-### Phase 6 — Infrastructure
-- [ ] GraphRAG: build knowledge graph from documents for multi-hop
-- [ ] Incremental indexing (avoid re-indexing unchanged chunks)
+**Infrastructure**
+- [ ] GraphRAG — knowledge graph layer for multi-hop reasoning
+- [ ] Incremental indexing — skip re-indexing unchanged chunks
 - [ ] A/B testing framework for strategy comparison
+- [ ] API key authentication middleware
+- [ ] Pinecone + Qdrant vector store backends
