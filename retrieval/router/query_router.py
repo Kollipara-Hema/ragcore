@@ -203,12 +203,12 @@ class QueryExpander:
 
 STRATEGY_MAP: dict[QueryType, tuple[RetrievalStrategy, RetrievalStrategy]] = {
     # (primary, fallback)
-    QueryType.FACTUAL:      (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
-    QueryType.LOOKUP:       (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
-    QueryType.SEMANTIC:     (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
-    QueryType.MULTI_HOP:    (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
-    QueryType.ANALYTICAL:   (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
-    QueryType.COMPARATIVE:  (RetrievalStrategy.SEMANTIC,       RetrievalStrategy.SEMANTIC),
+    QueryType.FACTUAL:      (RetrievalStrategy.HYBRID,        RetrievalStrategy.SEMANTIC),
+    QueryType.LOOKUP:       (RetrievalStrategy.KEYWORD,       RetrievalStrategy.SEMANTIC),
+    QueryType.SEMANTIC:     (RetrievalStrategy.SEMANTIC,      RetrievalStrategy.HYBRID),
+    QueryType.MULTI_HOP:    (RetrievalStrategy.MULTI_QUERY,   RetrievalStrategy.HYBRID),
+    QueryType.ANALYTICAL:   (RetrievalStrategy.HYBRID,        RetrievalStrategy.SEMANTIC),
+    QueryType.COMPARATIVE:  (RetrievalStrategy.MULTI_QUERY,   RetrievalStrategy.HYBRID),
 }
 
 

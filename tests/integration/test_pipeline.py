@@ -48,8 +48,8 @@ class TestPipelineIntegration:
 
         executor = RetrievalExecutor()
         assert executor is not None
-        assert executor.embedder is not None
-        assert executor.vector_store is not None
+        assert executor._embedder is not None
+        assert executor._store is not None
 
     def test_llm_service_providers_available(self):
         """Test that all LLM providers are available."""
@@ -101,3 +101,111 @@ class TestPipelineIntegration:
         result = asyncio.run(reranker.rerank("test query", retrieved, top_k=2))
         assert isinstance(result, list)
         assert len(result) == 2
+
+
+class TestVectorStoreSearch:
+    """Test FAISS keyword, semantic, and hybrid search."""
+
+    def _make_store_with_chunks(self):
+        """Create an in-memory FAISSVectorStore with three pre-indexed chunks.
+        Three chunks ensure BM25 IDF > 0 (avoids log(1.5/1.5)=0 with only 2 docs).
+        """
+        import asyncio
+        import tempfile
+        import os
+        from uuid import uuid4
+        from vectorstore.vector_store import FAISSVectorStore
+        from utils.models import Chunk
+
+        idx_file = os.path.join(tempfile.mkdtemp(), "test.idx")
+        meta_file = os.path.join(tempfile.mkdtemp(), "test.pkl")
+        store = FAISSVectorStore(index_file=idx_file, metadata_file=meta_file)
+
+        doc_id = uuid4()
+        chunk_a = Chunk(content="the cat sat on the mat", doc_id=doc_id, embedding=[0.1] * 8)
+        chunk_b = Chunk(content="machine learning and neural networks", doc_id=doc_id, embedding=[0.9] * 8)
+        chunk_c = Chunk(content="deep learning transforms computer vision", doc_id=doc_id, embedding=[0.5] * 8)
+        asyncio.run(store.upsert([chunk_a, chunk_b, chunk_c]))
+        return store
+
+    def test_keyword_search_returns_results(self):
+        import asyncio
+        store = self._make_store_with_chunks()
+        results = asyncio.run(store.keyword_search("cat mat", top_k=5))
+        assert isinstance(results, list)
+        assert len(results) > 0
+
+    def test_keyword_search_ranks_relevant_chunk_first(self):
+        import asyncio
+        from utils.models import RetrievalStrategy
+        store = self._make_store_with_chunks()
+        results = asyncio.run(store.keyword_search("cat mat", top_k=5))
+        assert results[0].chunk.content == "the cat sat on the mat"
+        assert all(r.strategy_used == RetrievalStrategy.KEYWORD for r in results)
+
+    def test_vector_search_returns_results(self):
+        import asyncio
+        store = self._make_store_with_chunks()
+        results = asyncio.run(store.vector_search([0.1] * 8, top_k=5))
+        assert isinstance(results, list)
+        assert len(results) > 0
+
+    def test_hybrid_search_returns_results(self):
+        import asyncio
+        from utils.models import RetrievalStrategy
+        store = self._make_store_with_chunks()
+        results = asyncio.run(store.hybrid_search("cat mat", [0.1] * 8, top_k=5, alpha=0.7))
+        assert isinstance(results, list)
+        assert len(results) > 0
+        assert all(r.strategy_used == RetrievalStrategy.HYBRID for r in results)
+
+    def test_keyword_search_empty_when_no_data(self):
+        import asyncio
+        import tempfile
+        import os
+        from vectorstore.vector_store import FAISSVectorStore
+        idx_file = os.path.join(tempfile.mkdtemp(), "empty.idx")
+        meta_file = os.path.join(tempfile.mkdtemp(), "empty.pkl")
+        store = FAISSVectorStore(index_file=idx_file, metadata_file=meta_file)
+        results = asyncio.run(store.keyword_search("anything"))
+        assert results == []
+
+
+class TestStrategyMap:
+    """Verify STRATEGY_MAP routes each query type to the correct strategy."""
+
+    def test_factual_uses_hybrid(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.FACTUAL]
+        assert primary == RetrievalStrategy.HYBRID
+
+    def test_lookup_uses_keyword(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.LOOKUP]
+        assert primary == RetrievalStrategy.KEYWORD
+
+    def test_semantic_uses_semantic(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.SEMANTIC]
+        assert primary == RetrievalStrategy.SEMANTIC
+
+    def test_multi_hop_uses_multi_query(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.MULTI_HOP]
+        assert primary == RetrievalStrategy.MULTI_QUERY
+
+    def test_analytical_uses_hybrid(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.ANALYTICAL]
+        assert primary == RetrievalStrategy.HYBRID
+
+    def test_comparative_uses_multi_query(self):
+        from retrieval.router.query_router import STRATEGY_MAP
+        from utils.models import QueryType, RetrievalStrategy
+        primary, _ = STRATEGY_MAP[QueryType.COMPARATIVE]
+        assert primary == RetrievalStrategy.MULTI_QUERY
