@@ -38,11 +38,14 @@ jobs:
       run: python -c "from utils.models import Document; print('Import successful')"
     - name: Run unit tests with coverage
       continue-on-error: true
-      run: pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml:coverage.xml --cov-omit='tests/*'
+      run: python -m pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml:coverage.xml
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        fail_ci_if_error: true
+        verbose: true
 
   docker-build:
     runs-on: ubuntu-latest
