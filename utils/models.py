@@ -234,6 +234,7 @@ class QueryTrace(BaseModel):
     end_time: Optional[datetime] = None
     total_duration_ms: float = PField(default=0.0, description="Total duration in milliseconds")
     events: list[TraceEvent] = PField(default_factory=list, description="Sequence of node events")
+    steps: list[dict[str, Any]] = PField(default_factory=list, description="Low-level trace step records")
     final_answer: Optional[str] = None
     confidence: float = PField(default=0.0, description="Answer confidence")
     status: str = PField(default="pending", description="Query status: pending, completed, error")
