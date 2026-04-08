@@ -23,8 +23,8 @@ class RetrievalExecutor:
     """Executes retrieval strategies."""
 
     def __init__(self):
-        self.embedder = get_embedder()
-        self.vector_store = get_vector_store()
+        self._embedder = get_embedder()
+        self._store = get_vector_store()
         self.bm25 = None
         self.corpus = []
         self.metadata = []
