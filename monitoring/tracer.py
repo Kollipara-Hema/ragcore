@@ -189,7 +189,7 @@ class LangfuseTracer:
 
     def _record_step(self, trace_id: str, step_name: str, data: dict):
         if trace_id in self._traces:
-            self._traces[trace_id]["steps"].append({
+            self._traces[trace_id].steps.append({
                 "step": step_name,
                 "data": data,
                 "ts": time.monotonic(),

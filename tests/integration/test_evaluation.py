@@ -155,25 +155,23 @@ class TestObservabilityIntegration:
     @pytest.mark.asyncio
     async def test_agent_graph_with_tracing(self):
         """Test that agent graph integrates with tracing."""
-        # Mock the graph to avoid full initialization
-        mock_graph = MagicMock()
-        mock_graph.ainvoke = AsyncMock(return_value={
+    
+        graph = build_graph()
+
+        graph.ainvoke = AsyncMock(return_value={
             "answer": "Test answer",
             "confidence": 0.8,
             "citations": []
         })
 
-        with patch('agent.graph.build_graph', return_value=mock_graph):
-            graph = build_graph()
-            assert hasattr(graph, 'ainvoke')
+        assert hasattr(graph, 'ainvoke')
 
-            # Test invocation
-            state = initial_state("Test query")
-            result = await graph.ainvoke(state)
+        # Test invocation
+        state = initial_state("Test query")
+        result = await graph.ainvoke(state)
 
-            assert result["answer"] == "Test answer"
-            # Verify graph was called
-            mock_graph.ainvoke.assert_called_once()
+        assert result["answer"] == "Test answer"
+        graph.ainvoke.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_trace_retrieval_api_mock(self):
