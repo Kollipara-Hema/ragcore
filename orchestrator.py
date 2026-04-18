@@ -183,17 +183,41 @@ class RAGOrchestrator:
             # ─────────────────────────────────────────────────────────────────
             # STEP 5: GENERATE — Call the LLM to produce the final answer
             # ─────────────────────────────────────────────────────────────────
-            # Sends the prompt to the LLM (OpenAI/Anthropic/etc.)
-            # Checks cache first — returns cached answer if same query was asked before
-            # Returns the answer text along with token usage and timing
-            result = await self._generation.generate(
-                query=request.query,
-                prompt=prompt,
-                query_type=decision.query_type,
-                strategy_used=decision.primary_strategy,
-            )
-            # Log generation results (tokens used, latency, whether cached)
-            await self._tracer.log_generation(trace_id, result)
+            if settings.generation_strategy == "self_rag":
+                # NOTE: SelfRAGGenerator's internal claim extraction and verification
+                # steps are currently hardcoded to OpenAI (gpt-4o-mini). If
+                # LLM_PROVIDER is not OpenAI, ensure OPENAI_API_KEY is set, or
+                # Self-RAG will fail at the verification step.
+                from generation.advanced_generation import SelfRAGGenerator
+                self_rag_gen = SelfRAGGenerator(
+                    max_additional_retrievals=settings.self_rag_max_additional_retrievals
+                )
+                self_rag_result = await self_rag_gen.generate(
+                    query=request.query,
+                    initial_chunks=reranked,
+                    prompt_builder=self._prompt_builder,
+                    retrieval_executor=self._executor,
+                    llm_service=self._generation,
+                )
+                gen_answer = self_rag_result.answer
+                gen_citations = prompt.citations  # Built from reranked chunks in Step 4
+                gen_model = settings.llm_model
+                gen_tokens = self_rag_result.total_tokens
+                gen_cached = False
+            else:
+                # Standard path: single LLM call with cache support
+                result = await self._generation.generate(
+                    query=request.query,
+                    prompt=prompt,
+                    query_type=decision.query_type,
+                    strategy_used=decision.primary_strategy,
+                )
+                await self._tracer.log_generation(trace_id, result)
+                gen_answer = result.answer
+                gen_citations = result.citations
+                gen_model = result.model_used
+                gen_tokens = result.total_tokens
+                gen_cached = result.cached
 
         except Exception as e:
             # If anything goes wrong, log the error and re-raise it
@@ -211,26 +235,23 @@ class RAGOrchestrator:
         # ─────────────────────────────────────────────────────────────────────
         # Convert internal objects to a clean API-friendly format
         return QueryResponse(
-            answer=result.answer,  # The LLM's generated text answer
-
-            # Convert Citation objects to dicts for JSON serialization
+            answer=gen_answer,
             citations=[
                 {
-                    "source": c.source,    # Original file path or URL
-                    "title": c.title,      # Document title
-                    "excerpt": c.excerpt,  # Short quote from the chunk
-                    "score": round(c.score, 4),  # Relevance score 0.0-1.0
-                    "doc_id": c.doc_id,    # Unique document identifier
+                    "source": c.source,
+                    "title": c.title,
+                    "excerpt": c.excerpt,
+                    "score": round(c.score, 4),
+                    "doc_id": c.doc_id,
                 }
-                for c in result.citations
+                for c in gen_citations
             ],
-
-            query_type=decision.query_type.value,          # "factual", "semantic", etc.
-            strategy_used=decision.primary_strategy.value, # "hybrid", "keyword", etc.
-            model_used=result.model_used,                  # "gpt-4o-mini", etc.
-            total_tokens=result.total_tokens,              # Total tokens consumed
-            latency_ms=round(total_latency, 2),            # How long the query took
-            cached=result.cached,                          # Was this a cached response?
+            query_type=decision.query_type.value,
+            strategy_used=decision.primary_strategy.value,
+            model_used=gen_model,
+            total_tokens=gen_tokens,
+            latency_ms=round(total_latency, 2),
+            cached=gen_cached,
         )
 
     async def stream_query(
