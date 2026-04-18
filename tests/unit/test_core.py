@@ -110,25 +110,5 @@ class TestImports:
 
 
 
-class TestEvaluator:
-    """Test Evaluator with golden dataset."""
-
-    def setup_method(self, method):
-        from evaluation.evaluator import Evaluator
-        self.evaluator = Evaluator()
-
-    def test_empty_samples(self):
-        import tempfile
-        import os
-        # Write a CSV with only a header (zero data rows)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            f.write("query,answer\n")
-            tmp_path = f.name
-        try:
-            metrics = self.evaluator.evaluate(tmp_path)
-            assert metrics["sample_count"] == 0
-        finally:
-            os.unlink(tmp_path)
-
 
 

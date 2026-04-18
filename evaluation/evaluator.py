@@ -7,31 +7,18 @@ import time
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
-import pandas as pd
-
 logger = logging.getLogger(__name__)
 
 
 class Evaluator:
-    """RAG evaluation with golden dataset."""
+    """Deprecated placeholder. Use RAGEvaluator or RetrievalEvaluator directly."""
 
     def evaluate(self, csv_path: str) -> Dict[str, Any]:
-        """Evaluate using golden Q&A dataset."""
-        df = pd.read_csv(csv_path)
-
-        # Mock calculations
-        retrieval_recall_5 = 0.85
-        answer_relevance = 0.78
-        faithfulness_score = 0.82
-        hallucination_rate = 0.12
-
-        return {
-            "retrieval_recall@5": retrieval_recall_5,
-            "answer_relevance": answer_relevance,
-            "faithfulness_score": faithfulness_score,
-            "hallucination_rate": hallucination_rate,
-            "sample_count": len(df)
-        }
+        raise NotImplementedError(
+            "Evaluator.evaluate() was a placeholder with hardcoded values. "
+            "Use RAGEvaluator.run_against_orchestrator() to evaluate against a live system, "
+            "or RetrievalEvaluator / GenerationEvaluator for component-level metrics."
+        )
 
 
 @dataclass
