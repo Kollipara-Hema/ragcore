@@ -18,6 +18,9 @@ from utils.models import Chunk, RetrievedChunk, RetrievalStrategy
 
 logger = logging.getLogger(__name__)
 
+# Module-level singleton — all callers in the same process share one instance.
+_vector_store_instance: Optional[BaseVectorStore] = None
+
 
 class BaseVectorStore(ABC):
     @abstractmethod
@@ -202,7 +205,17 @@ class FAISSVectorStore(BaseVectorStore):
 
 
 def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
+    global _vector_store_instance
+    if _vector_store_instance is not None:
+        return _vector_store_instance
     provider = provider or settings.vector_store_provider
     if provider == VectorStoreProvider.WEAVIATE:
         logger.warning("Weaviate provider selected but not implemented; falling back to FAISS")
-    return FAISSVectorStore()
+    _vector_store_instance = FAISSVectorStore()
+    return _vector_store_instance
+
+
+def reset_vector_store() -> None:
+    """Reset the singleton to None. For tests and future 'clear store' operations only."""
+    global _vector_store_instance
+    _vector_store_instance = None
