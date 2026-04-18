@@ -95,7 +95,7 @@ Example: ["The company was founded in 2010.", "Revenue was $4.2B in Q3."]"""
 
     # Prompt to verify if a claim is supported by provided context
     VERIFICATION_PROMPT = """Does the following context support this claim?
-Answer ONLY with JSON: {"supported": true/false, "evidence": "quote from context or empty string"}
+Answer ONLY with JSON: {{"supported": true/false, "evidence": "quote from context or empty string"}}
 
 Claim: {claim}
 
@@ -274,7 +274,14 @@ Context:
                 response_format={"type": "json_object"},
             )
             data = json.loads(response.choices[0].message.content)
-            claims = data if isinstance(data, list) else data.get("claims", [])
+            if isinstance(data, list):
+                claims = data
+            elif isinstance(data, dict):
+                claims = data.get("claims") or data.get("statements") or data.get("items") or []
+                if not isinstance(claims, list):
+                    claims = []
+            else:
+                claims = []
             return [c for c in claims if isinstance(c, str) and len(c) > 10]
 
         except Exception as e:
@@ -303,7 +310,14 @@ Context:
                 response_format={"type": "json_object"},
             )
             data = json.loads(response.choices[0].message.content)
-            return data.get("supported", False), data.get("evidence", "")
+            if isinstance(data, dict):
+                supported = data.get("supported", False)
+                if isinstance(supported, str):
+                    supported = supported.lower() in ("true", "yes", "supported", "1")
+                return bool(supported), data.get("evidence", "")
+            # LLM returned a bare value despite json_object mode
+            raw = str(data).lower().strip("'\"")
+            return raw in ("true", "yes", "supported", "1"), ""
 
         except Exception as e:
             logger.warning("Claim verification failed: %s", e)
