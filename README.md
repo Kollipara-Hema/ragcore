@@ -388,6 +388,9 @@ not blocking.
 
 ## Project Artifacts
 
+- [AUDIT.md](AUDIT.md) — Module-by-module assessment of what's implemented
+  versus what's scaffolded or deferred, with README claims rated REAL / PARTIAL /
+  OVERSTATED and five previously-undocumented bugs.
 - [docs/debugging-notes.md](docs/debugging-notes.md) — Real bugs caught
   during development: vector store singleton, UUID/corpus-ID mismatch, metric
   inflation from duplicate chunk IDs, Self-RAG prompt escaping. Each entry
