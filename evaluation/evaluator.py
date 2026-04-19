@@ -316,7 +316,7 @@ class RAGEvaluator:
         Run evaluation against a live orchestrator.
         golden_dataset: list of {query, ground_truth, relevant_doc_ids}
         """
-        from ..utils.models import QueryRequest
+        from utils.models import QueryRequest
 
         samples: list[EvalSample] = []
         for item in golden_dataset:
