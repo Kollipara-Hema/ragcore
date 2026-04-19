@@ -173,6 +173,7 @@ class QueryResponse(BaseModel):
     total_tokens: int
     latency_ms: float
     cached: bool
+    self_rag_stats: Optional[dict] = None
 
 
 class IngestRequest(BaseModel):
