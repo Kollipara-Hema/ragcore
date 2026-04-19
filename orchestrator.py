@@ -183,6 +183,7 @@ class RAGOrchestrator:
             # ─────────────────────────────────────────────────────────────────
             # STEP 5: GENERATE — Call the LLM to produce the final answer
             # ─────────────────────────────────────────────────────────────────
+            _self_rag_stats: Optional[dict] = None
             if settings.generation_strategy == "self_rag":
                 # NOTE: SelfRAGGenerator's internal claim extraction and verification
                 # steps are currently hardcoded to OpenAI (gpt-4o-mini). If
@@ -204,6 +205,13 @@ class RAGOrchestrator:
                 gen_model = settings.llm_model
                 gen_tokens = self_rag_result.total_tokens
                 gen_cached = False
+                _self_rag_stats = {
+                    "verified_claims": self_rag_result.verified_claims,
+                    "unsupported_claims": self_rag_result.unsupported_claims,
+                    "additional_retrievals": self_rag_result.additional_retrievals,
+                    "faithfulness_score": self_rag_result.faithfulness_score,
+                    "regenerated": self_rag_result.additional_retrievals > 0,
+                }
             else:
                 # Standard path: single LLM call with cache support
                 result = await self._generation.generate(
@@ -252,6 +260,7 @@ class RAGOrchestrator:
             total_tokens=gen_tokens,
             latency_ms=round(total_latency, 2),
             cached=gen_cached,
+            self_rag_stats=_self_rag_stats,
         )
 
     async def stream_query(
