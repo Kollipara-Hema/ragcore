@@ -114,7 +114,17 @@ class RetrievalEvaluator:
                 continue
 
             relevant_set = set(sample.relevant_doc_ids)
-            retrieved = sample.retrieved_doc_ids
+
+            # FiQA ground-truth labels are at the document level, but retrieval
+            # operates at the chunk level. Multiple chunks from the same document
+            # share a doc_id after UUID translation. Deduping by first-occurrence
+            # rank aligns metric granularity with label granularity.
+            seen: set[str] = set()
+            retrieved: list[str] = []
+            for d in sample.retrieved_doc_ids:
+                if d not in seen:
+                    seen.add(d)
+                    retrieved.append(d)
 
             # Hit rate
             if any(d in relevant_set for d in retrieved):
