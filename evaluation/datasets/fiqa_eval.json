@@ -1,0 +1,497 @@
+[
+  {
+    "query_id": "10385",
+    "query": "When should I start saving/investing for my retirement?",
+    "ground_truth": "Start as early as possible and you will want to kiss your younger self when you get to retirement age. I know you (and everyone else at that age) thinks that they don't make enough to start saving and leans towards waiting until you get established in your career and start making better money. Don't put it off. Save some money out of each paycheck even if it is only $50.  Trust me, as little as you make now, you probably have more disposable income than you will when you make twice as much. Your lifestyle always seems to keep up with your income and you will likely ALWAYS feel like you don't have money left over to save. The longer you wait, the more you are going to have to stuff away to make up for that lost time you could have been compounding your returns as shown in this table (assuming 9.4 percent average gain annually, which has been the average return on the stock market from 1926-2010).  I also suggest reading this article when explains it in more detail: Who Wants to be a millionaire?",
+    "relevant_doc_ids": [
+      "417787",
+      "463043",
+      "468010",
+      "392371",
+      "45174",
+      "430014"
+    ]
+  },
+  {
+    "query_id": "1927",
+    "query": "How does a Non US citizen gain SEC Accredited Investor Status?",
+    "ground_truth": "Here are the SEC requirements: The federal securities laws define the term accredited investor in   Rule 501 of Regulation D as: a bank, insurance company, registered investment company, business development company, or small business investment company; an employee benefit plan, within the meaning of the Employee Retirement Income Security Act, if a bank, insurance company, or   registered investment adviser makes the investment decisions, or if   the plan has total assets in excess of $5 million; a charitable organization, corporation, or partnership with assets exceeding $5 million; a director, executive officer, or general partner of the company selling the securities; a business in which all the equity owners are accredited investors; a natural person who has individual net worth, or joint net worth with the person\u2019s spouse, that exceeds $1 million at the time of the   purchase, excluding the value of the primary residence of such person; a natural person with income exceeding $200,000 in each of the two most recent years or joint income with a spouse exceeding $300,000 for   those years and a reasonable expectation of the same income level in   the current year; or a trust with assets in excess of $5 million, not formed to acquire the securities offered, whose purchases a sophisticated person makes. No citizenship/residency requirements.",
+    "relevant_doc_ids": [
+      "63"
+    ]
+  },
+  {
+    "query_id": "615",
+    "query": "Canadian accepting money electronically from Americans",
+    "ground_truth": "I am not aware of a version of Interac available in the U.S., but there are alternative ways to receive money: Cheque. The problem with mailed cheques is that they take time to deliver, and time to clear. If you ship your wares before the cheque has cleared and the cheque is bad, you're out the merchandise. COD. How this works is you place a COD charge on your item at the post office in the amount you charge the customer. The post office delivers the package on the other end when the customer pays. The post office pays you at the time you send the package. There is a fee for this, talk to your local post office or visit the Canada Post website. Money order. Have your U.S. customers send an International Money Order, not a Domestic Money Order. Domestic money orders can only be cashed at a U.S. post office. The problem here is again delivery time, and verifying your customer sent an International Money Order. It can be a pain to have to send back a Domestic Money Order to a customer explaining what they have to do to pay you, even more painful if you don't catch the error before shipping your wares. Credit Card. There are a number of companies offering credit card processing that are much cheaper than a bank. PayPal, Square, and Intuit are three such companies offering these services. After I did my investigations I found Square to be the best deal for me. Please do your own research on these companies (and banks!) and find out which one makes the most sense for you. Some transaction companies may forbid the processing of payment for e-cig materials as they my be classed as tobacco.",
+    "relevant_doc_ids": [
+      "204288"
+    ]
+  },
+  {
+    "query_id": "4190",
+    "query": "What is best investment which is full recession proof?",
+    "ground_truth": "Can anyone suggest all type of investments in India which are recession proof? There are no such investments. Quite a few think bullions like Gold tend to go up during recession, which is true to an extent; however there are enough articles that show it is not necessarily true. There are no fool proof investments. The only fool proof way is to mitigate risks. Have a diversified portfolio that has Debt [Fixed Deposits, Bonds] and equity [Stocks], Bullion [Gold], etc. And stay invested for long as the effects tend to cancel out in the long run.",
+    "relevant_doc_ids": [
+      "147251",
+      "70575"
+    ]
+  },
+  {
+    "query_id": "3783",
+    "query": "Are there any statistics that support the need for Title Insurance?",
+    "ground_truth": "There seems to be no such information available. What is available is that number of claims are high and the Title Insurance companies have gone bankrupt as per the wikipedia article In 2003, according to ALTA, the industry paid out about $662 million in claims, about 4.3% percent of the $15.7 billion taken in as premiums. By comparison, the boiler insurance industry, which like title insurance requires an emphasis on inspections and risk analysis, pays 25% of its premiums in claims. However, no reference to the relationship between when claims are made and when policies are issued is found. As of 2008, the top three remaining title insurers all lost money, while LandAmerica went bankrupt and sold its title business to Fidelity http://en.wikipedia.org/wiki/Title_insurance#Industry_profitability The amount of premium received and claim made can be got from some of the companies balance sheet. For Fidelity its at http://www.investor.fnf.com/releasedetail.cfm?CompID=FNT&ReleaseID=363350 The article in here mentions the claims ratio as 5%. Refer http://www.federaltitle.com/blog/title-insuance-qaa",
+    "relevant_doc_ids": [
+      "585341",
+      "354409",
+      "78787",
+      "479376"
+    ]
+  },
+  {
+    "query_id": "3501",
+    "query": "Paid cash for a car, but dealer wants to change price",
+    "ground_truth": "Let me get this straight. I would stand my ground. Your son negotiated in good faith. Either they messed up, or they are dishonest. Either way your son wasn't the one supposed to know all the internal rules. I don't think it matters if they cashed the check or not. I would tell them if they have cashed it, that is even more evidence the deal was finalized. But even if they they didn't cash it, it only proves they are very disorganized. If for some reason your son feels forced to redo the deal, have him start the negotiations way below the price that was agreed to.  If the deal for some strange reason gets voided don't let him agree to some sort of restocking fee.",
+    "relevant_doc_ids": [
+      "406225",
+      "131255",
+      "247371",
+      "233479",
+      "490352",
+      "44085",
+      "87351",
+      "357280",
+      "253596",
+      "150278",
+      "120080",
+      "164702",
+      "484734"
+    ]
+  },
+  {
+    "query_id": "2335",
+    "query": "Giving kids annual tax free gift of $28,000",
+    "ground_truth": "Why limit yourself to $28K per year?  If you pay the tuition directly to the institution, it does not count against your annual or lifetime gift-giving totals.  You could pay the entire tuition each year with no tax consequences. The only thing you can't do if you want to go this route is give the money to your children; that's what causes the gift tax to kick in.  The money must be paid directly to the school.",
+    "relevant_doc_ids": [
+      "162212",
+      "214685",
+      "361821"
+    ]
+  },
+  {
+    "query_id": "1769",
+    "query": "Is it financially advantageous and safe to rent out my personal car?",
+    "ground_truth": "The moment that you start to rent your car to strangers you are talking about using your car as a business. Will it be financially advantageous? If you can convince somebody to rent your vehicle for more than your required monthly payments then it might be. Of course you have to determine what would be the true cost of ownership for you. It could include your auto loan, and insurance, but you would be saving on the garage costs. Of course if you don't have it rented 100% of the time you will still have some costs. Your insurance company will need to know about your plan. They charge based on the risk. If you aren't honest about the situation they won't cover you if something goes wrong. The local government may want to know. They charge different car registration fees for businesses. If there are business taxes they will want that.  Taxes. you are running a business so everybody from the federal governemnt to the local government may want a cut. Plus you will have to depreciate the value of the item. Turning the item from a personal use item to a business item can have tax issues. If you don't own it 100% the lender may also have concerns about making sure their collateral survives. Is it safe? and from the comments to the question :  Should I do a contract or something that would protect me? Nope. it isn't safe unless you do have a contract. Of course that contract will have to be drawn up by a lawyer to make sure it protects you from theft, negligence, breach of contract.... You will have to be able to not just charge rent, but be able to repossess the car if they don't return it on time. You will have to be able to evaluate if the renter is trustworthy, or you may find your car is in far worse shape if you can even get it back.",
+    "relevant_doc_ids": [
+      "329620",
+      "254499"
+    ]
+  },
+  {
+    "query_id": "8090",
+    "query": "Do corporate stock splits negate share repurchase programs?",
+    "ground_truth": "No, I think you are misunderstanding the Math. Stock splits are a way to control relatively where the price per share can be for a company as companies can split or reverse split shares which would be similar to taking dimes and giving 2 nickels for each dime, each is 10 cents but the number of coins has varied. This doesn't create any additional value since it is still 10 cents whether it is 1 dime or 2 nickels.  Share repurchase programs though are done to prevent dilution as executives and those with incentive-stock options may get shares in the company that increase the number of outstanding shares that would be something to note.",
+    "relevant_doc_ids": [
+      "539664",
+      "193266"
+    ]
+  },
+  {
+    "query_id": "1519",
+    "query": "Double-Taxation of Royalties paid for in Korea to a US Company",
+    "ground_truth": "If treaties are involved for something other than exempting student wages on campus, you shouldn't do it yourself but talk to a licensed US tax adviser (EA/CPA licensed in your state) who's well-versed in the specific treaty. Double taxation provisions generally mean that you can credit the foreign tax paid to your US tax liability, but in the US you can do that regardless of treaties (some countries don't allow that). Also, if you're a US tax resident (or even worse - a US citizen), the royalties related treaty provision might not even apply to you at all (see the savings clause). FICA taxes are generally not part of the income tax treaties but totalization agreements (social security-related taxes, not income taxes). Most countries who have income tax treaties with the US - don't have social security totalization agreements. Bottom line - talk to a licensed professional.",
+    "relevant_doc_ids": [
+      "310190"
+    ]
+  },
+  {
+    "query_id": "9186",
+    "query": "Can I buy only 4 shares of a company?",
+    "ground_truth": "Yes you can. it's called Odd Lot",
+    "relevant_doc_ids": [
+      "194404",
+      "279288",
+      "455609",
+      "451729",
+      "229788",
+      "281423",
+      "312154",
+      "539418"
+    ]
+  },
+  {
+    "query_id": "6387",
+    "query": "What factors make someone buy or sell a stock?",
+    "ground_truth": "\"First, note that a share represents a % of ownership of a company. In addition to the right to vote in the management of the company [by voting on the board of directors, who hires the CEO, who hires the VPs, etc...], this gives you the right to all future value of the company after paying off expenses and debts. You will receive this money in two forms: dividends approved by the board of directors, and the final liquidation value if the company closes shop. There are many ways to attempt to determine the value of a company, but the basic theory is that the company is worth a cashflow stream equal to all future dividends + the liquidation value. So, the market's \"\"goal\"\" is to attempt to determine what that future cash flow stream is, and what the risk related to it is. Depending on who you talk to, a typical stock market has some degree of 'market efficiency'. Market efficiency is basically a comment about how quickly the market reacts to news. In a regulated marketplace with a high degree of information available, market efficiency should be quite high. This basically means that stock markets in developed countries have enough traders and enough news reporting that as soon as something public is known about a company, there are many, many people who take that information and attempt to predict the impact on future earnings of the company. For example, if Starbucks announces earnings that were 10% less than estimated previously, the market will quickly respond with people buying Starbucks shares lowering their price on the assumption that the total value of the Starbucks company has decreased. Most of this trading analysis is done by institutional investors. It isn't simply office workers selling shares on their break in the coffee room, it's mostly people in the finance industry who specialize in various areas for their firms, and work to quickly react to news like this. Is the market perfectly efficient? No. The psychology of trading [ie: people panicking, or reacting based on emotion instead of logic], as well as any inadequacy of information, means that not all news is perfectly acted upon immediately. However, my personal opinion is that for large markets, the market is roughly efficient enough that you can assume that you won't be able to read the newspaper and analyze stock news in a way better than the institutional investors. If a market is generally efficient, then it would be very difficult for a group of people to manipulate it, because someone else would quickly take advantage of that. For example, you suggest that some people might collectively 'short AMZN' [a company worth half a trillion dollars, so your nefarious group would need to have $5 Billion of capital just to trade 1% of the company]. If someone did that, the rest of the market would happily buy up AMZN at reduced prices, and the people who shorted it would be left holding the bag. However, when you deal with smaller items, some more likely market manipulation can occur. For example, when trading penny stocks, there are people who attempt to manipulate the stock price and then make a profitable trade afterwards. This takes advantage of the low amount of information available for tiny companies, as well as the limited number of institutional investors who pay attention to them. Effectively it attempts to manipulate people who are not very sophisticated. So, some manipulation can occur in markets with limited information, but for the most part prices are determined by the 'market consensus' on what the future profits of a company will be.  Additional example of what a share really is: Imagine your neighbor has a treasure chest on his driveway: He gathers the neighborhood together, and asks if anyone wants to buy a % of the value he will get from opening the treasure chest. Perhaps it's a glass treasure chest, and you can mostly see inside it. You see that it is mostly gold and silver, and you weigh the chest and can see that it's about 100 lbs all together. So in your head, you take the price of gold and silver, and estimate how much gold is in the chest, and how much silver is there. You estimate that the chest has roughly $1,000,000 of value inside. So, you offer to buy 10% of the chest, for $90k [you don't want to pay exactly 10% of the value of the company, because you aren't completely sure of the value; you are taking on some risk, so you want to be compensated for that risk].  Now assume all your neighbors value the chest themselves, and they come up with the same approximate value as you. So your neighbor hands out little certificates to 10 of you, and they each say \"\"this person has a right to 10% of the value of the treasure chest\"\". He then calls for a vote from all the new 'shareholders', and asks if you want to get the money back as soon as he sells the chest, or if you want him to buy a ship and try and find more chests. It seems you're all impatient, because you all vote to fully pay out the money as soon as he has it. So your neighbor collects his $900k [$90k for each 10% share, * 10], and heads to the goldsmith to sell the chest. But before he gets there, a news report comes out that the price of gold has gone up. Because you own a share of something based on the price of gold, you know that your 10% treasure chest investment has increased in value. You now believe that your 10% is worth $105k. You put a flyer up around the neighborhood, saying you will sell your share for $105k. Because other flyers are going up to sell for about $103-$106k, it seems your valuation was mostly consistent with the market.  Eventually someone driving by sees your flyer, and offers you $104k for your shares. You agree, because you want the cash now and don't want to wait for the treasure chest to be sold. Now, when the treasure chest gets sold to the goldsmith, assume it sells for $1,060,000 [turns out you underestimated the value of the company]. The person who bought your 10% share will get $106k [he gained $2k]. Your neighbor who found the chest got $900k [because he sold the shares earlier, when the value of the chest was less clear], and you got $104k, which for you was a gain of $14k above what you paid for it. This is basically what happens with shares. Buy owning a portion of the company, you have a right to get a dividend of future earnings. But, it could take a long time for you to get those earnings, and they might not be exactly what you expect. So some people do buy and sell shares to try and earn money, but the reason they are able to do that is because the shares are inherently worth something - they are worth a small % of the company and its earnings.\"",
+    "relevant_doc_ids": [
+      "554996",
+      "58009",
+      "217837"
+    ]
+  },
+  {
+    "query_id": "696",
+    "query": "Executor of will",
+    "ground_truth": "I strongly doubt that being executor will make the assets of the estate vulnerable to a suit against him personally. The estate is it's own separate legal entity with its own TIN. Only creditors against the estate itself can make claims against it and after all creditors are paid, then the balance is distributed in accordance with the terms of the will. Unless he has commingled assets and treated estate assets as his own, the legal separation should be quite strong.  Whether his personal assets are at risk, remember that the opposition will likely overstate their case to try to scare him into settling. If the business was organized as an LLP or LLC, his personal assets should be pretty safe. If it was a sole proprietorship, he has occasion to worry.",
+    "relevant_doc_ids": [
+      "112987",
+      "90572"
+    ]
+  },
+  {
+    "query_id": "671",
+    "query": "Does the low CAD positively or negatively impact Canadian Investors?",
+    "ground_truth": "If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments. If you buy US stocks when the CAD is low and sell when the CAD is higher any profits from gains from the stock investment will be reduced and any losses will be increased. If you are just starting out you may be better off investing in your own country to avoid any currency risk adding to your stock market risk.",
+    "relevant_doc_ids": [
+      "148208",
+      "277482",
+      "213373"
+    ]
+  },
+  {
+    "query_id": "1622",
+    "query": "How to properly collect money from corporate sponsors?",
+    "ground_truth": "http://www.legalzoom.com/business-management/starting-your-business/turn-your-calling Answering this, but I expect an expert to give an answer with some insight too There are many more steps, but not having done them personally I suggest you read the legalzoom.com site.",
+    "relevant_doc_ids": [
+      "323662",
+      "369577"
+    ]
+  },
+  {
+    "query_id": "3436",
+    "query": "Health insurance lapsed due to employer fraud. How to get medications while in transition?",
+    "ground_truth": "Check with the manufacturer of the name brand medication.  Most of them have programs to help people who need their medication but can not afford it.  They may be able to send you coupons for discounted or free medication.  You can go to a free clinic.  If your income is low enough the free clinic will provide medicine until you can get back on insurance.   You can do what alot of people who work hard and do not have insurance do and pay for it outof pocket.  You can talk to your doctor and see if there is an alternative to the expensive medicine that your insurance used to pay for. It may not be as effective or may have other side affects but many people are forced to go with these alternatives.   You situation is certianly unfortunate but also not terribly uncommon.  You probably also have recourse against the former employer but if they commited fraud, and faked your insurance there probably is not alot of money to recoup.  If it was a person who commited fraud then you may be able to get a judgement against them that would survive bankruptcy and the business but it will probably be at least 5 years before you can recoup anything possibly much longer and your attorney will probably not take it on contingency.",
+    "relevant_doc_ids": [
+      "517510",
+      "175537"
+    ]
+  },
+  {
+    "query_id": "3616",
+    "query": "For the first time in my life, I'm going to be making real money\u2026what should I do with it?",
+    "ground_truth": "\"Fool's 13 steps to invest is a good starting point. Specifically, IFF all your credit cards are paid, and you made sure you've got no outstanding liabilities (that also accrues interest), stock indexes might be a good place for 5-10 years timeframes. For grad school, I'd probably look into cash ISA (or local equivalent thereof) -the rate of return is going to be lower, but having it in a separate account at least makes it mentally \"\"out of sight - out of mind\"\", so you can make sure the money's there WHEN you need it.\"",
+    "relevant_doc_ids": [
+      "141032",
+      "364666",
+      "335436",
+      "480402",
+      "474896"
+    ]
+  },
+  {
+    "query_id": "7502",
+    "query": "How do ETF fees get applied?",
+    "ground_truth": "The ETF price quoted on the stock exchange is in principle not referenced to NAV. The fund administrator will calculate and publish the NAV net of all fees, but the ETF price you see is determined by the market just like for any other security.  Having said that, the market will not normally deviate greatly from the NAV of the fund, so you can safely assume that ETF quoted price is net of relevant fees.",
+    "relevant_doc_ids": [
+      "409995"
+    ]
+  },
+  {
+    "query_id": "9464",
+    "query": "Simple and safe way to manage a lot of cash",
+    "ground_truth": "Overall I think your idea is sound. The key here is to  choose that 401k provider wisely and have a specific asset allocation plan (like Joe mentioned) Summary of this approach: Pluses:  Minuses: I'd consider Vanguard for simple, no frills investing. If you're looking to get into choosing stocks, check out the Motley Fool.",
+    "relevant_doc_ids": [
+      "598440",
+      "71299",
+      "463636",
+      "575794"
+    ]
+  },
+  {
+    "query_id": "632",
+    "query": "What is the field \u201cFolio\u201d in an accounting book for?",
+    "ground_truth": "It's used as a reference column:  In journals folio coloumn is used to mention the reference or   \u201caddress\u201d of ledger in which the journal entry has been posted thus   giving an easy access and also easily understanding whether all the   entries has been posted in the relevant accounts or not.",
+    "relevant_doc_ids": [
+      "568501"
+    ]
+  },
+  {
+    "query_id": "8480",
+    "query": "Why can I see/trade VIX but not S&P/TSX 60 VIX?",
+    "ground_truth": "S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes. This is why the intra-day price fluctuates on a graph like a traded product.  Although VIXC can't be traded, it can still be used as an important signal for traders. The excerpt is from slide 12, more information can be found here. https://www.m-x.ca/f_publications_en/vixc_presentation_en.pdf Futures (stage 2) Options, ETFs, OTC Products (stage 3) have not been implemented.",
+    "relevant_doc_ids": [
+      "461165",
+      "25130"
+    ]
+  },
+  {
+    "query_id": "3183",
+    "query": "Is it better to buy this used car from Craigslist or from a dealership?",
+    "ground_truth": "\"I do not think you are missing much.  One thing you have right is low cost cars depreciate almost nothing.  One thing you are missing is your satisfaction index.  Driving a 200K car for 4 years requires a bit of motivation when your friends are driving new cars.  Typically you need a larger goal to keep you focused.  That might be saving money, getting out of debt, or obtaining an education. Buying a car from a private party, Craigslist is only one source, can save both parties money as the \"\"middle man\"\" is cut out. If you have the ability to do so, one can save a lot of money by doing your own brakes.  The info is up on youtube, and I typically \"\"earn\"\" between 100-300/hour doing this work myself. Most of the time warranties do not pay off.  At the core, they are insurance and insurance companies are in the business to make money.  If your car is likely to need repairs a policy may be unattainable or very high in price.\"",
+    "relevant_doc_ids": [
+      "519173",
+      "205766",
+      "468984",
+      "389718"
+    ]
+  },
+  {
+    "query_id": "10595",
+    "query": "Why buying an inverse ETF does not give same results as shorting the ETF",
+    "ground_truth": "Suppose that the ETF is currently at a price of $100.  Suppose that the next day it moves up 10% (to a price of $110) and the following day it moves down 5% (to a price of $104.5).  Over these two days the ETF has had a net gain of 4.5% from its original price. The inverse ETF reverses the daily gains/losses of the base ETF.  Suppose for simplicity that the inverse ETF also starts out at a price of $100.  So on the first day it goes down 10% (to $90) and on the second day it goes up 5% (to $94.5).  Thus over the two days the inverse ETF has had a net loss of 5.5%. The specific dollar amounts do not matter here.  The result is that the ETF winds up at 110%*95% = 104.5% of its original price and the inverse ETF is at 90%*105% = 94.5% of its original price.  A similar example is given here. As suggested by your quote, this is due to compounding.  A gain of X% followed by a loss of Y% (compounded on the gain) is not in general the same as a loss of X% followed by a gain of Y% (compounded on the loss).  Or, more simply put, if something loses 10% of its value and then gains 10% of its new value, it will not return to its original value, because the 10% it gained was 10% of its decreased value, so it's not enough to bring it all the way back up.  Likewise if it gains 10% and then loses 10%, it will go slightly below its original value (since it lost 10% of its newly increased value).",
+    "relevant_doc_ids": [
+      "356819",
+      "39436"
+    ]
+  },
+  {
+    "query_id": "8084",
+    "query": "Where does the stock go in a collapse?",
+    "ground_truth": "Just before a crash or at the start of the crash most of the smart money would have gotten out, the remaining technical traders would be out by the time the market has dropped 10 to 15%, and some of them would be shorting their positions by now.  Most long-term buy and hold investors would stick to their guns and stay in for the long haul. Some will start to get nervous and have sleepless nights when the markets have fallen 30%+ and look to get out as well. Others stay in until they cannot stand it anymore. And some will stick it out throughout the downturn. So who are the buyers at this stage? Some are the so called bargain hunters that buy when the market has fallen over 30% (only to sell again when it falls another 20%), or maybe buy more (because they think they are dollar cost averaging and will make a packet when the price goes back up - if and when it does). Some are those with stops covering their short positions, whilst others may be fund managers and individuals looking to rebalance their portfolios. What you have to remember during both an uptrend and a downtrend the price does not move straight up or straight down. If we take the downtrend for instance, it will have lower lows and lower highs (that is the definition of a downtrend). See the chart below of the S&P 500 during the GFC falls.  As you can see just before it really started falling in Jan 08 there was ample opportunity for the smart money and the technical traders to get out of the market as the price drops below the 200 MA and it fails to make a higher peak. As the price falls from Jan 08 to Mar 08 you suddenly start getting some movement upwards. This is the bargain hunters who come into the market thinking the price is a bargain compared to 3 months ago, so they start buying and pushing the price up somewhat for a couple of months before it starts falling again. The reason it falls again is because the people who wanted to sell at the start of the year missed the boat, so are taking the opportunity to sell now that the prices have increased a bit. So you get this battle between the buyers (bulls) and seller (bears), and of course the bears are winning during this downtrend. That is why you see more sharper falls between Aug to Oct 08, and it continues until the lows of Mar 09. In short it has got to do with the phycology of the markets and how people's emotions can make them buy and/or sell at the wrong times.",
+    "relevant_doc_ids": [
+      "238024",
+      "482517"
+    ]
+  },
+  {
+    "query_id": "6340",
+    "query": "Is there an advantage to keeping a liquid emergency fund if one also has an untapped line of credit?",
+    "ground_truth": "\"People treat an emergency fund as some kind of ace-in-the-hole when it comes to financial difficulty, but it is only one of many sources of money that you can utilize. What is an emergency? First, you have to define what an emergency is.  Is it a lost job?  Is it an unplanned event (pregnancy, perhaps)?  Is it a medical emergency?  Is it the death of you or your spouse? Also, what does it mean to be unplanned?  Is being so unhappy with your job that you give a 2-week notice an emergency?  Is one month of planning an emergency?  Two? Only you can answer these questions for yourself, but they significantly shape your financial strategy.  Planning is highly dependent on your cashflow, and, for some people, it may take them a year to build enough savings to enable them to take 3 months off work.  For others, they may be able to change their spending to build up enough for 3 months in 1 month. Also, you have to consider the length of the emergency.  Job-loss is rarely permanent, but it's rarely short as well.  The current average is 30.7 weeks: that's 7 months! Money in an Emergency There are six main places that people get money during a financial emergency: A good emergency strategy takes all six of these into account.  Some emergencies may lean more on one source than the other.  However, some of these are correlated. For example, in 2008, three things happened:  the stock market crashed, unsecured debt dried up, and people faced financial emergency (lost jobs, cut wages).  If you were dependent on a stock portfolio and/or a line of credit, you'd be up a creek, because the value of your investments suddenly decreased, and you can't really tap your now significantly limited line of credit. However, if you had a one or more of cash savings, unemployment income, and unemployment insurance, you would probably have been OK. Budgeting for an emergency When you say \"\"financial emergency\"\", most people think job loss.  However, the most common cause of bankruptcy in the US is medical debt.  Depending on your insurance situation, this could be a serious risk, or it may not be.   People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk, but it's not necessarily the most prudent strategy for you. To properly budget for an emergency, you need to fully take into account what emergencies you are likely to face, and what sources of financing you would have access to given the likely factors that led to that emergency. Generally, having a savings account with some amount of liquid cash is an important part of a risk-mitigation strategy.  But it's not a panacea for every kind of emergency.\"",
+    "relevant_doc_ids": [
+      "333334",
+      "598272",
+      "108978",
+      "570632",
+      "324680",
+      "355477"
+    ]
+  },
+  {
+    "query_id": "3460",
+    "query": "How to manage household finances (income & expenses) [duplicate]",
+    "ground_truth": "\"My wife and I have close to equal incomes, and are not young.  What we have is this: Some people would classify our system as a bit draconian as we each have \"\"allowance\"\"; however, it makes sure spending does not get out of wack and we work together to meet our goals.\"",
+    "relevant_doc_ids": [
+      "471957",
+      "70305"
+    ]
+  },
+  {
+    "query_id": "6774",
+    "query": "Deal with stock PSEC",
+    "ground_truth": "It looks like it has to deal with an expiration of rights as a taxable event. I found this link via google, which states that  Not only does the PSEC shareholder have a TAXABLE EVENT, but he has   TWO taxable events. The net effect of these two taxable events has   DIFFERENT CONSEQUENCES for DIFFERENT SHAREHOLDERS depending upon their   peculiar TAX SITUATIONS. The CORRECT STATEMENT of the tax treatment of unexercised PYLDR rights   is in the N-2 on page 32, which reads in relevant part as follows: \u201c\u2026, if you receive a Subscription Right from PSEC and do not sell or   exercise that right before it expires, you should generally expect to   have (1) taxable dividend income equal to the fair market value (if   any) of the Subscription Right on the date of its distribution by PSEC   to the extent of PSEC\u2019s current and accumulated earnings and profits   and (2) a capital loss upon the expiration of such right in an amount   equal to your adjusted tax basis (if any) in such right (which should   generally equal the fair market value (if any) of the Subscription   Right on the date of its distribution by PSEC).\u201d Please note, for quarterly \u201cestimated taxes\u201d purposes, that the   DIVIDEND taxable events occur \u201cON THE DATE OF ITS DISTRIBUTION BY PSEC   (my emphasis),\u201d while the CAPITAL LOSS occurs \u201cUPON EXPIRATION OF SUCH   RIGHT\u201d (my emphasis). They do NOT occur on 31 December 2015 or some   other date. However, to my knowledge, neither of the taxable events he mentions would be taxed by 4/15. If you are worried about it, I would recommend seeing a tax professional. Otherwise I'd wait to see the tax forms sent by your brokerage.",
+    "relevant_doc_ids": [
+      "146177"
+    ]
+  },
+  {
+    "query_id": "9161",
+    "query": "Common practice for start/end date of balance sheet",
+    "ground_truth": "One's paycheck typically has a YTD (year to date) number that will end on the latest check of the year. I am paid bi-weekly, and my first 2012 check was for work 12/25 - 1/7. So, for my own balance sheet, brokerage statements and stock valuations end 12/31, but my pay ended 12/24. And then a new sheet starts.",
+    "relevant_doc_ids": [
+      "302209"
+    ]
+  },
+  {
+    "query_id": "4236",
+    "query": "What is the difference between speculating and investing?",
+    "ground_truth": "Speculation means putting your money on a hunch that some event may occur, depending on current circumstances and some future circumstances. So either you win huge or lose a lot. Investment is a conscious decision made on well defined research and grounded on good reasons i.e. economy, industry, company reports etc.  Here is a link on wikipedia with more details on  Speculation.",
+    "relevant_doc_ids": [
+      "248677",
+      "230733",
+      "261804",
+      "106864",
+      "233821",
+      "228521",
+      "349838"
+    ]
+  },
+  {
+    "query_id": "80",
+    "query": "Get a loan with low interest rate on small business",
+    "ground_truth": "\"I am going to assume your location is the US. From what I am seeing it is unlikely you will get a loan other than some government backed thing.  You are a poor risk. At 7k/month, you have above average household income.  The fact that all of your income \"\"is being washed off somewhere\"\" is a behavior problem, not a mathematical one.  For example, why do you have a car payment?  You should purchase a car for cash. Failing that, given reasonable rent (1100), reasonable car payment (400), insurances (300), other expenses (1000), you should clear at least 4000 per month in cash flow.  Where is that money going?  Here tracking spending and budgeting is your friend.  Figure out the leaks in your budget and fix them. By cutting back, and perhaps working a second job or somehow earning more you could have a down payment for a home in as little as 10 months.  That is not a very long time.   Similarly we can discuss the grocery store.  Had you prepared for this moment three years ago you could have bought the store for cash.  This would have eliminated a bunch of risk and increase the likelihood of this venture's success.  If you had started this one year ago, you could have gone in with a significant down payment.  The bank would see this as a good risk if you wanted to borrow the remainder. Instead the bank sees you as a person as a poor risk.  You spend every dime you make without much concern for the future or possible negative events (by implication of your question).  If you cannot handle the cash flows of regular employment well, how can you handle the cash flows of a grocery business?  It is far more complex, and there is far less room for error.   So how do you get a loan?  I would start with learning on how to manage your personal finance well prior to delving into the world of business.\"",
+    "relevant_doc_ids": [
+      "252473"
+    ]
+  },
+  {
+    "query_id": "2622",
+    "query": "Is the gross amount of US debt dangerous for the small investor?",
+    "ground_truth": "\"Not a lot, directly. Your biggest direct risk is that you could buy the debt, and buy it at too high a price (i.e. too low an interest rate) and not make as much money as you ought (and maybe not enough to cover inflation, especially if you buy long-term bonds at low interest rates.) The indirect risks are mostly that the debt could weigh on economic growth: There is also a question of monetary policy, inflation, and interest rates set by the Federal Reserve. Theoretically the government could be tempted to keep interest rates low (to save money) and buy its own bonds (\"\"printing money\"\"), which could cause inflation. Theoretically, they shouldn't, as price stability is one of the Fed's primary mandates. But if they did, inflation makes everything less predictable and is generally obnoxious, which makes everything more risky and drags on the economy. Also, if the nominal value of an asset rises due to inflation, you will likely need to pay taxes on that at some point if you sell it, even though its real value is the same.\"",
+    "relevant_doc_ids": [
+      "61792"
+    ]
+  },
+  {
+    "query_id": "6399",
+    "query": "How is Butterfly Trade Strategy good if the mid Strike price is already past?",
+    "ground_truth": "One way to look at a butterfly is to break it into two trades. A butterfly is actually made up of two verticals... One is a debit vertical: buy 490 put and sell the 460 put.  The other is a credit vertical: sell a 460 put and buy a 430 put.  If someone believes Apple will fall to 460, that person could do a few things. There are other strategies but this just compares the three common ones: 1) Buy a put. This is expensive and if the stock only goes to 460 you overpay for it. 2) Buy a put vertical. This is less expensive because you offset the price of your put. 3) Buy a butterfly. This is cheapest of the three because you have the vertical in #2 as well as a credit vertical on top of that to offset your cost.  The reason why someone would use the butterfly is to pay less upfront while capitalizing on a fall to 460. Of the three, this would be the better strategy to use if that happens. But REMEMBER that this only applies if the trader is right and it goes to 460. There is always a trade off for every strategy that the trader must be aware of. If the trader is wrong, and Apple goes to say 400, the put (#1) would make the most money and the butterfly(#3) would lose money while the vertical (#2) would still gain. So that is what you're sacrificing to get the benefits of the butterfly. Also helps to draw a diagram to compare the strategies.",
+    "relevant_doc_ids": [
+      "240023"
+    ]
+  },
+  {
+    "query_id": "5091",
+    "query": "Is there a term that better describes a compound annual growth rate (CAGR) when it is negative?",
+    "ground_truth": "\"Not sure why CAGR is a problem for both directions. I used to be a physicist, and, when I taught classes in graduate school, students always wanted to use the terms \"\"accelerate\"\" and \"\"decelerate\"\" to describe \"\"speeding up\"\" and \"\"slowing down\"\". But acceleration is just a vector with magnitude and direction. There's nothing special about slowing down that it needs a special name. It's just acceleration in a direction opposite to the direction of motion. I think the same thing applies here. There's nothing special about negative growth rates that they need a special name. Just stick a minus sign in front of the number and you convey the required information.\"",
+    "relevant_doc_ids": [
+      "145143",
+      "37987",
+      "87675"
+    ]
+  },
+  {
+    "query_id": "4234",
+    "query": "Is there a good rule of thumb for how much I should have set aside as emergency cash?",
+    "ground_truth": "If you are still paying off debt, then you should have about $1000 in savings and put all you can towards non-mortgage debt. If you don't have any debt besides your mortgage, then add up all of your monthly expenses including food, gas, utilities and keep 3-6 months in liquid savings. Whether you keep 3 or 6 months depends on how safe your income is. If you have a steady safe job, you might be safe with 3 months. But, if your employer is cutting back or you are in a commission based job or self employed - then lean more towards 6 months expenses. Congrats on your new home!",
+    "relevant_doc_ids": [
+      "446506",
+      "437182",
+      "160011",
+      "590623",
+      "278611",
+      "243571",
+      "244408",
+      "161301",
+      "111054",
+      "29517",
+      "61093",
+      "261619",
+      "97151"
+    ]
+  },
+  {
+    "query_id": "2554",
+    "query": "Is there a way to monitor when executives or leaders in a company sell off large holdings?",
+    "ground_truth": "Exec Insiders have to file with the SEC and some sites like secform4.com track it. But many insiders have selling programs where the sell the same amount every month or quarter so you would have to do your homework to determine if there are real signals in the activity.",
+    "relevant_doc_ids": [
+      "406481",
+      "306961"
+    ]
+  },
+  {
+    "query_id": "3393",
+    "query": "How can contractors recoup taxation-related expenses?",
+    "ground_truth": "They are already indirectly paying these expenses.  They should be built into your rates. The amount per job or per hour needs to cover what would have been your salary, plus the what would have been sick, vacation, holidays, health insurance, life insurance, disability, education, overhead for office expenses, cost of accountants...and all taxes. In many companies the general rule of thumb is that they need to charge a customer 2x the employees salary to cover all this plus make a profit. If this is a side job some of these benefits will come from your main job. Some self employed get some of these benefits from their spouse.  The company has said we give you money for the work you perform, but you need to cover everything else including paying all taxes. Depending on where you live you might have to send money in more often then once a year. They are also telling you that they will be reporting the money they give you to the government so they can claim it as a business expense. So you better make sure you report it as income.",
+    "relevant_doc_ids": [
+      "175889",
+      "490386"
+    ]
+  },
+  {
+    "query_id": "5044",
+    "query": "How to find trailing 5-year stock returns for 1980s?",
+    "ground_truth": "I dont know if this data is available for the 1980s, but this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain period of time. You could do this in excel or google spreadsheet and see if you could get the data you're looking for.  Quote from old post: Google Docs spreadsheets have a   function for filling in stock and fund   prices. You can use that data to graph (fund1   / fund2) over some time period.",
+    "relevant_doc_ids": [
+      "376396"
+    ]
+  },
+  {
+    "query_id": "1762",
+    "query": "Is there a bank account that allows ACH deposits but not ACH withdrawals?",
+    "ground_truth": "\"Yes, kinda.   Talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.  They don't need to know you're all the same person.   For instance I have a PayPal account for business.  These allow you to create \"\"sub accounts\"\" for your employees with a variety of access privileges.  Of course I control the master account, but I also set up a \"\"sub account\"\" for myself.  That is the account I use every day.\"",
+    "relevant_doc_ids": [
+      "3336",
+      "333292"
+    ]
+  },
+  {
+    "query_id": "1610",
+    "query": "18 year old making $60k a year; how should I invest? Traditional or Roth IRA?",
+    "ground_truth": "\"1) Usually, the choice between Traditional vs. Roth is whether you believe that your tax rate will be higher or lower in the future than it is now. Your income is probably in the 25% bracket now. It's hard to say whether that should be considered \"\"high\"\" or \"\"low\"\". Some people advocate Roth only for 15% bracket; but your income would probably go into higher brackets in the future, so Roth may be preferable from this point of view. Roth IRA also has another advantage that the principal of contributions can be taken out at any time without tax or penalty, so it can serve as an emergency fund just as well as money in taxable accounts. Given that you may not have a lot of money saved up right now, this is useful. 2) In a sense, it's nice to have a mix of Traditional and Roth when you withdraw to hedge against uncertainty in future tax rates and have the option of choosing whichever one is advantageous to withdraw when you need to withdraw. That said, you will likely have many years of access to a 401k and high income in your future working years, in which you can contribute to a Traditional 401k (or if no access to 401k, then Traditional IRA), so a mix will almost certainly happen even if you go all Roth IRA now. 3) I think that depends on you, whether you are a hands-on or hands-off kind of investor.\"",
+    "relevant_doc_ids": [
+      "41417",
+      "315780",
+      "31462"
+    ]
+  },
+  {
+    "query_id": "5715",
+    "query": "Why do only a handful of Canadian companies have options trading on their stocks?",
+    "ground_truth": "\"First, your question contains a couple of false premises: Options in the U.S. do not trade on the NYSE, which is a stock exchange.  You must have been looking at a listing from an options exchange. There are a handful of options exchanges in the U.S., and while two of these have \"\"NYSE\"\" in the name, referring to \"\"NYSE\"\" by itself still refers to the stock exchange. Companies typically don't decide themselves whether options will trade for their stock.  The exchange and other market participants (market makers) decide whether to create a market for them. The Toronto Stock Exchange (TSX) is also a stock exchange.  It doesn't list any options.  If you want to see Canadian-listed options on equities, you're looking in the wrong place. Next, yes, RY does have listed options in Canada. Here are some.  Did you know about the Montreal Exchange (MX)?  The MX is part of the TMX Group, which owns both the Toronto Stock Exchange (TSX) and the Montreal Exchange. You'll find lots of Canadian equity and index options trading at the MX.  If you have an options trading account with a decent Canadian broker, you should have access to trade options at the MX. Finally, even considering the existence of the MX, you'll still find that a lot of Canadian companies don't have any options listed.  Simply: smaller and/or less liquid stocks don't have enough demand for options, so the options exchange & market makers don't offer any. It isn't cost-effective for them to create a market where there will be very few participants.\"",
+    "relevant_doc_ids": [
+      "498356",
+      "226748"
+    ]
+  },
+  {
+    "query_id": "1668",
+    "query": "How to send money from europe to usa EUR - USD?",
+    "ground_truth": "The website http://currencyfair.com/ provides a service which gives you both a decent exchange rate (about 1% off from mid-market rate) and a moderately low fee for the transfer: 4 USD for outgoing ACH in the US, 10 USD for same-day US wire. For the reverse (sending money from the US to EU) the fees are: 3 EUR for an ACH, 8 EUR for a same-day EUR wire. It has been online for quite a while, so I assume its legit, but I'd do a transfer for a smaller sum first, to see if there are any problems, and then a second transfer for the whole sum.",
+    "relevant_doc_ids": [
+      "254635",
+      "507701"
+    ]
+  },
+  {
+    "query_id": "5367",
+    "query": "Buying a house for a shorter term",
+    "ground_truth": "To answer your question, you need to ask yourself  Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc---all together, it can be up to 6-10% of the value of your house. This is a difficult goal to beat in a year, and your margin for miscalculations and market fluctuations is very low. In brief, you can be screwed big time. To make a profit in a year, you need to reduce transaction costs to the minimum: Avoid agents, inspectors, mortgage brokers, etc, which can pay you back with an interesting surprise. Bottom line, it can make sense to buy a house for a year, only if you can reduce all the related transaction costs by doing them yourself. If there are many houses in the market for sale, I would try to convince someone to lease the house for a year in the best terms possible (and maybe even try to sub-lease some of the rooms), or also rent-to-own the house. That way you avoid the transaction costs upfront, and would make more financial sense for a non real estate guru.",
+    "relevant_doc_ids": [
+      "410327",
+      "487354",
+      "590614",
+      "285780"
+    ]
+  },
+  {
+    "query_id": "5129",
+    "query": "The penalty on early redemption of a personal loan",
+    "ground_truth": "In month 9 you still owe $7,954.25. You need to pay that, plus the $250. At that line, you haven't made the payment, the rest of the line with next month's payment due. So you haven't paid the $242.47 in col 4.",
+    "relevant_doc_ids": [
+      "66649"
+    ]
+  },
+  {
+    "query_id": "9498",
+    "query": "Meaning of \u201creadily transferable\u201d?",
+    "ground_truth": "Securities or quite a few negotiable instruments can change title of ownership without any issue. Many at times the owner ship in implicit if you are holding a certain instrument. So for example in Stock its a fractional ownership in a company, this ownership transfers to the buyer from the seller without requiring any permission from the company.   In case of say Loans, One cannot transfer the loan to some one else without the Banks permission.",
+    "relevant_doc_ids": [
+      "17796"
+    ]
+  },
+  {
+    "query_id": "4055",
+    "query": "Recommended finance & economy book/blog for a Software Engineer?",
+    "ground_truth": "Start at Investopedia. Get basic clarification on all financial terms and in some cases in detail. But get a book. One recommendation would be Hull. It is a basic book, but quite informative. Likewise you can get loads of material targeted at programmers. Wilmott's Forum is a fine place to find coders as well as finance guys.",
+    "relevant_doc_ids": [
+      "151994",
+      "276032",
+      "29298"
+    ]
+  },
+  {
+    "query_id": "823",
+    "query": "Can a husband and wife who are both members of the same LLC file a joint tax return?",
+    "ground_truth": "Since from the question it seems that you're talking about the US taxation, I'll assume that. You can definitely continue filing jointly. Being members of a partnership has no bearing on how you file your own tax return. The partnership will distribute K-1 to each of you separately, but you'll report both of them on the same return.",
+    "relevant_doc_ids": [
+      "497567"
+    ]
+  },
+  {
+    "query_id": "6938",
+    "query": "Best buying price on stock marketing based on market depth detail (CSE atrad tool)",
+    "ground_truth": "If you are buying your order will be placed in Bid list. If you are selling your order will be placed in the Ask list. The highest Bid price will be placed at the top of the Bid list and the lowest Ask price will be placed at the top of the Ask list. When a Bid and Ask price are matched a transaction will take place and it will the last traded price. If you are looking to buy at a lower price, say $155.01, your Bid price will be placed 3rd in the Bid list, and unless the Ask prices fall to that level, your order will remain in the list until it trades, it expires or you cancel it. If prices don't fall to you Bid price you will not get a trade. If you wanted your trade to go through you could either place a limit buy order closer to the lowest Ask price (however this is still not a certainty), or to be certain place a market buy order which will trade at the lowest Ask price.",
+    "relevant_doc_ids": [
+      "137175",
+      "585552"
+    ]
+  },
+  {
+    "query_id": "7907",
+    "query": "Understanding the synthetic long put option",
+    "ground_truth": "A long put - you have a small initial cost (the option premium) but profit as the stock goes down. You have no additional risk if the shock rises, even a lot. Short a stock - you gain if the stock drops, but have unlimited risk if it rises, the call mitigates this, by capping that rising stock risk. The profit/loss graph looks similar to the long put when you hold both the short position and the long call.  You might consider producing a graph or spreadsheet to compare positions. You can easily sketch put, call, long stock, short stock, and study how combinations of positions can synthetically look like other positions. Often, when a stock has no shares to short, the synthetic short can help you put your stock position in place.",
+    "relevant_doc_ids": [
+      "232880"
+    ]
+  },
+  {
+    "query_id": "2147",
+    "query": "Should I buy my house from my landlord?",
+    "ground_truth": "Never buy a house unless you really want to buy that house. If you want to buy a rental, look around and find the right rental to buy; saving a few hundred on moving costs isn't a good reason to buy the wrong property at the wrong price.",
+    "relevant_doc_ids": [
+      "47230",
+      "342382",
+      "159403"
+    ]
+  },
+  {
+    "query_id": "5693",
+    "query": "What is the p/e ratio?",
+    "ground_truth": "The price to earnings ratio is a measure of the company's current share price compared to the annual net earnings per share.  The other way to think about this is the number of years a company would take to pay back the share price if the earnings stay constant.  This ignores factors like inflation and can be used as an indicator of risk.  During the internet bubble many companies had P/E above 24 and no possible means of earning back the share prices that were inflated largely due to speculation. Most tools like Google Finance will list the P/E for a particular quote.",
+    "relevant_doc_ids": [
+      "466972",
+      "308294",
+      "223823"
+    ]
+  }
+]
