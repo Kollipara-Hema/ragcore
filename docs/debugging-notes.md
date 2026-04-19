@@ -162,3 +162,146 @@ bugs produce identical log output. If the exception handler had logged
 `KeyError('"supported"')` and `AttributeError(...)` would have been
 obvious and saved an investigation step. Worth remembering.
 
+### Commit
+
+`a12c06e` — Fix Self-RAG claim verification end-to-end
+
+---
+
+## 2026-04-18 — UUID vs FiQA-ID mismatch in benchmark retrieval
+
+### Symptom
+
+Initial Stage B sanity check: 0/3 test queries had any overlap between cited doc IDs and the golden set's `relevant_doc_ids`, despite the system retrieving clearly relevant-looking financial content. Hit rate appeared to be 0.0 across the board.
+
+### Hypotheses considered
+
+1. Retrieval was broken — wrong documents being returned entirely.
+2. The golden dataset's `relevant_doc_ids` format didn't match what the system produces.
+3. The system's internal document IDs and FiQA's corpus IDs were living in separate spaces with no translation layer.
+
+### Actual root cause
+
+Two ID spaces that never converge in the code path the evaluator reads. `IngestionPipeline.ingest_text()` assigns a fresh UUID as `Document.doc_id` at ingest time. The original FiQA corpus ID (e.g., `"44085"`) is stored in `metadata["custom"]["doc_id"]` inside the FAISS pickle — but the `Citation` object and API response surface only the internal UUID as `doc_id`. The evaluator was comparing UUID strings to integer-string corpus IDs; no match was possible.
+
+Impact: without correction, all retrieval metrics (hit rate, MRR, NDCG, precision, recall) would silently be 0.0 in any benchmark, even with perfect retrieval.
+
+### Fix
+
+Implemented `_build_uuid_to_fiqa_id()` in the benchmark script: reads the FAISS pickle at startup, iterates metadata entries, maps `m["doc_id"]` (UUID) to `m["custom"]["doc_id"]` (FiQA string). Applied the translation to all cited UUIDs before computing any metric. After fix, Stage B sanity check showed 2/3 queries with correct overlap.
+
+The translation belongs inside the system — either the ingestion pipeline should preserve source corpus IDs as first-class `doc_id`, or `Citation` should include an `external_id` field. Deferred; the benchmark script carries the workaround for now.
+
+### Regression tests or verification
+
+Stage B sanity check script (`evaluation/scripts/stage_b_sanity.py`) re-run after fix: 2/3 queries show cited doc overlap with ground truth. The remaining miss is expected — FiQA's qrels don't cover every plausible relevant document.
+
+### Lesson
+
+Watch for dual ID spaces anywhere a system assigns its own identifiers to data that already has external identifiers. The symptom — 0% overlap with ground truth — looks exactly like broken retrieval when it is actually an ID-space misalignment. The correct diagnostic question is not "why is retrieval failing?" but "are the IDs being compared even drawn from the same space?"
+
+### Commit
+
+`ff2aca2` — Add Stage B sanity check script and results
+
+---
+
+## 2026-04-18 — NDCG and recall exceeding 1.0 in Stage C benchmark
+
+### Symptom
+
+Baseline benchmark across 50 FiQA queries reported:
+- NDCG@5 mean 0.83, **max 1.808**
+- recall@5 mean 0.86, **max 2.5**
+
+NDCG is normalized by definition — maximum possible is 1.0. Recall is bounded by |relevant ∩ retrieved| / |relevant|; it cannot exceed 1.0 for any individual query. These numbers are mathematically impossible.
+
+### Hypotheses considered
+
+Initial explanation offered: "artefact of small corpus." That is wrong. Small corpora don't break the mathematical bounds of DCG normalization or set-intersection recall. The answer was not in the data distribution.
+
+### Actual root cause
+
+The UUID→FiQA-ID translation (see entry above) collapses multiple chunks from the same source document onto the same FiQA corpus ID. A single query could return a retrieved list like `['44085', '44085', '70305', '70305', '44085']` — five chunk-level results, three mapping to the same document.
+
+Feeding that raw list directly to the metric functions:
+
+- **NDCG**: DCG summed gains from every duplicate occurrence of a relevant doc. IDCG normalized by unique relevant count. DCG / IDCG > 1.0.
+- **Recall**: counted hits per duplicate occurrence against `|unique relevant|`. Three hits on the same document against a denominator of 1 → 3.0.
+
+### Fix
+
+Deduplicate the retrieved list by first-occurrence rank before scoring, in both `RetrievalEvaluator.evaluate()` (`evaluation/evaluator.py`) and `retrieval_metrics()` (`evaluation/scripts/run_benchmark.py`). First-occurrence-rank preserves the rank at which each document was first surfaced — correct for rank-based metrics. Both dedup blocks carry the same comment explaining the design decision.
+
+After fix: hit@5 (0.92) and MRR (0.86) unchanged — unaffected by duplicates. NDCG@5 corrected to 0.745; recall@5 to 0.707; precision@5 from 0.412 (chunk-level, inflated) to 0.399 (doc-level). All values in [0, 1].
+
+### Regression tests or verification
+
+After fix, all 50 queries produce per-query NDCG and recall in [0, 1]. Confirmed via raw JSON output and benchmark summary table.
+
+Why the bug was invisible until Stage C: `RetrievalEvaluator` had never been exercised against real retrieved data. The repo audit flagged it as PARTIAL. Unit tests would not have caught it — they test the formula against mocked inputs without duplicates. The bug required real ingested documents and real retrieval to manifest.
+
+### Lesson
+
+Metric granularity must match label granularity. FiQA labels at document level; RAG retrieves chunks. Deduplication is mandatory when bridging those two granularities. Any time a system assigns multiple internal records to the same external entity (chunks → documents, events → sessions, line items → orders), aggregation metrics computed on the raw internal records will be inflated.
+
+### Commit
+
+`dd33fcd` — Fix NDCG and recall exceeding 1.0 by deduplicating chunk-level retrievals to doc-level
+
+---
+
+## 2026-04-18 — Self-RAG VERIFICATION_PROMPT unescaped braces masked by broad exception handler
+
+### Symptom
+
+With `GENERATION_STRATEGY=self_rag`, queries succeeded and returned correct answers, but uvicorn logs printed on every query:
+
+```
+Claim verification failed: '"supported"'
+Claim verification failed: '"supported"'
+```
+
+One line per extracted claim. Self-RAG was silently degrading to basic generation — the initial answer was correct, but the verification loop never actually ran.
+
+### Initial hypothesis (wrong)
+
+The literal quotes in `'"supported"'` suggested a JSON parser bug: the LLM returning a bare JSON string instead of a dict, `json.loads('"supported"')` → `str`, and `.get()` on a string raises `AttributeError`. Plausible and consistent with the log output.
+
+### Actual root cause
+
+The bug was one layer upstream. `VERIFICATION_PROMPT` contained a JSON schema example — `{"supported": true/false, "evidence": "..."}` — as a literal string in the template. When passed through `str.format()` to fill in `claim` and `context` fields, Python interpreted `{"supported": ...}` as a format field named `"supported"` and raised `KeyError: '"supported"'`. The LLM was never called. The parser wasn't the problem — the prompt wasn't rendering.
+
+`KeyError('"supported"')` stringifies to `'"supported"'` — identical to what a parser failure on a bare JSON string would produce. The broad `except Exception as e: logger.warning("Claim verification failed: %s", e)` handler logged only `str(e)`, discarding the exception type. Both failure modes produced the same log line.
+
+### Fix
+
+Three layers, because debugging revealed the parser also had bugs that would surface once the prompt was fixed:
+
+1. **Prompt template** (`generation/advanced_generation.py`): escaped all JSON-example braces (`{{` / `}}`) so `str.format()` treats them as literal output.
+2. **`_verify_claim` parser**: switched from negative blacklist to positive whitelist (`"true"` / `"yes"` / `"supported"` / `"1"`). Unknown or gibberish responses fail closed. Handles bare-string responses and string-valued booleans (`"false"` as a string is truthy in Python — the original code would silently mark it as supported).
+3. **`_extract_claims` parser**: removed the too-permissive fallback that would treat any list-valued field in the response as claims. Restricted to explicit keys (`claims` / `statements` / `items`), falls through to sentence-split otherwise.
+
+### Regression tests or verification
+
+`tests/unit/test_self_rag_verification.py` — 6 tests covering the standard dict response, bare-string response (original failure mode), string-valued boolean (silent false-positive), gibberish response (must fail closed), dict without evidence field, and `_extract_claims` with a `statements` key.
+
+End-to-end: ingest + Self-RAG query with no `Claim verification failed` in logs. Verification loop runs; `self_rag_stats` in response shows `verified_claims` and `unsupported_claims` populated.
+
+### Lesson
+
+A broad `except Exception` that logs only `str(e)` can make two distinct exception types produce identical log output. `KeyError('"supported"')` and `AttributeError` on a string both stringify to `'"supported"'`. Had the handler logged `type(e).__name__` alongside `str(e)`, the distinction would have been immediate and saved an investigation step. Broad exception handlers should always preserve the exception type in logs.
+
+### Commit
+
+`a12c06e` — Fix Self-RAG claim verification end-to-end
+
+---
+
+## Patterns I've noticed
+
+Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
+
+**Takeaway:** integration tests that exercise real workflows catch classes of bugs unit tests cannot. Unit tests verify individual functions do what their mocks claim; they cannot catch "this function is never actually reached in the real code path" or "these two correctly-written components use incompatible ID spaces."
+
+**Specifically useful signal for future me:** if an audit or code review says a module is PARTIAL, assume it will break on first real-world use. Plan debug time accordingly. Don't trust static code review to catch cross-layer integration bugs.
