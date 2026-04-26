@@ -188,13 +188,6 @@ class LangfuseTracer:
         return self._traces.get(trace_id)
 
     def _record_step(self, trace_id: str, step_name: str, data: dict):
-        if trace_id in self._traces:
-            self._traces[trace_id]["steps"].append({
-                "step": step_name,
-                "data": data,
-                "ts": time.monotonic(),
-            })
-        # Always log at debug level
         logger.debug("Trace step [%s] %s: %s", trace_id[:8], step_name, json.dumps(data))
 
 
