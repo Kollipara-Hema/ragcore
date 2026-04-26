@@ -96,9 +96,6 @@ class RetrievalExecutor:
         elif strategy == RetrievalStrategy.MULTI_QUERY:
             return await self._multi_query_search(decision.expanded_queries, top_k, decision.metadata_filter)
 
-        elif strategy == RetrievalStrategy.PARENT_CHILD:
-            return await self._parent_child_search(query, top_k, decision.metadata_filter)
-
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
@@ -173,39 +170,3 @@ class RetrievalExecutor:
 
         return merged
 
-    async def _parent_child_search(self, query, top_k, metadata_filter) -> list[RetrievedChunk]:
-        """
-        1. Search by child chunk embeddings (small, precise)
-        2. Look up parent chunks for each hit
-        3. Return parent chunks to LLM for fuller context
-        """
-        # Only search child chunks
-        child_filter = dict(metadata_filter or {})
-        child_filter["is_child_chunk"] = True
-
-        embedding = await self._embedder.embed_query(query)
-        child_results = await self._store.vector_search(embedding, top_k * 2, child_filter)
-
-        # Collect unique parent IDs
-        parent_ids: list[str] = []
-        seen = set()
-        for rc in child_results:
-            pid = rc.chunk.metadata.get("parent_chunk_id")
-            if pid and pid not in seen:
-                parent_ids.append(pid)
-                seen.add(pid)
-
-        if not parent_ids:
-            logger.warning("Parent-child: no parent IDs found; falling back to child chunks")
-            return child_results[:top_k]
-
-        # Fetch parent chunks by ID
-        # Note: requires vector store to support ID-based fetch (add to adapter)
-        # For now, use a keyword search to approximate parent lookup
-        parent_results = []
-        for cid in parent_ids[:top_k]:
-            # In a real implementation, fetch by chunk_id directly
-            # This is a placeholder showing the pattern
-            parent_results.append(child_results[0])  # simplified
-
-        return parent_results[:top_k]
