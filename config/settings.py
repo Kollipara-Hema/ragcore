@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
+    cohere_api_key: Optional[str] = None
 
     # Chunking
     # Original: fixed | semantic | hierarchical | sentence
