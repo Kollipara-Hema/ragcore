@@ -55,7 +55,7 @@ from fastapi.responses import StreamingResponse
 from config.settings import settings    # App configuration from .env
 
 # Data models for request/response shapes
-from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest, AgentQueryRequest, AgentQueryResponse, QueryTrace, TraceEvent
+from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest, AgentQueryRequest, AgentQueryResponse, QueryTrace
 
 # The main RAG pipeline orchestrator
 from orchestrator import RAGOrchestrator
@@ -539,7 +539,7 @@ async def agent_query(request: AgentQueryRequest):
     from datetime import datetime as dt
 
     trace_id = str(uuid.uuid4())
-    start_time = dt.utcnow()
+    request_start = dt.utcnow()
 
     try:
         # Build initial state from request
@@ -550,45 +550,12 @@ async def agent_query(request: AgentQueryRequest):
         if request.session_id:
             state["metadata"] = {"session_id": request.session_id}
 
-        # Run the agent graph with event streaming
         graph = _get_agent_graph()
-
-        # Collect execution events
-        events = []
-        async for event in graph.astream_events(state, version="v2"):
-            if event["event"] in ("on_chain_start", "on_chain_end", "on_tool_start", "on_tool_end"):
-                events.append(event)
-
-        # Get final result
         result = await graph.ainvoke(state)
-        # Process events into TraceEvent objects
-        trace_events = []
-        node_start_times = {}
 
-        for event in events:
-            node_name = event.get("name", "unknown")
-            event_type = event["event"]
-
-            if event_type == "on_chain_start":
-                node_start_times[node_name] = event.get("data", {}).get("timestamp") or dt.utcnow()
-            elif event_type == "on_chain_end" and node_name in node_start_times:
-                start_time = node_start_times[node_name]
-                end_time = event.get("data", {}).get("timestamp") or dt.utcnow()
-                duration_ms = (end_time - start_time).total_seconds() * 1000
-
-                trace_events.append(TraceEvent(
-                    node=node_name,
-                    timestamp=start_time,
-                    duration_ms=duration_ms,
-                    status="completed",
-                    details={
-                        "event_type": event_type,
-                        "data": event.get("data", {}),
-                    }
-                ))
         # Build response
         end_time = dt.utcnow()
-        latency_ms = (end_time - start_time).total_seconds() * 1000
+        latency_ms = (end_time - request_start).total_seconds() * 1000
 
         response = AgentQueryResponse(
             answer=result.get("answer", ""),
@@ -606,10 +573,10 @@ async def agent_query(request: AgentQueryRequest):
                 trace_id=trace_id,
                 query=request.query,
                 session_id=request.session_id,
-                start_time=start_time,
+                start_time=request_start,
                 end_time=end_time,
                 total_duration_ms=latency_ms,
-                events=trace_events,
+                events=[],
                 final_answer=result.get("answer", ""),
                 confidence=result.get("confidence", 0.0),
                 status="completed",
