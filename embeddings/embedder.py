@@ -115,7 +115,7 @@ class CohereEmbedder(BaseEmbedder):
         except ImportError:
             raise ImportError("Run: pip install cohere")
 
-        client = cohere.AsyncClient(api_key=settings.openai_api_key)
+        client = cohere.AsyncClient(api_key=settings.cohere_api_key)
         all_embeddings: List[List[float]] = []
 
         for i in range(0, len(texts), self.batch_size):
