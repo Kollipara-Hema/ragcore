@@ -35,6 +35,23 @@ from statistics import mean, stdev
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+RUN_DATE = "2026-04-26"
+
+# ── RAGAS optional import ─────────────────────────────────────────────────────
+# ragas.metrics.faithfulness is deprecated in 0.4.x but still the correct
+# import for the pre-built metric instance; ragas.metrics.collections exposes
+# a module, not an instance.  Silence the deprecation until the API stabilises.
+try:
+    import warnings as _warnings
+    with _warnings.catch_warnings():
+        _warnings.simplefilter("ignore", DeprecationWarning)
+        from ragas.metrics import faithfulness as _ragas_faithfulness_metric
+    from ragas import evaluate as _ragas_evaluate
+    from datasets import Dataset as _HFDataset
+    _RAGAS_AVAILABLE = True
+except ImportError:
+    _RAGAS_AVAILABLE = False
+
 # ── Parse strategy before importing anything from ragcore ────────────────────
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -134,6 +151,49 @@ def heuristic_faithfulness(answer: str, contexts: list[str]) -> float:
     return min(1.0, overlap / max(len(answer_words), 1))
 
 
+def ragas_faithfulness_score(
+    query_id: str, query: str, answer: str, contexts: list[str],
+    ragas_llm=None,
+) -> float | None:
+    """Return RAGAS LLM-judged faithfulness for a single query, or None on failure.
+
+    ragas_llm: llm_factory("gpt-4o-mini") instance, initialised once per run()
+    call and passed here to avoid per-query client construction.
+    Judge model is gpt-4o-mini — cheaper than gpt-4o, still a substantially
+    stronger signal than word-overlap.
+    """
+    if not _RAGAS_AVAILABLE:
+        return None
+    try:
+        import warnings as _w
+        dataset = _HFDataset.from_dict({
+            "user_input": [query],
+            "response": [answer],
+            "retrieved_contexts": [contexts],
+        })
+        with _w.catch_warnings():
+            _w.simplefilter("ignore")
+            result = _ragas_evaluate(
+                dataset,
+                metrics=[_ragas_faithfulness_metric],
+                llm=ragas_llm,
+                show_progress=False,
+            )
+        faith_value = result["faithfulness"]
+        if isinstance(faith_value, list):
+            score = float(faith_value[0])
+        elif isinstance(faith_value, (int, float)):
+            score = float(faith_value)
+        else:
+            raise ValueError(f"Unexpected RAGAS result type: {type(faith_value)}")
+        if math.isnan(score):
+            raise ValueError("RAGAS returned NaN (likely max_tokens or judge failure)")
+        return round(score, 4)
+    except Exception as e:
+        logger.warning("RAGAS failed for query %s: %s", query_id, e)
+        return None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Summary table
 # ─────────────────────────────────────────────────────────────────────────────
@@ -142,7 +202,7 @@ def print_summary(results: list[dict], strategy: str, total_sec: float) -> None:
     ok = [r for r in results if "error" not in r]
     failed = [r for r in results if "error" in r]
 
-    metric_keys = ["hit_at_5", "mrr", "ndcg_at_5", "precision_at_5", "recall_at_5", "faithfulness"]
+    metric_keys = ["hit_at_5", "mrr", "ndcg_at_5", "precision_at_5", "recall_at_5", "faithfulness", "ragas_faithfulness"]
     latencies = [r["latency_ms"] for r in ok]
     tokens = [r["total_tokens"] for r in ok if r.get("total_tokens")]
 
@@ -153,7 +213,12 @@ def print_summary(results: list[dict], strategy: str, total_sec: float) -> None:
     print(f"  {'Metric':<22}  {'Mean':>8}  {'Std':>8}  {'Min':>8}  {'Max':>8}")
     print(f"  {'-'*(w-4)}")
     for key in metric_keys:
-        vals = [r[key] for r in ok if key in r]
+        vals = [
+            r[key] for r in ok
+            if key in r
+            and r[key] is not None
+            and not (isinstance(r[key], float) and math.isnan(r[key]))
+        ]
         if vals:
             std = stdev(vals) if len(vals) > 1 else 0.0
             print(f"  {key:<22}  {mean(vals):>8.4f}  {std:>8.4f}  {min(vals):>8.4f}  {max(vals):>8.4f}")
@@ -165,6 +230,13 @@ def print_summary(results: list[dict], strategy: str, total_sec: float) -> None:
         std = stdev(tokens) if len(tokens) > 1 else 0.0
         print(f"  {'total_tokens':<22}  {mean(tokens):>8.1f}  {std:>8.1f}  {min(tokens):>8.1f}  {max(tokens):>8.1f}")
     print(f"{'='*w}")
+    ragas_valid = sum(
+        1 for r in ok
+        if r.get("ragas_faithfulness") is not None
+        and not (isinstance(r["ragas_faithfulness"], float) and math.isnan(r["ragas_faithfulness"]))
+    )
+    ragas_failed = len(ok) - ragas_valid
+    print(f"  RAGAS coverage: {ragas_valid}/{len(ok)} valid ({ragas_failed} failed/dropped)")
     if failed:
         print(f"\n  Failed queries ({len(failed)}):")
         for r in failed:
@@ -179,8 +251,20 @@ async def run(strategy: str) -> None:
     from orchestrator import RAGOrchestrator
     from utils.models import QueryRequest
 
+    # Initialise RAGAS judge LLM once — gpt-4o-mini with explicit api_key from
+    # project settings.  Passed per-query to avoid constructing a new client
+    # on each call.  eval() llm= arg overrides RAGAS's own OpenAI client init.
+    ragas_llm = None
+    if _RAGAS_AVAILABLE:
+        from openai import OpenAI as _OpenAI
+        from ragas.llms import llm_factory as _llm_factory
+        from config.settings import Settings
+        _settings = Settings()
+        _ragas_client = _OpenAI(api_key=_settings.openai_api_key)
+        ragas_llm = _llm_factory("gpt-4o-mini", client=_ragas_client)
+
     eval_path = REPO_ROOT / "evaluation" / "datasets" / "fiqa_eval.json"
-    out_path = REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa.json"
+    out_path = REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa_{RUN_DATE}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     meta_pkl = REPO_ROOT / "faiss_metadata.pkl"
 
@@ -215,6 +299,7 @@ async def run(strategy: str) -> None:
 
             ret = retrieval_metrics(cited_fiqa, relevant_ids)
             faith = heuristic_faithfulness(response.answer, contexts)
+            ragas_faith = ragas_faithfulness_score(qid, query, response.answer, contexts, ragas_llm)
 
             record: dict = {
                 "query_id": qid,
@@ -225,6 +310,7 @@ async def run(strategy: str) -> None:
                 "latency_ms": round(latency_ms, 1),
                 "total_tokens": response.total_tokens,
                 "faithfulness": round(faith, 4),
+                "ragas_faithfulness": ragas_faith,
                 **{k: round(v, 4) for k, v in ret.items()},
             }
             if response.self_rag_stats:
@@ -232,9 +318,10 @@ async def run(strategy: str) -> None:
             results.append(record)
 
             hit = "✓" if ret["hit_at_5"] else "✗"
+            ragas_str = f"{ragas_faith:.3f}" if ragas_faith is not None else "n/a"
             print(
                 f"[{i:>2}/{len(golden)}] {hit} "
-                f"MRR={ret['mrr']:.3f}  faith={faith:.3f}  "
+                f"MRR={ret['mrr']:.3f}  faith={faith:.3f}  ragas={ragas_str}  "
                 f"{latency_ms:.0f}ms  '{query[:50]}'"
             )
 
