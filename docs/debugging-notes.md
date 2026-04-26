@@ -298,6 +298,51 @@ A broad `except Exception` that logs only `str(e)` can make two distinct excepti
 
 ---
 
+## 2026-04-26 — LangfuseTracer _record_step was a stale parallel recording path
+
+### Symptom
+
+AUDIT.md item 8: `LangfuseTracer._record_step()` accesses `self._traces[trace_id]["steps"]` — treating a `QueryTrace` dataclass as a dict. Raises `TypeError` on first traced request when `ENABLE_TRACING=true`. Two integration tests in `TestObservabilityIntegration` were failing as a result.
+
+### Initial hypothesis
+
+Fix the dict-subscript: replace `self._traces[trace_id]["steps"].append(...)` with `self._traces[trace_id].steps.append(...)` to access the attribute correctly on the dataclass.
+
+### Actual root cause
+
+Three layers, each invalidating the previous fix direction:
+
+1. **Dict subscript on a dataclass.** `self._traces[trace_id]` is a `QueryTrace` Pydantic model. Dict-style access raises `TypeError` immediately. This is the bug the audit described.
+
+2. **The field doesn't exist.** Even with the correct attribute-access syntax, `QueryTrace` has no `steps` field — only `events: list[TraceEvent]`. Fixing the syntax alone would produce `AttributeError`.
+
+3. **Even fixed, it would duplicate.** Each `log_*` method (e.g. `log_routing`, `log_retrieval`) already calls `self._traces[trace_id].events.append(event)` correctly before calling `_record_step`. A corrected `_record_step` writing to `events` would append each event twice. The `_record_step` path was a stale parallel recording mechanism — never functional, not read by anything downstream.
+
+### Fix
+
+Deleted the recording block from `_record_step` entirely. Kept only the debug log line:
+
+```python
+def _record_step(self, trace_id: str, step_name: str, data: dict):
+    logger.debug("Trace step [%s] %s: %s", trace_id[:8], step_name, json.dumps(data))
+```
+
+Event accumulation is already correct through the `events.append` calls in each `log_*` method. The `_record_step` deletion removes a broken dead path, not a working feature.
+
+### Regression test
+
+`test_langfuse_tracer_trace_lifecycle` in `tests/integration/test_evaluation.py` — was failing before the fix, passes after. It calls `log_routing` and `log_retrieval` in sequence and asserts `len(trace.events) >= 2`. Because `events.append` was always working, the test now passes cleanly; the TypeError from `_record_step` was the only thing that had been causing it to fail.
+
+### Lesson
+
+Symptom-described bugs are sometimes shallower than the underlying problem. The audit correctly identified the observable crash site (`_record_step` dict subscript) but the right fix direction required understanding why the code existed at all — not just what it was doing wrong. The audit described what it observed; the root cause was that the whole recording path was stale and could be removed. Worth digging one layer deeper before writing the fix.
+
+### Commit
+
+`f424495` — Remove vestigial _record_step path from LangfuseTracer
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -305,3 +350,5 @@ Across the bugs documented in this file, a recurring pattern: code in the repo's
 **Takeaway:** integration tests that exercise real workflows catch classes of bugs unit tests cannot. Unit tests verify individual functions do what their mocks claim; they cannot catch "this function is never actually reached in the real code path" or "these two correctly-written components use incompatible ID spaces."
 
 **Specifically useful signal for future me:** if an audit or code review says a module is PARTIAL, assume it will break on first real-world use. Plan debug time accordingly. Don't trust static code review to catch cross-layer integration bugs.
+
+The 2026-04-26 audit cleanup confirmed the PARTIAL prediction held precisely. All five latent bugs (items 7–11 in AUDIT.md) were found in modules the audit had flagged as PARTIAL or SCAFFOLD — the agent endpoint, the tracer, the Cohere embedder, and the retrieval executor's dead and broken methods. Not one surfaced from a module the audit marked WORKING. The audit's classification scheme was accurate as a forward predictor: WORKING modules were safe, PARTIAL and SCAFFOLD modules contained every bug found.

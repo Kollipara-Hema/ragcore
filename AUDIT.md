@@ -186,32 +186,40 @@ evaluator" is accurate.
 
 ### Bugs discovered during this audit (to fix)
 
-7. **Agent double-invoke** ([api/main.py](api/main.py)). `agent_query()` calls
+7. **Agent double-invoke** (FIXED — see below) ([api/main.py](api/main.py)). `agent_query()` calls
    `graph.astream_events(state)` to collect trace events, then calls
    `graph.ainvoke(state)` for the result. The full graph executes twice per
    `/agent/query` request. No comment explains the double call.
 
-8. **LangfuseTracer TypeError** ([monitoring/tracer.py](monitoring/tracer.py)).
+8. **LangfuseTracer TypeError** (FIXED — see below) ([monitoring/tracer.py](monitoring/tracer.py)).
    `_record_step()` accesses `self._traces[trace_id]["steps"]` — treating a
    `QueryTrace` dataclass as a dict. Raises `TypeError` on first traced request
    when `ENABLE_TRACING=true`.
 
-9. **CohereEmbedder wrong API key** ([embeddings/embedder.py](embeddings/embedder.py)).
+9. **CohereEmbedder wrong API key** (FIXED — see below) ([embeddings/embedder.py](embeddings/embedder.py)).
    `CohereEmbedder` initializes with `api_key=settings.openai_api_key`. Will
    authenticate against Cohere with the wrong credential type.
 
-10. **ParentChild retrieval is broken**
+10. **ParentChild retrieval is broken** (FIXED — see below)
     ([retrieval/strategies/retrieval_executor.py](retrieval/strategies/retrieval_executor.py)).
     `_parent_child_search()` filters on `is_child_chunk=True` — metadata the
     ingestion pipeline never writes. Returns `child_results[0]` repeated `top_k`
     times when called.
 
-11. **Dead retrieval methods with wrong attributes**
+11. **Dead retrieval methods with wrong attributes** (FIXED — see below)
     ([retrieval/strategies/retrieval_executor.py](retrieval/strategies/retrieval_executor.py)).
     `dense_retrieval()`, `sparse_retrieval()`, and `hybrid_retrieval()` reference
     `self.embedder` and `self.vector_store`, which are not attributes of
     `RetrievalExecutor`. Would raise `AttributeError` if called. Not reachable
     from `execute()`.
+
+### Fixed in 2026-04-26 cleanup
+
+- Item 7 — Agent double-invoke removed; single `ainvoke` call — commit `1a79581`
+- Item 8 — LangfuseTracer `_record_step` stale recording path deleted — commit `f424495`
+- Item 9 — CohereEmbedder now passes `settings.cohere_api_key`; field added to Settings — commit `c376880`
+- Item 10 — PARENT_CHILD removed from `_dispatch`; `_parent_child_search` deleted — commit `4a7d800`
+- Item 11 — `dense_retrieval`, `sparse_retrieval`, `hybrid_retrieval` deleted — commit `9e9440e`
 
 ---
 
@@ -286,7 +294,7 @@ double-invoke, the LangfuseTracer TypeError, the CohereEmbedder wrong API key,
 the broken ParentChild retrieval, and the dead retrieval methods with wrong
 attribute references. These are latent, not active — none are in the benchmarked
 code path — but they would surface immediately if the corresponding config options
-were exercised.
+were exercised. All five were fixed in the 2026-04-26 cleanup commits (`1a79581` through `4a7d800`).
 
 The honest summary: one well-tested path in production shape, surrounded by
 correctly-structured scaffolding and a small set of latent bugs. The benchmark
