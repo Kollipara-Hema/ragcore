@@ -6,7 +6,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from evaluation.evaluator import RAGEvaluator, EvalSample
 from evaluation.dataset import get_sample_dataset
-from monitoring.tracer import get_tracer, LangfuseTracer, NoOpTracer
+from monitoring.tracer import get_tracer, reset_tracer, LangfuseTracer, NoOpTracer
 from agent.graph import build_graph
 from agent.state import initial_state
 from config.settings import settings
@@ -108,6 +108,9 @@ class TestObservabilityIntegration:
         with patch.object(settings, 'enable_tracing', False):
             tracer = get_tracer()
             assert isinstance(tracer, NoOpTracer)
+
+        # Reset so the next call constructs a fresh tracer under new settings
+        reset_tracer()
 
         # Test LangfuseTracer when enabled (mock the check)
         with patch.object(settings, 'enable_tracing', True), \

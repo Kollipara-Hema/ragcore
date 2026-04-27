@@ -191,7 +191,20 @@ class LangfuseTracer:
         logger.debug("Trace step [%s] %s: %s", trace_id[:8], step_name, json.dumps(data))
 
 
+_tracer_instance: Optional[NoOpTracer | LangfuseTracer] = None
+
+
 def get_tracer() -> NoOpTracer | LangfuseTracer:
+    global _tracer_instance
+    if _tracer_instance is not None:
+        return _tracer_instance
     if settings.enable_tracing and settings.langfuse_public_key:
-        return LangfuseTracer()
-    return NoOpTracer()
+        _tracer_instance = LangfuseTracer()
+    else:
+        _tracer_instance = NoOpTracer()
+    return _tracer_instance
+
+
+def reset_tracer() -> None:
+    global _tracer_instance
+    _tracer_instance = None
