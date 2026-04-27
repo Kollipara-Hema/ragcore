@@ -31,11 +31,12 @@ import sys
 import time
 from pathlib import Path
 from statistics import mean, stdev
+from datetime import date
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-RUN_DATE = "2026-04-26"
+RUN_DATE = date.today().isoformat()  # YYYY-MM-DD
 
 # ── RAGAS optional import ─────────────────────────────────────────────────────
 # ragas.metrics.faithfulness is deprecated in 0.4.x but still the correct
