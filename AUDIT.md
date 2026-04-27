@@ -299,3 +299,31 @@ were exercised. All five were fixed in the 2026-04-26 cleanup commits (`1a79581`
 The honest summary: one well-tested path in production shape, surrounded by
 correctly-structured scaffolding and a small set of latent bugs. The benchmark
 is real; the breadth is not yet there.
+
+---
+
+## 2026-04-27 Update
+
+Eight days after the original audit. The April 19 module table and headline classifications above are unchanged unless explicitly noted here.
+
+### Bugs fixed since April 19
+
+**get_tracer() non-singleton** (commit `6e4c1b6`, this session). Every call to `get_tracer()` constructed a fresh `LangfuseTracer` with its own empty `_traces` dict, so traces written by the orchestrator were invisible to the `/trace/{trace_id}` endpoint — silent 404 on every lookup when `ENABLE_TRACING=true`. Fixed by the same module-level cache pattern applied to `get_vector_store()` on April 17 (`953e62d`): `_tracer_instance` held at module scope, `reset_tracer()` added for test isolation. Covered by `tests/integration/test_tracer_singleton.py` — structural identity test and a behavioral test that reproduces the 404 directly.
+
+**LangfuseTracer._record_step TypeError** (commit `f424495`). The vestigial `_record_step` call path treated `QueryTrace` as a dict and referenced a non-existent `steps` field; would have raised `TypeError` and `AttributeError` on any active trace. Resolved by removing the dead path entirely. This was the `LangfuseTracer TypeError` item flagged in the April 19 audit.
+
+**test_tracer_initialization** (this session). Updated `tests/integration/test_evaluation.py` to call `reset_tracer()` between the two `patch.object` settings contexts so each block constructs a fresh tracer. The test was broken by the singleton fix as designed — this is the expected adaptation, not a regression.
+
+### Status changes
+
+**RAGAS faithfulness: PARTIAL → WORKING** for the benchmark-runner path (commits `2cbb80f`, `35ab385`). `LLMFaithfulnessEvaluator` is now wired into `run_benchmark.py` and executed against the FiQA dataset; results are in `evaluation/results/basic_fiqa_2026-04-26_default-judge.json` with analysis in `docs/ragas_analysis_2026-04-26.md`. The live API path (`EVAL_STRATEGY=ragas`) remains unvalidated end-to-end, so the overall classification stays PARTIAL.
+
+**RUN_DATE hardcoding in benchmark runner** (commit `b04070b`, this session). The literal date string in `run_benchmark.py` is replaced with `date.today().isoformat()`.
+
+### Still scaffolded (unchanged from April 19)
+
+`FLAREGenerator` and `AgenticRAG` are enumerated but not dispatched. `LLM_PROVIDER=ollama` and `LLM_PROVIDER=demo` have no branch in the generator. `VECTOR_STORE_PROVIDER` accepts four values but only `faiss` is functional. ParentChild dispatch and the `_parent_child_search()` implementation were removed in `4a7d800`; the enum value `RetrievalStrategy.PARENT_CHILD` is retained but unsupported — passing it raises `ValueError`. README updated this session: "parent-child is enumerated but not wired."
+
+### Updated honest verdict
+
+The April 19 verdict holds. The well-tested path is now slightly broader: the RAGAS faithfulness judge runs in the benchmark pipeline and produces reproducible numbers, and the tracer singleton means trace data written during a query is actually retrievable. The scaffolding is the same set it was — three unreachable generation strategies, provider configs that silently fall through to FAISS. The latent bug list from April 19 is now empty. The benchmark is still real; the breadth is still not yet there.
