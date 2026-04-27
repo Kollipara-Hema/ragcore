@@ -298,44 +298,48 @@ A broad `except Exception` that logs only `str(e)` can make two distinct excepti
 
 ---
 
-## 2026-04-26 — LangfuseTracer _record_step was a stale parallel recording path
+## 2026-04-26 — LangfuseTracer _record_step was a stale parallel recording path masked by a TypeError
 
 ### Symptom
 
-AUDIT.md item 8: `LangfuseTracer._record_step()` accesses `self._traces[trace_id]["steps"]` — treating a `QueryTrace` dataclass as a dict. Raises `TypeError` on first traced request when `ENABLE_TRACING=true`. Two integration tests in `TestObservabilityIntegration` were failing as a result.
+What AUDIT.md flagged: `_record_step()` accesses `self._traces[trace_id]['steps']` — treating a `QueryTrace` dataclass as a dict. Raises `TypeError` on first traced request when `ENABLE_TRACING` is set.
 
-### Initial hypothesis
+The symptom as described looked like a one-line dict-vs-dataclass fix. It was not.
 
-Fix the dict-subscript: replace `self._traces[trace_id]["steps"].append(...)` with `self._traces[trace_id].steps.append(...)` to access the attribute correctly on the dataclass.
+### Initial hypothesis (wrong)
+
+Replace the dict subscript with attribute access: `self._traces[trace_id]["steps"]` → `self._traces[trace_id].steps`. Plausible from the `TypeError` alone.
 
 ### Actual root cause
 
-Three layers, each invalidating the previous fix direction:
+Three layered bugs, only the outermost visible from the audit description:
 
-1. **Dict subscript on a dataclass.** `self._traces[trace_id]` is a `QueryTrace` Pydantic model. Dict-style access raises `TypeError` immediately. This is the bug the audit described.
+1. **Dict subscript on a dataclass** — the surface `TypeError`.
+2. **The "steps" field doesn't exist on `QueryTrace`.** The dataclass has `events: list[TraceEvent]` and no `steps` field. Even with the subscript fixed to attribute access, the call would raise `AttributeError`.
+3. **Even if the field existed, `_record_step` would duplicate event recording.** The `log_routing`, `log_retrieval`, etc. methods on `LangfuseTracer` already accumulate events via `events.append`. `_record_step` ran in parallel, recording the same events to a different field. Stale code from an earlier API.
 
-2. **The field doesn't exist.** Even with the correct attribute-access syntax, `QueryTrace` has no `steps` field — only `events: list[TraceEvent]`. Fixing the syntax alone would produce `AttributeError`.
-
-3. **Even fixed, it would duplicate.** Each `log_*` method (e.g. `log_routing`, `log_retrieval`) already calls `self._traces[trace_id].events.append(event)` correctly before calling `_record_step`. A corrected `_record_step` writing to `events` would append each event twice. The `_record_step` path was a stale parallel recording mechanism — never functional, not read by anything downstream.
+The audit described the symptom truthfully. The root cause was deeper than the symptom suggested.
 
 ### Fix
 
-Deleted the recording block from `_record_step` entirely. Kept only the debug log line:
+Deleted the recording block from `_record_step`. Kept the debug log line. Event accumulation continues to work through the existing `log_*` methods.
 
-```python
-def _record_step(self, trace_id: str, step_name: str, data: dict):
-    logger.debug("Trace step [%s] %s: %s", trace_id[:8], step_name, json.dumps(data))
-```
+Three layers needed addressing because each layer alone would have left a different bug:
+- Fix layer 1 only: `AttributeError` on first traced request
+- Fix layers 1 and 2 (add `steps` field): silent double-recording, every event recorded twice
+- Delete the whole path: events recorded correctly via `log_*` methods alone
 
-Event accumulation is already correct through the `events.append` calls in each `log_*` method. The `_record_step` deletion removes a broken dead path, not a working feature.
+Deletion is the only option that produces correct behavior because the recording path was never needed.
 
-### Regression test
+### Regression test or verification
 
-`test_langfuse_tracer_trace_lifecycle` in `tests/integration/test_evaluation.py` — was failing before the fix, passes after. It calls `log_routing` and `log_retrieval` in sequence and asserts `len(trace.events) >= 2`. Because `events.append` was always working, the test now passes cleanly; the TypeError from `_record_step` was the only thing that had been causing it to fail.
+`test_langfuse_tracer_trace_lifecycle` in `tests/integration/test_evaluation.py` asserts `len(trace.events) >= 2` after `log_routing` and `log_retrieval` calls. Was failing before this fix (one of two failing integration tests in AUDIT.md). Now passing. The test exercises the exact path that hit `_record_step` and would catch a regression.
 
 ### Lesson
 
-Symptom-described bugs are sometimes shallower than the underlying problem. The audit correctly identified the observable crash site (`_record_step` dict subscript) but the right fix direction required understanding why the code existed at all — not just what it was doing wrong. The audit described what it observed; the root cause was that the whole recording path was stale and could be removed. Worth digging one layer deeper before writing the fix.
+Audit reports describe what was observed, not necessarily the root cause. The `TypeError` in the audit was real, but it was the outermost layer of a three-layer problem. When a reported bug is a stale code path, the right fix is removal, not repair — repairing would have silently introduced a different bug (double-recording).
+
+A broad `except Exception as e: logger.warning("...", e)` style handler upstream would have made the three layers indistinguishable in logs. Worth pairing with the Self-RAG `VERIFICATION_PROMPT` entry above as another instance of the same pattern: shallow symptom masking deeper structure.
 
 ### Commit
 
@@ -352,3 +356,5 @@ Across the bugs documented in this file, a recurring pattern: code in the repo's
 **Specifically useful signal for future me:** if an audit or code review says a module is PARTIAL, assume it will break on first real-world use. Plan debug time accordingly. Don't trust static code review to catch cross-layer integration bugs.
 
 The 2026-04-26 audit cleanup confirmed the PARTIAL prediction held precisely. All five latent bugs (items 7–11 in AUDIT.md) were found in modules the audit had flagged as PARTIAL or SCAFFOLD — the agent endpoint, the tracer, the Cohere embedder, and the retrieval executor's dead and broken methods. Not one surfaced from a module the audit marked WORKING. The audit's classification scheme was accurate as a forward predictor: WORKING modules were safe, PARTIAL and SCAFFOLD modules contained every bug found.
+
+The audit's PARTIAL prediction held again on a 2026-04-26 RAGAS integration. AUDIT.md flagged `GenerationEvaluator`'s RAGAS code path as PARTIAL — "code present; requires extra install." Installing the extra was the easy part; what surfaced on first end-to-end use was a chain of distinct integration issues. The benchmark runner had no RAGAS code path despite the existing class. The 0.4.x library had migrated from the API the existing code targeted (column names changed, llm wrapper deprecated). The default judge configuration truncated on long answers, dropping 14 of 50 queries with no in-band warning. Each issue was invisible until the integration was forced to execute end-to-end, exactly matching the singleton bug, the UUID mismatch, and the NDCG dedup before it. PARTIAL means "looks correct in isolation but has never been exercised against real workflow." That's the right level of skepticism to apply.
