@@ -1,0 +1,1297 @@
+[
+  {
+    "query_id": "10385",
+    "query": "When should I start saving/investing for my retirement?",
+    "generated_answer": "You should start saving and investing for your retirement as early as possible. According to the advice given, beginning your saving routine promptly is crucial, even if you start with a small amount that you feel comfortable with. Consistency is key, and you can increase your savings as your income grows or whenever you feel ready to do so [Source 1].\n\nIt's emphasized that many young people often think they don't earn enough to start saving and may consider waiting until they are more established in their careers. However, this is a misconception. Even if you can only save a small amount, such as $50 from each paycheck, it's important to start now. The rationale is that you likely have more disposable income now than you will later when your lifestyle adjusts to your income level [Source 2].\n\nAdditionally, even if you are in college or just starting your career, it is advisable to fund your retirement accounts first. Opening a Roth IRA and contributing to it, even as an intern, is recommended. This approach allows you to begin building your retirement savings early, which can significantly benefit you in the long run [Source 4].\n\nIn summary, the consensus from the sources is clear: start saving and investing for retirement as soon as you can, regardless of your current income level, and prioritize funding your retirement accounts early in your career.",
+    "relevant_doc_ids": [
+      "417787",
+      "463043",
+      "468010",
+      "392371",
+      "45174",
+      "430014"
+    ],
+    "cited_doc_ids": [
+      "468010",
+      "417787",
+      "480402",
+      "364666",
+      "335436"
+    ],
+    "latency_ms": 9758.8,
+    "total_tokens": 987,
+    "faithfulness": 0.3481,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.5531,
+    "precision_at_5": 0.4,
+    "recall_at_5": 0.3333
+  },
+  {
+    "query_id": "1927",
+    "query": "How does a Non US citizen gain SEC Accredited Investor Status?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "63"
+    ],
+    "cited_doc_ids": [
+      "63",
+      "451729",
+      "426506",
+      "306961",
+      "226748"
+    ],
+    "latency_ms": 2293.6,
+    "total_tokens": 892,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "615",
+    "query": "Canadian accepting money electronically from Americans",
+    "generated_answer": "A Canadian can accept money electronically from Americans using several methods: \n\n1. **Credit Card Processing**: Companies like PayPal, Square, and Intuit offer credit card processing services that can be cheaper than banks. Square is noted as a good option for this purpose [Source 1].\n\n2. **International Money Order**: U.S. customers can send an International Money Order, which is preferable to a Domestic Money Order, as the latter can only be cashed at a U.S. post office [Source 1].\n\n3. **Cash on Delivery (COD)**: This method involves placing a COD charge on the item at the post office, where the package is delivered only after the customer pays [Source 1].\n\nThese methods provide alternatives to electronic payment systems like Interac, which is not available in the U.S. [Source 1].",
+    "relevant_doc_ids": [
+      "204288"
+    ],
+    "cited_doc_ids": [
+      "204288",
+      "226748",
+      "277482",
+      "213373",
+      "498356"
+    ],
+    "latency_ms": 4182.5,
+    "total_tokens": 1824,
+    "faithfulness": 0.2222,
+    "ragas_faithfulness": 0.0909,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "4190",
+    "query": "What is best investment which is full recession proof?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "147251",
+      "70575"
+    ],
+    "cited_doc_ids": [
+      "147251",
+      "70575",
+      "253373",
+      "345294",
+      "261804"
+    ],
+    "latency_ms": 1347.3,
+    "total_tokens": 886,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "3783",
+    "query": "Are there any statistics that support the need for Title Insurance?",
+    "generated_answer": "The provided sources indicate that while there are statistics regarding the claims made by title insurance companies, they do not directly support the need for title insurance in a straightforward manner. \n\n1. **Claims Statistics**: According to Source 4, in 2003, the title insurance industry paid out about $662 million in claims, which was approximately 4.3% of the $15.7 billion taken in as premiums. This suggests that the payouts are relatively low compared to the premiums collected. However, this statistic alone does not quantify the necessity of title insurance; it merely reflects the financial performance of the industry.\n\n2. **Risk Factors**: Source 2 emphasizes that title insurance protects against defects in the deed that may arise from events that occurred long before the current transaction. The risk of discovering such defects is not easily quantifiable, as they could stem from historical issues that are not immediately apparent. This highlights the inherent uncertainty and potential financial risk involved in property transactions, which title insurance aims to mitigate.\n\n3. **Protection Against Financial Loss**: Source 3 discusses the potential severe consequences of not having title insurance, such as losing the house while still owing the mortgage. This underscores the protective role of title insurance against significant financial loss, which is a compelling reason for its necessity, even if statistical claims data may not fully capture this need.\n\n4. **Cost Comparison**: Source 1 mentions that title insurance is often cheaper than conducting a title search, which is another form of protection. This cost-effectiveness can be seen as a practical reason for opting for title insurance, especially when a mortgage lender requires it.\n\nIn summary, while there are statistics regarding claims and payouts, they do not directly support the need for title insurance. Instead, the necessity is more about the protection it offers against potential historical defects in property ownership that could lead to significant financial loss, as well as its cost-effectiveness compared to other forms of protection.",
+    "relevant_doc_ids": [
+      "585341",
+      "354409",
+      "78787",
+      "479376"
+    ],
+    "cited_doc_ids": [
+      "354409",
+      "78787",
+      "354409",
+      "585341",
+      "585341"
+    ],
+    "latency_ms": 7231.5,
+    "total_tokens": 1425,
+    "faithfulness": 0.1944,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.8319,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.75
+  },
+  {
+    "query_id": "3501",
+    "query": "Paid cash for a car, but dealer wants to change price",
+    "generated_answer": "If your son paid cash for the car, the dealership is likely upset because they make their profit from financing, not cash deals. The dealership may try to change the price because they lost profit on the transaction. It's advisable for your son to ignore their calls and keep the car, as he owes nothing further if the check has been cashed [Source 1][Source 2][Source 3].",
+    "relevant_doc_ids": [
+      "406225",
+      "131255",
+      "247371",
+      "233479",
+      "490352",
+      "44085",
+      "87351",
+      "357280",
+      "253596",
+      "150278",
+      "120080",
+      "164702",
+      "484734"
+    ],
+    "cited_doc_ids": [
+      "44085",
+      "164702",
+      "131255",
+      "120080",
+      "150278"
+    ],
+    "latency_ms": 2556.9,
+    "total_tokens": 877,
+    "faithfulness": 0.3958,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.3846
+  },
+  {
+    "query_id": "2335",
+    "query": "Giving kids annual tax free gift of $28,000",
+    "generated_answer": "You can give each of your children $28,000 on or after January 1, 2013, without incurring gift tax, as this amount is the annual exclusion for that period. If both you and your spouse are giving, together you can give $28,000 to each donee [Source 1].",
+    "relevant_doc_ids": [
+      "162212",
+      "214685",
+      "361821"
+    ],
+    "cited_doc_ids": [
+      "214685",
+      "162212",
+      "69841",
+      "214685",
+      "34480"
+    ],
+    "latency_ms": 2860.0,
+    "total_tokens": 1410,
+    "faithfulness": 0.6154,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7654,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.6667
+  },
+  {
+    "query_id": "1769",
+    "query": "Is it financially advantageous and safe to rent out my personal car?",
+    "generated_answer": "Based on the provided documents, here are the key points regarding the financial advantages and safety of renting out a personal car:\n\n### Financial Advantages:\n1. **Potential Income**: Renting out your car could be financially advantageous if you can charge more than your monthly expenses related to the car, such as auto loan payments and insurance costs [Source 1].\n2. **Cost Savings**: You may save on garage costs if the car is rented out, which can contribute to overall financial benefits [Source 1].\n3. **Tax Considerations**: Transitioning your car from personal use to business use may have tax implications, including potential deductions for business expenses [Source 1].\n\n### Financial Disadvantages:\n1. **Ongoing Costs**: If the car is not rented out 100% of the time, you will still incur costs such as insurance and maintenance [Source 1].\n2. **Business Registration and Taxes**: Renting out your car may require you to register as a business and pay associated taxes, which could reduce profitability [Source 1].\n3. **Depreciation**: The value of the car may depreciate faster when used as a rental, impacting your financial return [Source 1].\n\n### Safety Considerations:\n1. **Insurance Requirements**: You must inform your insurance company about your rental plans, as they will adjust coverage based on the increased risk. Failure to do so could result in lack of coverage in case of an incident [Source 1].\n2. **Legal Protections**: It is essential to have a legally drawn-up contract to protect yourself from theft, negligence, or breach of contract. Without a contract, renting out your car is considered unsafe [Source 1].\n3. **Trustworthiness of Renters**: Evaluating the trustworthiness of renters is crucial, as there is a risk of damage or loss of the vehicle [Source 1].\n\n### Conclusion:\nWhile renting out your personal car can offer financial advantages, such as potential income and cost savings, it also comes with significant risks and ongoing costs. Safety measures, including proper insurance and legal contracts, are essential to mitigate risks associated with renting out your vehicle.",
+    "relevant_doc_ids": [
+      "329620",
+      "254499"
+    ],
+    "cited_doc_ids": [
+      "329620",
+      "41766",
+      "252473",
+      "437182",
+      "541865"
+    ],
+    "latency_ms": 7902.4,
+    "total_tokens": 1885,
+    "faithfulness": 0.1844,
+    "ragas_faithfulness": 0.913,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "8090",
+    "query": "Do corporate stock splits negate share repurchase programs?",
+    "generated_answer": "Corporate stock splits do not negate share repurchase programs; rather, they have opposite effects on share price but do not affect the total value to shareholders. \n\nA stock split, as explained in [Source 3], is a method to adjust the price per share without creating additional value. For example, a company can split its shares to make them more affordable, but the overall value remains the same. This is akin to exchanging a dime for two nickels; the total value is still 10 cents, just represented differently.\n\nOn the other hand, share repurchase programs are implemented to prevent dilution of shares, as noted in [Source 2]. When a company buys back its shares, it reduces the number of outstanding shares, which can increase the value of the remaining shares. According to [Source 5], doing both a stock split and a share repurchase can lead to an increase in value for shareholders because the un-bought back shares represent a larger percentage of the company, thus becoming more valuable.\n\nIn summary, while stock splits and share repurchase programs have different impacts on share price, they do not negate each other. Instead, they can work together to enhance shareholder value while making shares more accessible.",
+    "relevant_doc_ids": [
+      "539664",
+      "193266"
+    ],
+    "cited_doc_ids": [
+      "193266",
+      "539664",
+      "539664",
+      "193266",
+      "193266"
+    ],
+    "latency_ms": 5517.9,
+    "total_tokens": 690,
+    "faithfulness": 0.4103,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "1519",
+    "query": "Double-Taxation of Royalties paid for in Korea to a US Company",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "310190"
+    ],
+    "cited_doc_ids": [
+      "310190",
+      "497567",
+      "490386",
+      "146177",
+      "43370"
+    ],
+    "latency_ms": 2287.3,
+    "total_tokens": 978,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "9186",
+    "query": "Can I buy only 4 shares of a company?",
+    "generated_answer": "Yes, you can buy only 4 shares of a company, but it may not be the best idea depending on your overall investment strategy and fees involved [Source 1].",
+    "relevant_doc_ids": [
+      "194404",
+      "279288",
+      "455609",
+      "451729",
+      "229788",
+      "281423",
+      "312154",
+      "539418"
+    ],
+    "cited_doc_ids": [
+      "455609",
+      "279288",
+      "229788",
+      "554996",
+      "193266"
+    ],
+    "latency_ms": 2786.3,
+    "total_tokens": 661,
+    "faithfulness": 0.5862,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7227,
+    "precision_at_5": 0.6,
+    "recall_at_5": 0.375
+  },
+  {
+    "query_id": "6387",
+    "query": "What factors make someone buy or sell a stock?",
+    "generated_answer": "Several factors influence an individual's decision to buy or sell a stock, as outlined in the provided sources:\n\n1. **Company Performance and News**: The performance of a company, such as its earnings reports, plays a significant role in stock price movements. Positive news, like a strong earnings report, can lead to an increase in stock price, while negative news, such as a scandal, can cause a decline in stock price. Investors react to these developments based on their perception of the company's future prospects. If a company appears to be facing challenges, investors may choose to sell their shares to avoid potential losses, while favorable news may encourage buying [Source 1].\n\n2. **Investor Sentiment and Strategy**: An investor's personal strategy and sentiment towards a company can also dictate their buying or selling behavior. For instance, if an investor loses faith in a company or if the stock no longer aligns with their investment strategy, they may decide to sell. Additionally, some investors may sell to take their principal out and reinvest in other opportunities [Source 3].\n\n3. **Speculation vs. Investment**: The distinction between speculation and investment is crucial. Speculators buy stocks with the intention of selling them at a higher price, often engaging in day-trading, which is characterized by short-term buying and selling based on price fluctuations. In contrast, investors typically purchase stocks for their underlying value, believing that the future payments (like dividends) will exceed the purchase price. An investor may sell if they receive a higher price than they believe the stock is worth or if the business situation changes [Source 5].\n\n4. **Market Dynamics**: The overall market dynamics, including the actions of other investors, can also influence buying and selling decisions. For example, if a significant number of investors decide to short a stock, it could drive down the price, prompting others to sell as well, regardless of the company's actual performance [Source 1].\n\n5. **Ownership Percentage and Share Value**: The concept of ownership percentage is also relevant. When shares are bought back, the remaining shares represent a larger percentage of the company, which can increase their value. This dynamic can make shares more attractive to potential buyers who may want to invest in a company without paying a high price per share [Source 4].\n\nIn summary, the decision to buy or sell a stock is influenced by a combination of company performance, investor sentiment and strategy, the nature of the investment (speculative vs. value-based), market dynamics, and the implications of share ownership on value.",
+    "relevant_doc_ids": [
+      "554996",
+      "58009",
+      "217837"
+    ],
+    "cited_doc_ids": [
+      "58009",
+      "554996",
+      "217837",
+      "193266",
+      "233821"
+    ],
+    "latency_ms": 13375.5,
+    "total_tokens": 1290,
+    "faithfulness": 0.1889,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "696",
+    "query": "Executor of will",
+    "generated_answer": "Being an executor does not make the assets of the estate vulnerable to personal lawsuits against the executor, as the estate is a separate legal entity. Creditors can only make claims against the estate itself, and after all creditors are paid, the remaining assets are distributed according to the will. However, if the executor has commingled estate assets with personal assets, there could be risks to personal assets, especially if the business was a sole proprietorship [Source 1]. Additionally, once the estate is divided, any inherited money or assets become the personal property of the heir and may be subject to claims [Source 2].",
+    "relevant_doc_ids": [
+      "112987",
+      "90572"
+    ],
+    "cited_doc_ids": [
+      "112987",
+      "90572",
+      "146177",
+      "406481",
+      "570990"
+    ],
+    "latency_ms": 5096.7,
+    "total_tokens": 733,
+    "faithfulness": 0.4394,
+    "ragas_faithfulness": 0.875,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "671",
+    "query": "Does the low CAD positively or negatively impact Canadian Investors?",
+    "generated_answer": "The impact of a low CAD (Canadian Dollar) on Canadian investors can be analyzed systematically as follows:\n\n1. **Currency Risk**:\n   - When the CAD is low, Canadian investors face increased currency risk when investing in foreign assets, particularly US stocks. A low CAD means that it costs more in CAD to purchase US-denominated assets, which can lead to higher initial investment costs [Source 2].\n\n2. **Investment Returns**:\n   - If Canadian investors buy US stocks when the CAD is low and the CAD later appreciates, any profits from the stock investments will be reduced. Conversely, if the CAD depreciates further, losses from stock investments may be exacerbated [Source 1].\n\n3. **Currency Gains**:\n   - Conversely, if Canadian investors buy US stocks when the CAD is high and sell them when the CAD is lower, they can realize a currency gain in addition to any profits or losses from the stock investments. This indicates that timing the currency exchange can lead to additional financial benefits [Source 1].\n\n4. **Investment Strategy**:\n   - For those who are risk-averse or just starting out, investing in domestic stocks may be preferable to avoid the added currency risk associated with foreign investments. This suggests that a low CAD could deter some investors from pursuing foreign investments [Source 1].\n\n5. **Market Predictions**:\n   - The uncertainty surrounding future CAD values adds complexity to investment decisions. Investors may struggle to predict whether the CAD will strengthen or weaken in the future, which complicates the decision-making process regarding asset allocation between Canadian and US stocks [Source 3].\n\nIn summary, a low CAD generally negatively impacts Canadian investors by increasing costs for foreign investments and potentially reducing returns. However, it can also provide opportunities for gains if managed strategically.",
+    "relevant_doc_ids": [
+      "148208",
+      "277482",
+      "213373"
+    ],
+    "cited_doc_ids": [
+      "148208",
+      "213373",
+      "277482",
+      "527583",
+      "226748"
+    ],
+    "latency_ms": 9122.7,
+    "total_tokens": 1536,
+    "faithfulness": 0.268,
+    "ragas_faithfulness": 0.875,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "1622",
+    "query": "How to properly collect money from corporate sponsors?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "323662",
+      "369577"
+    ],
+    "cited_doc_ids": [
+      "369577",
+      "204288",
+      "349544",
+      "43370",
+      "175889"
+    ],
+    "latency_ms": 2461.7,
+    "total_tokens": 1375,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "3436",
+    "query": "Health insurance lapsed due to employer fraud. How to get medications while in transition?",
+    "generated_answer": "If your health insurance has lapsed due to employer fraud and you need medications during this transition, there are several options you can consider based on the provided sources:\n\n1. **Manufacturer Assistance Programs**: Check with the manufacturer of your name brand medication. Many manufacturers have programs designed to help individuals who cannot afford their medications. They may provide coupons for discounted or even free medications [Source 1].\n\n2. **Free Clinics**: If your income is low enough, you can visit a free clinic. These clinics often provide medications until you can secure insurance again. This can be a valuable resource for those in financial distress [Source 1].\n\n3. **Out-of-Pocket Payments**: If you are unable to access the above options, you might consider paying for your medications out of pocket. This is a common approach for individuals who work hard but do not have insurance [Source 1].\n\n4. **Consult Your Doctor**: It may be beneficial to talk to your doctor about alternative medications that are less expensive. While these alternatives may not be as effective or could have different side effects, they can provide a temporary solution while you navigate your insurance issues [Source 1].\n\n5. **Recourse Against Former Employer**: If you believe your former employer committed fraud regarding your insurance, you may have legal recourse. However, pursuing this could take time, and it may be challenging to recoup any funds quickly [Source 3]. \n\n6. **Contacting the Former Employer**: You could also attempt to contact your former employer to inquire about their procedures regarding your paycheck funds. While they are not legally obligated to assist you, a polite and understanding approach might yield some helpful information [Source 5].\n\nThese steps can help you manage your medication needs while you work through the challenges posed by the lapse in your health insurance.",
+    "relevant_doc_ids": [
+      "517510",
+      "175537"
+    ],
+    "cited_doc_ids": [
+      "517510",
+      "278611",
+      "517510",
+      "161301",
+      "43370"
+    ],
+    "latency_ms": 8082.7,
+    "total_tokens": 1370,
+    "faithfulness": 0.2753,
+    "ragas_faithfulness": 0.7143,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.25,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "3616",
+    "query": "For the first time in my life, I'm going to be making real money\u2026what should I do with it?",
+    "generated_answer": "When you start making real money for the first time, it's important to approach your finances with a balanced mindset. Here are some key steps based on the provided sources:\n\n1. **Budget Wisely**: As a college student or recent graduate, it's tempting to spend your first paycheck on big-ticket items like a new TV or vacation. While it's okay to enjoy some of your earnings, you should budget for these expenses realistically. Consider the opportunity cost of your spending decisions\u2014what you might be giving up in terms of savings or future investments [Source 1].\n\n2. **Live Below Your Means**: A good rule of thumb is to maintain a lifestyle similar to when you were a college student. If you could manage on $20,000 a year, try to live on that amount even when you start earning more, such as $40,000. This allows you to save the difference and build a solid financial foundation [Source 2].\n\n3. **Start Saving Early**: It's crucial to start saving as soon as possible, even if it's a small amount like $50 from each paycheck. Many people believe they need to wait until they earn more to start saving, but starting early can lead to significant benefits in the long run. Your disposable income may actually be higher now than it will be later when your lifestyle adjusts to your income [Source 3].\n\n4. **Invest Wisely**: If you're considering investing your savings, it's generally advisable to start with diversified options like mutual funds or ETFs rather than putting all your money into individual stocks. This approach helps mitigate risk while still allowing you to participate in the stock market [Source 4].\n\n5. **Plan for Major Expenses**: If you have life goals that require larger expenses, such as buying a home for a family, consider these purchases carefully. They should align with your life goals rather than just be seen as investments that guarantee returns. Understand that buying property to live in is a significant life choice and should be treated differently than investment properties [Source 5].\n\n6. **Avoid Debt**: One of the most important pieces of advice is to avoid credit card debt. While using credit can be beneficial, carrying a balance can lead to financial strain. It's best to use credit responsibly and pay off any balances in full [Source 1].\n\nBy following these guidelines, you can make informed decisions about your finances as you begin to earn real money.",
+    "relevant_doc_ids": [
+      "141032",
+      "364666",
+      "335436",
+      "480402",
+      "474896"
+    ],
+    "cited_doc_ids": [
+      "480402",
+      "430014",
+      "417787",
+      "279288",
+      "72578"
+    ],
+    "latency_ms": 11772.7,
+    "total_tokens": 1657,
+    "faithfulness": 0.1818,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.3392,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.2
+  },
+  {
+    "query_id": "7502",
+    "query": "How do ETF fees get applied?",
+    "generated_answer": "ETF fees are generally reflected in the net asset value (NAV) of the fund, which is calculated and published by the fund administrator. However, the price of the ETF quoted on the stock exchange is determined by the market and is not directly referenced to the NAV. This means that while the quoted price may not explicitly show the fees, it is safe to assume that the ETF price is net of relevant fees, as the market typically does not deviate greatly from the NAV of the fund [Source 1]. \n\nAdditionally, when investing in ETFs, it is advisable to look for no-fee ETFs with low expense ratios, such as around 0.15%. This approach helps avoid broker fees when buying shares and allows for casual investment in shares that are affordable [Source 3]. \n\nIn summary, ETF fees are incorporated into the NAV, and while the market price reflects these fees indirectly, investors should consider low-expense ETFs to minimize costs.",
+    "relevant_doc_ids": [
+      "409995"
+    ],
+    "cited_doc_ids": [
+      "409995",
+      "356819",
+      "45174",
+      "39436",
+      "451729"
+    ],
+    "latency_ms": 5849.2,
+    "total_tokens": 1101,
+    "faithfulness": 0.3684,
+    "ragas_faithfulness": 0.5714,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "9464",
+    "query": "Simple and safe way to manage a lot of cash",
+    "generated_answer": "To manage a lot of cash simply and safely, consider the following strategies based on the provided sources:\n\n1. **Multiple Accounts**: High school graduates can effectively manage one checking account and one savings account, along with several charge cards and investments like CDs and stocks. This approach allows for diversification and easier tracking of funds. It is recommended to keep a wall calendar, a shoe box for physical documents, and a stack of 3 by 5 cards for organization. If you are comfortable with technology, using a spreadsheet can simplify the process further. It's crucial to back up your data to avoid loss [Source 1].\n\n2. **Emergency Fund**: It is advisable to keep a certain amount of cash as an emergency fund. Having liquid cash readily available can be critical during emergencies, such as natural disasters or unexpected situations where access to electronic payment methods may be limited. A recommendation is to maintain around $1,000 in cash, as this can be essential for immediate needs like food, gas, or other necessities when ATMs and electronic payment systems are down [Source 3].\n\n3. **Cash Accessibility**: In times of emergencies, having cash on hand can be more beneficial than relying solely on bank accounts or credit cards. For instance, during a hurricane, cash is often needed for purchasing gas, food, or water, especially when ATM networks are not operational. This highlights the importance of having liquid funds available for unforeseen circumstances [Source 3].\n\n4. **Savings Recommendations**: Some financial advice suggests having 3 to 6 times your monthly income in savings. This can serve as a buffer against financial emergencies, although it may not be the most prudent strategy for everyone. It provides a straightforward method to gauge how much cash to keep accessible [Source 5].\n\n5. **Investment Considerations**: While interest rates may not be high, keeping money in a safe bank account is a secure option. If you anticipate needing access to your funds in the near term, a bank account is likely the best choice compared to riskier investments like bonds, which may require a larger initial investment and could tie up your funds [Source 4].\n\nIn summary, managing cash effectively involves maintaining multiple accounts for organization, having a sufficient emergency fund in liquid cash, and considering both savings and investment options based on your individual needs and circumstances.",
+    "relevant_doc_ids": [
+      "598440",
+      "71299",
+      "463636",
+      "575794"
+    ],
+    "cited_doc_ids": [
+      "71299",
+      "570632",
+      "34480",
+      "527583",
+      "333334"
+    ],
+    "latency_ms": 9369.0,
+    "total_tokens": 1815,
+    "faithfulness": 0.2338,
+    "ragas_faithfulness": 0.6552,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.3904,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.25
+  },
+  {
+    "query_id": "632",
+    "query": "What is the field \u201cFolio\u201d in an accounting book for?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "568501"
+    ],
+    "cited_doc_ids": [
+      "570990",
+      "570990",
+      "37987",
+      "70305",
+      "554996"
+    ],
+    "latency_ms": 2023.7,
+    "total_tokens": 919,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0
+  },
+  {
+    "query_id": "8480",
+    "query": "Why can I see/trade VIX but not S&P/TSX 60 VIX?",
+    "generated_answer": "You can see and trade VIX because it is an index that represents the implied volatility of options on the S&P 500, and there are products like VXX that allow for trading based on this index [Source 2]. However, the S&P/TSX 60 VIX (VIXC) cannot be traded directly as it is not a tradable product; it serves as an important signal for traders but does not have associated futures or options that can be traded at this time [Source 1]. \n\nIn summary, while VIX has tradable products linked to it, the S&P/TSX 60 VIX does not have any trading products available, which is why you can see and trade VIX but not S&P/TSX 60 VIX.",
+    "relevant_doc_ids": [
+      "461165",
+      "25130"
+    ],
+    "cited_doc_ids": [
+      "461165",
+      "25130",
+      "498356",
+      "393140",
+      "238024"
+    ],
+    "latency_ms": 5161.5,
+    "total_tokens": 1004,
+    "faithfulness": 0.4789,
+    "ragas_faithfulness": 0.7143,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "3183",
+    "query": "Is it better to buy this used car from Craigslist or from a dealership?",
+    "generated_answer": "To compare buying a used car from Craigslist versus a dealership systematically, we can evaluate several dimensions based on the provided sources:\n\n1. **Cost Savings**:\n   - **Craigslist**: Buying from a private party, such as Craigslist, can save both parties money as the \"middle man\" (dealership) is cut out [Source 2].\n   - **Dealership**: The cost may be higher due to dealership overhead and potential added services, but certified pre-owned vehicles may come with warranties that provide some peace of mind [Source 1].\n\n2. **Warranty and Reliability**:\n   - **Craigslist**: Typically, private sales do not come with warranties, which means the buyer assumes all risks regarding the vehicle's condition [Source 2].\n   - **Dealership**: Buying from a dealership, especially a certified pre-owned vehicle, may offer a warranty that can be meaningful for high-mileage cars, providing some assurance against potential repairs [Source 1].\n\n3. **Vehicle Condition and Inspection**:\n   - **Craigslist**: The condition of the vehicle may vary widely, and buyers may need to rely on their own judgment or inspection services to assess the car's condition [Source 2].\n   - **Dealership**: Dealerships often perform inspections and may provide a vehicle history report, which can help buyers make informed decisions [Source 1].\n\n4. **Negotiation and Customer Service**:\n   - **Craigslist**: Negotiation can be more straightforward, but there may be less recourse if issues arise after the sale [Source 2].\n   - **Dealership**: Dealerships may have more structured negotiation processes, and there may be avenues for recourse if problems occur, such as customer service or manufacturer complaints [Source 4].\n\n5. **Satisfaction and Emotional Factors**:\n   - **Craigslist**: Driving an older, high-mileage car may require motivation, especially when peers are driving newer vehicles, which could affect satisfaction [Source 2].\n   - **Dealership**: Purchasing from a dealership may provide a sense of security and satisfaction due to the perceived legitimacy and support offered [Source 1].\n\nIn summary, buying from Craigslist may offer cost savings but comes with risks regarding warranty and vehicle condition. In contrast, purchasing from a dealership may provide more security and support but could be more expensive. The choice depends on the buyer's priorities regarding cost, risk tolerance, and the importance of warranties and customer service.",
+    "relevant_doc_ids": [
+      "519173",
+      "205766",
+      "468984",
+      "389718"
+    ],
+    "cited_doc_ids": [
+      "389718",
+      "519173",
+      "247371",
+      "490352",
+      "247371"
+    ],
+    "latency_ms": 16007.0,
+    "total_tokens": 1358,
+    "faithfulness": 0.1684,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6367,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "10595",
+    "query": "Why buying an inverse ETF does not give same results as shorting the ETF",
+    "generated_answer": "Buying an inverse ETF does not yield the same results as shorting the underlying ETF due to the way inverse ETFs are structured and how they respond to market movements. \n\nWhen you short a stock or an ETF, you are selling a specific number of shares on a specific day, and you typically do not adjust your position as the price fluctuates. In contrast, an inverse ETF is designed to provide the opposite return of the underlying index on a daily basis. This means that it adjusts continuously to maintain its specified leverage, which can lead to different outcomes over time compared to a straightforward short position.\n\nFor example, if the underlying ETF experiences a gain followed by a loss, the compounding effect can result in a net gain for the ETF but a net loss for the inverse ETF. In a scenario where the ETF rises by 10% one day and then falls by 5% the next day, the ETF ends up with a net gain of 4.5%. Conversely, the inverse ETF, which would drop by 10% on the first day and then rise by 5% on the second day, ends up with a net loss of 5.5%. This discrepancy arises from the compounding of returns, where the percentage changes are applied to different base values over time, leading to divergent results for the two investment strategies [Source 1][Source 2].\n\nThus, while both strategies aim to profit from declines in the underlying asset, the mechanics of how inverse ETFs operate\u2014specifically their daily rebalancing and the effects of compounding\u2014result in different performance outcomes compared to directly shorting the ETF.",
+    "relevant_doc_ids": [
+      "356819",
+      "39436"
+    ],
+    "cited_doc_ids": [
+      "39436",
+      "356819",
+      "409995",
+      "108978",
+      "349838"
+    ],
+    "latency_ms": 6941.1,
+    "total_tokens": 1229,
+    "faithfulness": 0.2897,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "8084",
+    "query": "Where does the stock go in a collapse?",
+    "generated_answer": "In a stock market collapse, the behavior of different types of investors and the dynamics of the market play crucial roles in determining where the stock goes. \n\nInitially, most of the \"smart money\" investors would have exited the market before or at the start of the crash. This means that as the market begins to decline, the remaining technical traders would typically exit their positions once the market has dropped by about 10 to 15%. Some of these traders may even start shorting their positions during this phase [Source 1].\n\nLong-term buy-and-hold investors often remain in the market despite downturns, although some may start to feel anxious and consider selling when the market falls by 30% or more. This group is characterized by a mix of behaviors: while some investors stick it out through the downturn, others may eventually sell when they can no longer tolerate the losses [Source 1].\n\nAs the market continues to decline, particularly after a significant drop (over 30%), \"bargain hunters\" may enter the market, looking to buy stocks at lower prices. These investors might sell again if the market falls further (by another 20%), or they may believe in dollar-cost averaging, hoping to profit when prices eventually rise again [Source 5]. Additionally, some investors may be covering their short positions or rebalancing their portfolios during this time [Source 5].\n\nOverall, during a collapse, the stock market experiences a downward trend characterized by lower lows and lower highs, reflecting the ongoing selling pressure and the cautious behavior of investors [Source 5]. The interplay between those exiting the market, those holding on, and new buyers looking for bargains shapes the trajectory of stock prices during such a crisis.",
+    "relevant_doc_ids": [
+      "238024",
+      "482517"
+    ],
+    "cited_doc_ids": [
+      "238024",
+      "232880",
+      "580512",
+      "393925",
+      "238024"
+    ],
+    "latency_ms": 8988.6,
+    "total_tokens": 1311,
+    "faithfulness": 0.2848,
+    "ragas_faithfulness": 0.6,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.25,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "6340",
+    "query": "Is there an advantage to keeping a liquid emergency fund if one also has an untapped line of credit?",
+    "generated_answer": "Yes, there are advantages to keeping a liquid emergency fund even if one has an untapped line of credit. Here are the key points:\n\n1. **Immediate Access to Cash**: A liquid emergency fund provides immediate access to cash when an emergency arises, which is crucial for covering urgent expenses without delay [Source 2].\n\n2. **Debt Management**: Having both cash and a line of credit allows for more flexible financial management. In an emergency, one can draw from the line of credit first and use the cash to pay off the debt later, creating a more stable financial situation [Source 3].\n\n3. **Avoiding Interest Costs**: Using cash from an emergency fund to cover expenses can prevent the accumulation of debt and interest charges that would occur if relying solely on a line of credit [Source 3].\n\n4. **Financial Security**: Having both options (cash and credit) enhances financial security. If cash is spent, it can be replenished over time, while the line of credit remains available for future emergencies [Source 3].\n\n5. **Liquidity Needs**: An emergency fund is specifically designed for liquidity, ensuring that funds are readily available when needed, unlike investments that may take time to liquidate [Source 5].\n\nIn summary, maintaining a liquid emergency fund alongside an untapped line of credit provides immediate access to cash, aids in debt management, avoids interest costs, enhances financial security, and meets liquidity needs effectively.",
+    "relevant_doc_ids": [
+      "333334",
+      "598272",
+      "108978",
+      "570632",
+      "324680",
+      "355477"
+    ],
+    "cited_doc_ids": [
+      "598272",
+      "108978",
+      "324680",
+      "41417",
+      "243571"
+    ],
+    "latency_ms": 8886.4,
+    "total_tokens": 974,
+    "faithfulness": 0.2463,
+    "ragas_faithfulness": 0.8571,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7227,
+    "precision_at_5": 0.6,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "3460",
+    "query": "How to manage household finances (income & expenses) [duplicate]",
+    "generated_answer": "To manage household finances effectively, you should follow these steps based on the provided sources:\n\n1. **List Your Expenses**: Start by making a comprehensive list of all your expenses. This includes fixed expenses such as rent, loan payments, and insurance, as well as regular but variable expenses like food, utilities, and gas. It is advisable to keep records for at least a few months to avoid guessing and to account for seasonal variations in expenses, such as higher heating costs in winter [Source 1].\n\n2. **Budget for Savings and Retirement**: Allocate a portion of your income towards savings and retirement. Even if you are just starting out and can only save a small amount, it is important to develop the habit of saving. The earlier you start saving for retirement, the more your money can grow over time [Source 1].\n\n3. **Compare Expenses to Income**: After totaling your expenses, compare this amount to your income. If your expenses exceed your income, you will need to identify areas where you can cut back [Source 1].\n\n4. **Create a Bill Payment Schedule**: Organize a schedule for paying your bills based on your pay periods. For example, if you get paid twice a month, you can allocate certain bills to each paycheck to ensure that you have enough funds to cover all your obligations [Source 1].\n\n5. **Establish an Emergency Fund**: It is recommended to maintain an emergency fund that covers 3 to 6 months of expenses. The amount you choose depends on the stability of your income. If you have a steady job, 3 months may suffice, but if your job is less secure, aim for 6 months. This fund can help you manage unexpected expenses or loss of income [Source 5].\n\n6. **Assess Financial Risks**: Understand the financial risks relevant to your situation, such as potential job loss or unexpected costs related to essential possessions (e.g., car repairs). This assessment will help you determine how much you need in your emergency fund and whether insurance might be a better option for certain risks [Source 3].\n\n7. **Consider Your Commitments**: The fewer financial commitments you have (like dependents or loans), the less you may need in your emergency fund. This can provide more flexibility in managing your finances [Source 2].\n\nBy following these steps, you can create a structured approach to managing your household finances, ensuring that you are prepared for both regular expenses and unexpected financial challenges.",
+    "relevant_doc_ids": [
+      "471957",
+      "70305"
+    ],
+    "cited_doc_ids": [
+      "349544",
+      "437182",
+      "278611",
+      "71299",
+      "446506"
+    ],
+    "latency_ms": 9935.4,
+    "total_tokens": 1916,
+    "faithfulness": 0.2297,
+    "ragas_faithfulness": 0.9032,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0
+  },
+  {
+    "query_id": "6774",
+    "query": "Deal with stock PSEC",
+    "generated_answer": "The context regarding PSEC (Prospect Capital Corporation) indicates that shareholders may experience taxable events related to Subscription Rights. Specifically, if a shareholder receives a Subscription Right from PSEC and does not sell or exercise that right before it expires, they can expect to have two taxable events: (1) taxable dividend income equal to the fair market value of the Subscription Right on the date of its distribution, and (2) a capital loss upon the expiration of the right equal to their adjusted tax basis in such right. These events occur on specific dates: the dividend taxable event occurs on the date of distribution, while the capital loss occurs upon expiration of the right [Source 2]. \n\nAdditionally, it is noted that the consequences of these taxable events can vary depending on the individual shareholder's tax situation [Source 1].",
+    "relevant_doc_ids": [
+      "146177"
+    ],
+    "cited_doc_ids": [
+      "146177",
+      "146177",
+      "554996",
+      "498356",
+      "310601"
+    ],
+    "latency_ms": 5985.4,
+    "total_tokens": 1244,
+    "faithfulness": 0.3049,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "9161",
+    "query": "Common practice for start/end date of balance sheet",
+    "generated_answer": "The common practice for the start and end dates of a balance sheet, as indicated in the provided sources, revolves around the timing of income and expenses in relation to specific periods. \n\nFrom [Source 1], it is noted that a paycheck typically includes a Year-To-Date (YTD) number that concludes with the latest check of the year. This implies that for personal financial tracking, the balance sheet would reflect all income and expenses up to a certain date, which is often aligned with the end of a calendar year or fiscal year. The example given mentions that the individual's pay period ended on 12/24, while the balance sheet for brokerage statements and stock valuations concluded on 12/31. This suggests that the balance sheet is prepared at the end of a defined period, capturing all relevant financial activities up to that point.\n\nIn summary, the start date for a balance sheet can be the beginning of a fiscal year or a specific period of income, while the end date is typically the last day of that period, such as the end of the month or year, to ensure all transactions are accounted for accurately. This practice helps in providing a clear snapshot of financial standing at a specific point in time.",
+    "relevant_doc_ids": [
+      "302209"
+    ],
+    "cited_doc_ids": [
+      "302209",
+      "39436",
+      "141032",
+      "349544",
+      "570990"
+    ],
+    "latency_ms": 5972.4,
+    "total_tokens": 1337,
+    "faithfulness": 0.2793,
+    "ragas_faithfulness": 0.1818,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "4236",
+    "query": "What is the difference between speculating and investing?",
+    "generated_answer": "The difference between speculating and investing can be analyzed through the following structured key points based on the provided sources:\n\n1. **Objective**:\n   - **Investing**: The goal is to create wealth through improvement or production, often based on thorough research and analysis of economic conditions, industry trends, and company performance [Source 2][Source 3].\n   - **Speculating**: The aim is to achieve short-term maximum returns based on hunches or predictions about market movements, often without a solid foundation of research [Source 1][Source 2].\n\n2. **Time Horizon**:\n   - **Investing**: Typically involves a longer-term commitment, with an understanding that the investment will be held for an extended period [Source 1].\n   - **Speculating**: Generally focuses on short-term gains, with the intention of quickly buying and selling assets [Source 3].\n\n3. **Risk Management**:\n   - **Investing**: Involves balancing the desire for returns against various risks, often with strategies to mitigate those risks [Source 1].\n   - **Speculating**: Carries a higher level of risk, as it often relies on unpredictable market changes, leading to the potential for significant losses [Source 2][Source 4].\n\n4. **Approach to Value**:\n   - **Investing**: Involves purchasing assets based on their underlying value and future potential, with a focus on long-term benefits [Source 5].\n   - **Speculating**: Involves buying assets with the intention of selling them at a higher price, often without regard for their intrinsic value [Source 5].\n\n5. **Perception and Terminology**:\n   - **Investing**: Conveys a sense of effort, competence, and a worthwhile outcome, often viewed positively [Source 4].\n   - **Speculating**: May carry negative connotations, implying a gamble or a hope for gain with a significant risk of loss [Source 4].\n\nIn summary, investing is characterized by a long-term, research-based approach focused on value creation, while speculating is a short-term, riskier endeavor aimed at profiting from market fluctuations.",
+    "relevant_doc_ids": [
+      "248677",
+      "230733",
+      "261804",
+      "106864",
+      "233821",
+      "228521",
+      "349838"
+    ],
+    "cited_doc_ids": [
+      "261804",
+      "248677",
+      "228521",
+      "106864",
+      "233821"
+    ],
+    "latency_ms": 9181.9,
+    "total_tokens": 1107,
+    "faithfulness": 0.2367,
+    "ragas_faithfulness": 0.7917,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.7143
+  },
+  {
+    "query_id": "80",
+    "query": "Get a loan with low interest rate on small business",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "252473"
+    ],
+    "cited_doc_ids": [
+      "72578",
+      "253373",
+      "252473",
+      "345294",
+      "131255"
+    ],
+    "latency_ms": 3142.9,
+    "total_tokens": 1447,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.3333,
+    "ndcg_at_5": 0.5,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "2622",
+    "query": "Is the gross amount of US debt dangerous for the small investor?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "61792"
+    ],
+    "cited_doc_ids": [
+      "61792",
+      "338784",
+      "345294",
+      "527583",
+      "333334"
+    ],
+    "latency_ms": 2137.9,
+    "total_tokens": 550,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "6399",
+    "query": "How is Butterfly Trade Strategy good if the mid Strike price is already past?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "240023"
+    ],
+    "cited_doc_ids": [
+      "240023",
+      "137175",
+      "137175",
+      "263088",
+      "238024"
+    ],
+    "latency_ms": 2505.0,
+    "total_tokens": 830,
+    "faithfulness": 0.5556,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "5091",
+    "query": "Is there a term that better describes a compound annual growth rate (CAGR) when it is negative?",
+    "generated_answer": "The provided sources do not specify a term that better describes a compound annual growth rate (CAGR) when it is negative. However, they do discuss the concept of growth rates being both positive and negative. \n\nSource 1 mentions that it is acceptable to use the term CAGR regardless of whether the rate is positive or negative. Source 2 states that economists often talk about negative growth rates and that the sign of the value should be indicated by the value itself rather than the term used. It emphasizes that the name of the term should help in understanding the value, but it does not provide a specific alternative term for negative CAGR.\n\nSource 3 argues that negative growth rates do not require a special name and suggests that simply placing a minus sign in front of the number conveys the necessary information. Source 4 notes that CAGR is a well-known term that allows for easy understanding and searching for explanations, but it does not address a specific alternative for negative values. Finally, Source 5 mentions an alternative term, CARC (Compounded Annual Rate of Change), but it does not clarify whether this term is specifically for negative growth rates.\n\nIn summary, while there is no specific term provided that better describes a negative CAGR, the sources suggest that the existing terminology can still be used with the understanding that negative values can be indicated by a minus sign.",
+    "relevant_doc_ids": [
+      "145143",
+      "37987",
+      "87675"
+    ],
+    "cited_doc_ids": [
+      "37987",
+      "37987",
+      "145143",
+      "37987",
+      "87675"
+    ],
+    "latency_ms": 6384.3,
+    "total_tokens": 905,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "4234",
+    "query": "Is there a good rule of thumb for how much I should have set aside as emergency cash?",
+    "generated_answer": "Based on the provided sources, there are several recommendations regarding how much emergency cash one should have set aside:\n\n1. **Standard Recommendation**: It is commonly regarded that having between 6 months to a year\u2019s worth of expenses is a \"standard\" amount to save for emergencies. This involves planning out monthly expenses and saving that amount accordingly [Source 1].\n\n2. **Liquid Cash Suggestion**: Another recommendation is to keep around $1,000 in liquid cash. This amount can be crucial in emergencies where access to funds may be limited, such as during natural disasters or unexpected situations where cash is necessary [Source 2].\n\n3. **Cash for Survival**: It is also suggested to consider how much cash would be needed to survive for varying lengths of time (1 month, 3 months, 5 months, etc.) in case of a financial emergency where credit is not available. This thought experiment can help determine a minimum desired cash amount [Source 3].\n\n4. **Cash in the Home**: Some individuals recommend keeping a month's income in cash at home, especially in areas prone to natural disasters where access to cash may be compromised [Source 4].\n\n5. **General Savings Guideline**: A broader guideline suggests having 3 to 6 times your monthly income in savings as a way to handle most financial emergency risks, although this may not be the most prudent strategy for everyone [Source 5].\n\nIn summary, while there is no one-size-fits-all answer, a combination of having a specific amount of liquid cash (around $1,000), considering your monthly expenses for a longer-term emergency fund (6 months to a year), and keeping a month's income in cash at home are all practical strategies to consider for emergency preparedness.",
+    "relevant_doc_ids": [
+      "446506",
+      "437182",
+      "160011",
+      "590623",
+      "278611",
+      "243571",
+      "244408",
+      "161301",
+      "111054",
+      "29517",
+      "61093",
+      "261619",
+      "97151"
+    ],
+    "cited_doc_ids": [
+      "111054",
+      "34480",
+      "160011",
+      "570632",
+      "333334"
+    ],
+    "latency_ms": 8783.0,
+    "total_tokens": 1727,
+    "faithfulness": 0.2866,
+    "ragas_faithfulness": 0.5385,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.5087,
+    "precision_at_5": 0.4,
+    "recall_at_5": 0.1538
+  },
+  {
+    "query_id": "2554",
+    "query": "Is there a way to monitor when executives or leaders in a company sell off large holdings?",
+    "generated_answer": "Yes, executives have to file with the SEC when they sell shares, and there are websites like secform4.com that track these transactions. However, many insiders may have selling programs where they sell the same amount regularly, so it's important to do your homework to determine if there are real signals in the activity [Source 3].",
+    "relevant_doc_ids": [
+      "406481",
+      "306961"
+    ],
+    "cited_doc_ids": [
+      "554996",
+      "539664",
+      "406481",
+      "554996",
+      "554996"
+    ],
+    "latency_ms": 3831.5,
+    "total_tokens": 692,
+    "faithfulness": 0.5652,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 0.3333,
+    "ndcg_at_5": 0.3066,
+    "precision_at_5": 0.3333,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "3393",
+    "query": "How can contractors recoup taxation-related expenses?",
+    "generated_answer": "Contractors can recoup taxation-related expenses by incorporating those expenses into their rates. According to Source 2, expenses should be built into the rates charged to clients, meaning that the fees contractors set should account for their costs, including taxes. \n\nIf contractors want to ensure that they are reimbursed for specific expenses, they need to negotiate this in their contracts. Source 1 indicates that if a contractor desires to receive a fee plus reimbursement for expenses, this must be explicitly stated in the contract, as companies may not agree to cover all expenses. \n\nAdditionally, contractors are responsible for calculating and withholding their own taxes, as noted in Source 4. This means they need to manage their finances carefully to ensure that they are setting aside enough to cover their tax obligations. \n\nOverall, the key steps for contractors to recoup taxation-related expenses include:\n1. Building expenses into their rates charged to clients.\n2. Negotiating specific reimbursements in their contracts.\n3. Managing their finances to ensure they can cover their tax liabilities. \n\nIt is also advisable for contractors to consult a tax adviser for specific tax rule questions applicable to their locale, as mentioned in Source 1.",
+    "relevant_doc_ids": [
+      "175889",
+      "490386"
+    ],
+    "cited_doc_ids": [
+      "490386",
+      "175889",
+      "515690",
+      "490386",
+      "175889"
+    ],
+    "latency_ms": 5996.6,
+    "total_tokens": 945,
+    "faithfulness": 0.2336,
+    "ragas_faithfulness": 0.9167,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6667,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "5044",
+    "query": "How to find trailing 5-year stock returns for 1980s?",
+    "generated_answer": "You can pull stock-related information for the 1980s using Google or Yahoo Finance. You can utilize Google Docs spreadsheets, which have a function for filling in stock and fund prices. This data can then be used to graph the performance of specific funds over the desired time period [Source 2].",
+    "relevant_doc_ids": [
+      "376396"
+    ],
+    "cited_doc_ids": [
+      "85621",
+      "376396",
+      "417787",
+      "556235",
+      "556235"
+    ],
+    "latency_ms": 4008.2,
+    "total_tokens": 790,
+    "faithfulness": 0.4884,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.6309,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "1762",
+    "query": "Is there a bank account that allows ACH deposits but not ACH withdrawals?",
+    "generated_answer": "Yes, you can talk to local banks about a business account that allows certain employees to make deposits but not withdrawals. This can be set up using sub-accounts with varying access privileges, while you control the master account [Source 2].",
+    "relevant_doc_ids": [
+      "3336",
+      "333292"
+    ],
+    "cited_doc_ids": [
+      "333292",
+      "3336",
+      "65227",
+      "254635",
+      "333292"
+    ],
+    "latency_ms": 3357.2,
+    "total_tokens": 665,
+    "faithfulness": 0.5278,
+    "ragas_faithfulness": 0.6,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.5,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "1610",
+    "query": "18 year old making $60k a year; how should I invest? Traditional or Roth IRA?",
+    "generated_answer": "Based on the provided sources, here are the key points to consider for an 18-year-old making $60,000 a year regarding whether to invest in a Traditional or Roth IRA:\n\n1. **Current Income and Tax Considerations**:\n   - At $60,000 a year, the individual may be in a moderate tax bracket. Contributions to a Traditional IRA can reduce taxable income, which may be beneficial if the individual expects to be in a higher tax bracket in the future. Conversely, a Roth IRA allows for tax-free withdrawals in retirement, which could be advantageous if the individual expects their income (and tax rate) to increase over time [Source 2].\n\n2. **Roth IRA Advantages**:\n   - A Roth IRA allows contributions to be withdrawn tax-free at any time, and qualified withdrawals of earnings are tax-free after the account has been open for at least five years. This flexibility can be beneficial for someone just starting their career [Source 4].\n\n3. **Investment Horizon**:\n   - As an 18-year-old, the individual has a long investment horizon (approximately 50 years). This allows for a higher risk tolerance, which aligns well with investing in a Roth IRA, as the potential for tax-free growth over time can be significant [Source 3].\n\n4. **Contribution Limits**:\n   - For 2017, the contribution limit for a Roth IRA is $5,500 (not specified in the sources, but relevant for context). The individual should ensure they are aware of current limits and can contribute accordingly [Source 2].\n\n5. **Diversification and Investment Strategy**:\n   - It is recommended to invest in passively managed index funds rather than individual stocks, especially for retirement accounts. This strategy can help mitigate risk while still allowing for growth [Source 3].\n\n6. **Future Income Potential**:\n   - The individual is likely to have access to a 401(k) in the future, which may include both Traditional and Roth options. This could lead to a mixed strategy where they can take advantage of both types of accounts over time [Source 5].\n\n7. **Debt Considerations**:\n   - If the individual has any high-interest debt (e.g., student loans), it may be wise to prioritize paying that down before making significant contributions to retirement accounts [Source 4].\n\nIn conclusion, given the current income, long investment horizon, and potential for future income growth, a Roth IRA may be a suitable choice for this individual. However, they should also consider their overall financial situation, including any debts, and may want to consult with a financial advisor for personalized advice.",
+    "relevant_doc_ids": [
+      "41417",
+      "315780",
+      "31462"
+    ],
+    "cited_doc_ids": [
+      "520597",
+      "31462",
+      "31462",
+      "474896",
+      "41417"
+    ],
+    "latency_ms": 13379.4,
+    "total_tokens": 1708,
+    "faithfulness": 0.2067,
+    "ragas_faithfulness": 0.16,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.4982,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.6667
+  },
+  {
+    "query_id": "5715",
+    "query": "Why do only a handful of Canadian companies have options trading on their stocks?",
+    "generated_answer": "Only a handful of Canadian companies have options trading on their stocks primarily due to the demand and liquidity associated with those stocks. According to [Source 1], smaller and/or less liquid stocks often do not have enough demand for options, which leads options exchanges and market makers to refrain from creating a market for them. It is not cost-effective for these exchanges to offer options on stocks that will see very few participants.\n\nAdditionally, [Source 2] highlights that the eligibility criteria for options trading in Canada are more stringent compared to the U.S. In Canada, there are stricter regulations, and companies must meet specific criteria, such as the top 25% rule, to have options listed. This means that even if a Canadian company is publicly traded, it may still be excluded from having options available if it does not meet these regulatory requirements.\n\nIn summary, the limited number of Canadian companies with options trading is due to a combination of low demand for options on smaller stocks and the stringent eligibility criteria imposed by Canadian regulations.",
+    "relevant_doc_ids": [
+      "498356",
+      "226748"
+    ],
+    "cited_doc_ids": [
+      "498356",
+      "226748",
+      "52878",
+      "393140",
+      "213373"
+    ],
+    "latency_ms": 5433.5,
+    "total_tokens": 1192,
+    "faithfulness": 0.2547,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "1668",
+    "query": "How to send money from europe to usa EUR - USD?",
+    "generated_answer": "To send money from Europe to the USA in EUR to USD, you can use the service provided by CurrencyFair, which offers a decent exchange rate and relatively low fees. According to the information provided:\n\n1. **Exchange Rate**: CurrencyFair provides an exchange rate that is about 1% off from the mid-market rate, which is competitive for currency exchange.\n\n2. **Fees**: The fees for sending money from Europe to the USA are as follows:\n   - For an ACH transfer, the fee is 3 EUR.\n   - For a same-day EUR wire transfer, the fee is 8 EUR.\n\n3. **Process**: It is advisable to first conduct a transfer for a smaller sum to test the service's reliability before transferring a larger amount. This way, you can ensure that there are no issues with the transfer process.\n\nIn summary, you can send money from Europe to the USA using CurrencyFair, taking advantage of their competitive exchange rates and manageable fees. Make sure to test the service with a smaller amount first to ensure everything works smoothly [Source 1].",
+    "relevant_doc_ids": [
+      "254635",
+      "507701"
+    ],
+    "cited_doc_ids": [
+      "254635",
+      "451729",
+      "204288",
+      "278611",
+      "251700"
+    ],
+    "latency_ms": 5692.7,
+    "total_tokens": 1375,
+    "faithfulness": 0.301,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "5367",
+    "query": "Buying a house for a shorter term",
+    "generated_answer": "Buying a house for a shorter term, such as one year, can be financially challenging due to various transaction costs and market fluctuations. According to the information provided, common transaction costs associated with buying a house can range from 6% to 10% of the property's value, which includes expenses like house inspections, closing costs, and agent commissions [Source 3]. These costs can be difficult to recoup within a single year, making it a risky endeavor.\n\nIf one is considering buying a house for a short term, it is crucial to minimize these transaction costs. This could involve avoiding agents, inspectors, and mortgage brokers, which can help reduce expenses significantly [Source 3]. However, even with reduced costs, the margin for error in terms of market fluctuations is very low, and one could potentially face significant financial losses if the market does not perform favorably.\n\nAdditionally, if the rental market is tight, there may be alternative strategies to consider, such as leasing the house for a year under favorable terms or opting for a rent-to-own arrangement. These options can help avoid upfront transaction costs and may be more financially sensible for someone who is not well-versed in real estate [Source 2].\n\nIn summary, while it is possible to buy a house for a shorter term, it requires careful consideration of transaction costs and market conditions. The risks involved may outweigh the potential benefits unless one can effectively manage and minimize those costs.",
+    "relevant_doc_ids": [
+      "410327",
+      "487354",
+      "590614",
+      "285780"
+    ],
+    "cited_doc_ids": [
+      "285780",
+      "410327",
+      "410327",
+      "159403",
+      "590623"
+    ],
+    "latency_ms": 7403.5,
+    "total_tokens": 1117,
+    "faithfulness": 0.2336,
+    "ragas_faithfulness": 0.9375,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6367,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.5
+  },
+  {
+    "query_id": "5129",
+    "query": "The penalty on early redemption of a personal loan",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "66649"
+    ],
+    "cited_doc_ids": [
+      "479240",
+      "125722",
+      "357280",
+      "345294",
+      "278611"
+    ],
+    "latency_ms": 3667.2,
+    "total_tokens": 656,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0
+  },
+  {
+    "query_id": "9498",
+    "query": "Meaning of \u201creadily transferable\u201d?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "17796"
+    ],
+    "cited_doc_ids": [
+      "106864",
+      "63",
+      "554996",
+      "97489",
+      "87435"
+    ],
+    "latency_ms": 933.4,
+    "total_tokens": 585,
+    "faithfulness": 0.2222,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0
+  },
+  {
+    "query_id": "4055",
+    "query": "Recommended finance & economy book/blog for a Software Engineer?",
+    "generated_answer": "For a Software Engineer looking to enhance their understanding of finance and economics, several resources are recommended across the provided sources.\n\n1. **Books**: \n   - A basic yet informative book suggested is by Hull, which is noted for providing clarification on financial terms and concepts. This could be particularly beneficial for someone in a technical field who may not have a strong background in finance [Source 1].\n\n2. **Blogs**: \n   - **Investopedia** is highlighted as a good starting point for basic financial terms and concepts, making it suitable for someone new to the field [Source 1].\n   - **Naked Capitalism** is mentioned as a good economic comment blog, which could provide insights into economic discussions and critiques [Source 2].\n   - **Zerohedge** is recommended for daily critical analysis of financial markets and government policies. It is noted for its raw comments section, which can offer valuable insights despite the informal language used [Source 3].\n   - **Lewrockwell** is suggested for daily critical thinking, which could help a Software Engineer develop a more nuanced understanding of economic issues [Source 3].\n\nThese resources collectively provide a mix of foundational knowledge through books and ongoing discussions through blogs, making them suitable for a Software Engineer interested in finance and economics.",
+    "relevant_doc_ids": [
+      "151994",
+      "276032",
+      "29298"
+    ],
+    "cited_doc_ids": [
+      "151994",
+      "276032",
+      "29298",
+      "459253",
+      "160011"
+    ],
+    "latency_ms": 6699.8,
+    "total_tokens": 806,
+    "faithfulness": 0.25,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "823",
+    "query": "Can a husband and wife who are both members of the same LLC file a joint tax return?",
+    "generated_answer": "Yes, a husband and wife who are both members of the same LLC can file a joint tax return. Being members of a partnership (in this case, the LLC) does not affect how they file their own tax return; they can report both K-1s on the same return [Source 1].",
+    "relevant_doc_ids": [
+      "497567"
+    ],
+    "cited_doc_ids": [
+      "497567",
+      "214685",
+      "31462",
+      "452896",
+      "267592"
+    ],
+    "latency_ms": 3907.9,
+    "total_tokens": 1126,
+    "faithfulness": 0.4737,
+    "ragas_faithfulness": 0.6667,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "6938",
+    "query": "Best buying price on stock marketing based on market depth detail (CSE atrad tool)",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "137175",
+      "585552"
+    ],
+    "cited_doc_ids": [
+      "455609",
+      "585552",
+      "137175",
+      "539418",
+      "137175"
+    ],
+    "latency_ms": 2331.3,
+    "total_tokens": 625,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.6934,
+    "precision_at_5": 0.5,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "7907",
+    "query": "Understanding the synthetic long put option",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "232880"
+    ],
+    "cited_doc_ids": [
+      "232880",
+      "240023",
+      "213373",
+      "395783",
+      "85621"
+    ],
+    "latency_ms": 2093.5,
+    "total_tokens": 1495,
+    "faithfulness": 0.4444,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "2147",
+    "query": "Should I buy my house from my landlord?",
+    "generated_answer": "Based on the provided sources, there are several considerations regarding whether you should buy your house from your landlord.\n\n1. **Desire to Buy**: Source 1 emphasizes that you should only buy a house if you genuinely want that specific house. If you are not fully committed to purchasing the property, it may not be the right decision for you.\n\n2. **Market Options**: Source 2 suggests that there are likely many houses available for purchase, and it is improbable that the one you are currently renting is the best option. This implies that you should explore other properties before making a decision.\n\n3. **Current Satisfaction**: Source 3 indicates that if you do not love the house and have plans to move or prefer a different type of place long-term, it may be better to continue renting rather than buying a property that does not meet your needs.\n\n4. **Financial Considerations**: Source 4 recommends considering leasing the house instead of buying, especially if you are not experienced in real estate. This could help you avoid upfront transaction costs and may be a more financially sensible option.\n\n5. **Ownership Dynamics**: Source 5 points out that homeowners typically care more about the quality of their property and neighborhood compared to renters. If you are looking for a community with invested homeowners, this could be a factor in your decision.\n\nIn summary, if you are not fully committed to the house, do not love it, and are aware of many other options available, it may be wise to continue renting or explore other properties rather than buying from your landlord.",
+    "relevant_doc_ids": [
+      "47230",
+      "342382",
+      "159403"
+    ],
+    "cited_doc_ids": [
+      "47230",
+      "159403",
+      "342382",
+      "410327",
+      "159403"
+    ],
+    "latency_ms": 9065.0,
+    "total_tokens": 787,
+    "faithfulness": 0.277,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.75,
+    "recall_at_5": 1.0
+  },
+  {
+    "query_id": "5693",
+    "query": "What is the p/e ratio?",
+    "generated_answer": "The price to earnings (P/E) ratio is a measure of a company's current share price compared to its annual net earnings per share. It can also be understood as the number of years it would take for a company to pay back the share price if the earnings remain constant. This ratio ignores factors like inflation and serves as an indicator of risk [Source 1].",
+    "relevant_doc_ids": [
+      "466972",
+      "308294",
+      "223823"
+    ],
+    "cited_doc_ids": [
+      "466972",
+      "533818",
+      "533818",
+      "403870",
+      "533818"
+    ],
+    "latency_ms": 3375.1,
+    "total_tokens": 590,
+    "faithfulness": 0.625,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.4693,
+    "precision_at_5": 0.3333,
+    "recall_at_5": 0.3333
+  }
+]
