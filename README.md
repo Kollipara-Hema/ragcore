@@ -390,7 +390,7 @@ mock-target resolution bug in the test itself, unrelated to current work.
 - Hybrid retrieval: FAISS dense + BM25 sparse with configurable alpha fusion
 - Cross-encoder reranking
 - Query routing: heuristic regex + LLM fallback, dispatches to 5 of 6
-  retrieval strategies (parent-child is a known stub)
+  retrieval strategies; parent-child is enumerated but not wired
 - Basic and Self-RAG generation paths, configurable via `GENERATION_STRATEGY`
 - Retrieval evaluation: MRR, NDCG@5, hit@5, precision@5, recall@5 — all
   correctly bounded after dedup fix (see debugging notes)
