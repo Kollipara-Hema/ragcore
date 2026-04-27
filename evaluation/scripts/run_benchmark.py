@@ -261,7 +261,7 @@ async def run(strategy: str) -> None:
         from config.settings import Settings
         _settings = Settings()
         _ragas_client = _OpenAI(api_key=_settings.openai_api_key)
-        ragas_llm = _llm_factory("gpt-4o-mini", client=_ragas_client)
+        ragas_llm = _llm_factory("gpt-4o-mini", client=_ragas_client, max_tokens=8192)
 
     eval_path = REPO_ROOT / "evaluation" / "datasets" / "fiqa_eval.json"
     out_path = REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa_{RUN_DATE}.json"

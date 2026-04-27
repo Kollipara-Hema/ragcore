@@ -1,0 +1,1877 @@
+[
+  {
+    "query_id": "10385",
+    "query": "When should I start saving/investing for my retirement?",
+    "generated_answer": "You should start saving and investing for your retirement as early as possible. It's recommended to begin even if you feel you don't make enough money, as saving a small amount consistently can be beneficial in the long run. Starting early allows you to build a routine and take advantage of compound growth over time [Source 2][Source 4].",
+    "relevant_doc_ids": [
+      "417787",
+      "463043",
+      "468010",
+      "392371",
+      "45174",
+      "430014"
+    ],
+    "cited_doc_ids": [
+      "468010",
+      "417787",
+      "480402",
+      "364666",
+      "335436"
+    ],
+    "latency_ms": 14609.5,
+    "total_tokens": 790,
+    "faithfulness": 0.5417,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.5531,
+    "precision_at_5": 0.4,
+    "recall_at_5": 0.3333,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You should start saving and investing for your retirement as early as possible.",
+        "It's recommended to begin saving for retirement even if you feel you don't make enough money.",
+        "Saving a small amount consistently can be beneficial in the long run.",
+        "Starting early allows you to build a routine.",
+        "Starting early allows you to take advantage of compound growth over time."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1927",
+    "query": "How does a Non US citizen gain SEC Accredited Investor Status?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "63"
+    ],
+    "cited_doc_ids": [
+      "63",
+      "451729",
+      "426506",
+      "306961",
+      "226748"
+    ],
+    "latency_ms": 2854.4,
+    "total_tokens": 893,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "615",
+    "query": "Canadian accepting money electronically from Americans",
+    "generated_answer": "To accept money electronically from Americans, Canadians can use several methods: \n\n1. **Credit Card Processing**: Companies like PayPal, Square, and Intuit offer credit card processing services that can be cheaper than banks. Square is noted as a particularly good option [Source 1].\n\n2. **Money Orders**: Canadians can have U.S. customers send International Money Orders, as Domestic Money Orders can only be cashed at U.S. post offices [Source 1].\n\n3. **Cash on Delivery (COD)**: This method allows the seller to place a COD charge on the item, which the customer pays upon delivery. The post office pays the seller at the time of shipping [Source 1].\n\nThese options provide alternatives to traditional banking methods for receiving payments from U.S. customers.",
+    "relevant_doc_ids": [
+      "204288"
+    ],
+    "cited_doc_ids": [
+      "204288",
+      "226748",
+      "277482",
+      "213373",
+      "498356"
+    ],
+    "latency_ms": 18169.9,
+    "total_tokens": 1812,
+    "faithfulness": 0.2111,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Canadians can use several methods to accept money electronically from Americans.",
+        "Companies like PayPal, Square, and Intuit offer credit card processing services.",
+        "Credit card processing services can be cheaper than banks.",
+        "Square is noted as a particularly good option for credit card processing.",
+        "Canadians can have U.S. customers send International Money Orders.",
+        "Domestic Money Orders can only be cashed at U.S. post offices.",
+        "Cash on Delivery (COD) allows the seller to place a COD charge on the item.",
+        "The customer pays the COD charge upon delivery.",
+        "The post office pays the seller at the time of shipping."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "4190",
+    "query": "What is best investment which is full recession proof?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "147251",
+      "70575"
+    ],
+    "cited_doc_ids": [
+      "147251",
+      "70575",
+      "253373",
+      "345294",
+      "261804"
+    ],
+    "latency_ms": 3127.8,
+    "total_tokens": 891,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3783",
+    "query": "Are there any statistics that support the need for Title Insurance?",
+    "generated_answer": "Based on the provided sources, here are the key points regarding statistics that support the need for Title Insurance:\n\n1. **Payout Ratio**: Title insurance companies reportedly pay out around 5% of the premiums collected. This statistic suggests that the insurance is profitable for the companies, as they anticipate that claims will be substantially less than the premiums received [Source 1][Source 8].\n\n2. **Claims History**: In 2003, the title insurance industry paid out approximately $662 million in claims, which was about 4.3% of the $15.7 billion taken in as premiums. This indicates that while claims do occur, they are relatively low compared to the total premiums collected [Source 8].\n\n3. **Comparison with Other Insurance**: The payout ratio for title insurance (around 5%) is significantly lower than that of the boiler insurance industry, which pays out 25% of its premiums in claims. This comparison highlights that title insurance may be less frequently claimed upon, suggesting a lower risk or fewer defects in property titles [Source 8].\n\n4. **Risk of Title Defects**: The purpose of title insurance is to protect against defects in the deed that could invalidate a mortgage, which may stem from events that occurred long before the current transaction. This inherent risk underscores the need for protection, as the consequences of a title defect can be severe, potentially leaving a buyer without a home while still owing the mortgage [Source 2][Source 7].\n\n5. **Cost of Title Searches vs. Insurance**: Conducting a title search, which is the traditional method of ensuring title validity, can be costly and often does not uncover issues. Title insurance is presented as a more cost-effective solution, as it covers potential future claims for a one-off premium that is less than the cost of a title search [Source 1][Source 7].\n\nIn summary, while the statistics indicate that claims on title insurance are relatively low, the potential risks associated with title defects and the cost-effectiveness of title insurance compared to traditional title searches support its necessity in real estate transactions.",
+    "relevant_doc_ids": [
+      "585341",
+      "354409",
+      "78787",
+      "479376"
+    ],
+    "cited_doc_ids": [
+      "354409",
+      "78787",
+      "354409",
+      "585341",
+      "585341"
+    ],
+    "latency_ms": 17185.9,
+    "total_tokens": 3048,
+    "faithfulness": 0.1913,
+    "ragas_faithfulness": 0.6364,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.8319,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.75,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Title insurance payouts are around 5% of premiums."
+      ],
+      "unsupported_claims": [
+        "In 2003, the title insurance industry paid out about $662 million in claims.",
+        "The title insurance industry took in approximately $15.7 billion in premiums in 2003.",
+        "The payout ratio in 2003 was approximately 4.3% of the premiums."
+      ],
+      "additional_retrievals": 3,
+      "faithfulness_score": 0.25,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "3501",
+    "query": "Paid cash for a car, but dealer wants to change price",
+    "generated_answer": "If your son paid cash for the car, the dealership is likely upset because they make their profit from financing, not cash deals. The dealership may try to change the price because they lost potential profit when your son paid in full upfront. It's advisable for your son to ignore the dealership's attempts to renegotiate and consider the deal done, as they typically do not allow price changes after the paperwork is signed [Source 1][Source 2][Source 5].",
+    "relevant_doc_ids": [
+      "406225",
+      "131255",
+      "247371",
+      "233479",
+      "490352",
+      "44085",
+      "87351",
+      "357280",
+      "253596",
+      "150278",
+      "120080",
+      "164702",
+      "484734"
+    ],
+    "cited_doc_ids": [
+      "44085",
+      "164702",
+      "131255",
+      "120080",
+      "150278"
+    ],
+    "latency_ms": 13424.4,
+    "total_tokens": 889,
+    "faithfulness": 0.4259,
+    "ragas_faithfulness": 0.7143,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.3846,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The dealership makes their profit from financing, not cash deals.",
+        "The dealership may try to change the price after a cash deal.",
+        "The dealership loses potential profit when a car is paid for in full upfront.",
+        "It is advisable to ignore the dealership's attempts to renegotiate after the paperwork is signed.",
+        "Typically, dealerships do not allow price changes after the paperwork is signed."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "2335",
+    "query": "Giving kids annual tax free gift of $28,000",
+    "generated_answer": "You can give each of your children $28,000 on or after January 1, 2013, without incurring gift tax, as this amount is the annual exclusion for that period. If both you and your spouse are giving, together you can give $28,000 to each donee [Source 1].",
+    "relevant_doc_ids": [
+      "162212",
+      "214685",
+      "361821"
+    ],
+    "cited_doc_ids": [
+      "214685",
+      "162212",
+      "69841",
+      "214685",
+      "34480"
+    ],
+    "latency_ms": 10262.3,
+    "total_tokens": 1410,
+    "faithfulness": 0.6154,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7654,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.6667,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You can give each of your children $28,000 on or after January 1, 2013, without incurring gift tax.",
+        "The amount of $28,000 is the annual exclusion for that period.",
+        "If both you and your spouse are giving, together you can give $28,000 to each donee."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1769",
+    "query": "Is it financially advantageous and safe to rent out my personal car?",
+    "generated_answer": "Renting out your personal car can be financially advantageous if you can charge more than your required monthly payments, but you must consider the true cost of ownership, including auto loan, insurance, and potential business taxes. Additionally, it is not safe unless you have a contract drawn up by a lawyer to protect you from theft, negligence, and other issues. You also need to evaluate the trustworthiness of renters to avoid damage to your vehicle [Source 1].",
+    "relevant_doc_ids": [
+      "329620",
+      "254499"
+    ],
+    "cited_doc_ids": [
+      "329620",
+      "41766",
+      "252473",
+      "437182",
+      "541865"
+    ],
+    "latency_ms": 12489.8,
+    "total_tokens": 1541,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Renting out your personal car can be financially advantageous if you can charge more than your required monthly payments.",
+        "You must consider the true cost of ownership, including auto loan, insurance, and potential business taxes.",
+        "It is not safe to rent out your car unless you have a contract drawn up by a lawyer.",
+        "A contract can protect you from theft, negligence, and other issues.",
+        "You need to evaluate the trustworthiness of renters to avoid damage to your vehicle."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "8090",
+    "query": "Do corporate stock splits negate share repurchase programs?",
+    "generated_answer": "No, corporate stock splits do not negate share repurchase programs. They have opposite effects on the share price but do not affect the total value to shareholders. In fact, doing both can cause the value to shareholders to rise while dropping the per-share price, making shares more accessible [Source 4][Source 5].",
+    "relevant_doc_ids": [
+      "539664",
+      "193266"
+    ],
+    "cited_doc_ids": [
+      "193266",
+      "539664",
+      "539664",
+      "193266",
+      "193266"
+    ],
+    "latency_ms": 12100.2,
+    "total_tokens": 512,
+    "faithfulness": 0.6429,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Corporate stock splits do not negate share repurchase programs.",
+        "Corporate stock splits and share repurchase programs have opposite effects on the share price.",
+        "Corporate stock splits and share repurchase programs do not affect the total value to shareholders.",
+        "Doing both corporate stock splits and share repurchase programs can cause the value to shareholders to rise.",
+        "Doing both corporate stock splits and share repurchase programs can drop the per-share price.",
+        "Doing both corporate stock splits and share repurchase programs can make shares more accessible."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1519",
+    "query": "Double-Taxation of Royalties paid for in Korea to a US Company",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "310190"
+    ],
+    "cited_doc_ids": [
+      "310190",
+      "497567",
+      "490386",
+      "146177",
+      "43370"
+    ],
+    "latency_ms": 2580.9,
+    "total_tokens": 979,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "9186",
+    "query": "Can I buy only 4 shares of a company?",
+    "generated_answer": "Yes, you can buy only 4 shares of a company, but it may not be the best idea depending on your overall investment strategy and fees involved [Source 1].",
+    "relevant_doc_ids": [
+      "194404",
+      "279288",
+      "455609",
+      "451729",
+      "229788",
+      "281423",
+      "312154",
+      "539418"
+    ],
+    "cited_doc_ids": [
+      "455609",
+      "279288",
+      "229788",
+      "554996",
+      "193266"
+    ],
+    "latency_ms": 7639.8,
+    "total_tokens": 661,
+    "faithfulness": 0.5862,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7227,
+    "precision_at_5": 0.6,
+    "recall_at_5": 0.375,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You can buy only 4 shares of a company.",
+        "It may not be the best idea depending on your overall investment strategy.",
+        "Fees may be involved."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "6387",
+    "query": "What factors make someone buy or sell a stock?",
+    "generated_answer": "Factors that make someone buy or sell a stock include news, earnings reports, stock analysis, and changes in public perception about the company. Positive news or strong earnings may encourage buying, while negative news or a loss of faith in the company may lead to selling [Source 1]. Additionally, personal investment strategies and the desire to realize profits or mitigate losses can also influence these decisions [Source 3].",
+    "relevant_doc_ids": [
+      "554996",
+      "58009",
+      "217837"
+    ],
+    "cited_doc_ids": [
+      "58009",
+      "554996",
+      "217837",
+      "193266",
+      "233821"
+    ],
+    "latency_ms": 13043.6,
+    "total_tokens": 860,
+    "faithfulness": 0.3148,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Factors that make someone buy or sell a stock include news, earnings reports, stock analysis, and changes in public perception about the company.",
+        "Positive news or strong earnings may encourage buying.",
+        "Negative news or a loss of faith in the company may lead to selling.",
+        "Personal investment strategies can influence buying or selling decisions.",
+        "The desire to realize profits can influence buying or selling decisions.",
+        "The desire to mitigate losses can influence buying or selling decisions."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "696",
+    "query": "Executor of will",
+    "generated_answer": "### Executor of Will: Key Points\n\n1. **Legal Separation of Estate**:\n   - The estate is a separate legal entity with its own Tax Identification Number (TIN). This means that the assets of the estate are generally protected from personal lawsuits against the executor, unless the executor has commingled personal and estate assets [Source 1].\n\n2. **Creditor Claims**:\n   - Only creditors of the estate can make claims against it. After all creditors are paid, the remaining assets are distributed according to the terms of the will [Source 1].\n\n3. **Personal Asset Risk**:\n   - The personal assets of the executor are typically safe if the estate is organized as a Limited Liability Partnership (LLP) or Limited Liability Company (LLC). However, if the estate was a sole proprietorship, the executor may have concerns about personal liability [Source 1].\n\n4. **Inheritance and Creditor Claims**:\n   - Once the estate is divided, any money or assets inherited by the executor (or their spouse) become subject to creditor claims. This is separate from the executor's role and pertains to the distribution of the estate's assets [Source 5].\n\n5. **Executor's Responsibilities**:\n   - The role of the executor does not inherently expose them to personal liability for the estate's debts, provided they manage the estate properly and do not mix personal and estate assets [Source 1].\n\nThese points summarize the responsibilities and protections associated with being an executor of a will, based on the provided sources.",
+    "relevant_doc_ids": [
+      "112987",
+      "90572"
+    ],
+    "cited_doc_ids": [
+      "112987",
+      "90572",
+      "146177",
+      "406481",
+      "570990"
+    ],
+    "latency_ms": 18481.2,
+    "total_tokens": 1957,
+    "faithfulness": 0.2782,
+    "ragas_faithfulness": 0.9231,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The executor of a will is responsible for managing the estate.",
+        "The estate is a separate legal entity with its own Tax Identification Number (TIN).",
+        "Creditors can only make claims against the estate itself, not the personal assets of the executor.",
+        "Creditors can make claims against the personal assets of the executor if the business was organized as a sole proprietorship.",
+        "After the estate is divided, any money or assets inherited by the executor will be considered their personal property.",
+        "Inherited money or assets may be subject to claims by creditors."
+      ],
+      "unsupported_claims": [
+        "Creditors can make claims against the personal assets of the executor if the executor has commingled assets."
+      ],
+      "additional_retrievals": 1,
+      "faithfulness_score": 0.8571428571428571,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "671",
+    "query": "Does the low CAD positively or negatively impact Canadian Investors?",
+    "generated_answer": "A low CAD negatively impacts Canadian investors when they buy US stocks, as any profits from stock investments will be reduced and any losses will be increased when converting back to CAD. This is because a lower CAD means that it costs more CAD to buy the same amount of USD-denominated assets, which can lead to currency losses when selling those assets [Source 1].",
+    "relevant_doc_ids": [
+      "148208",
+      "277482",
+      "213373"
+    ],
+    "cited_doc_ids": [
+      "148208",
+      "213373",
+      "277482",
+      "527583",
+      "226748"
+    ],
+    "latency_ms": 10608.4,
+    "total_tokens": 1254,
+    "faithfulness": 0.4423,
+    "ragas_faithfulness": 0.4,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "A low CAD negatively impacts Canadian investors when they buy US stocks.",
+        "Profits from stock investments will be reduced and losses will be increased when converting back to CAD.",
+        "A lower CAD means that it costs more CAD to buy the same amount of USD-denominated assets.",
+        "Currency losses can occur when selling USD-denominated assets."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1622",
+    "query": "How to properly collect money from corporate sponsors?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "323662",
+      "369577"
+    ],
+    "cited_doc_ids": [
+      "369577",
+      "204288",
+      "349544",
+      "43370",
+      "175889"
+    ],
+    "latency_ms": 3238.6,
+    "total_tokens": 1376,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3436",
+    "query": "Health insurance lapsed due to employer fraud. How to get medications while in transition?",
+    "generated_answer": "You can check with the manufacturer of your name brand medication, as many have programs to help those who cannot afford their medication, including sending coupons for discounted or free medication. Additionally, you can visit a free clinic, which may provide medicine if your income is low enough. If necessary, you can pay for the medication out of pocket or discuss alternatives with your doctor, although these alternatives may not be as effective or could have different side effects [Source 1].",
+    "relevant_doc_ids": [
+      "517510",
+      "175537"
+    ],
+    "cited_doc_ids": [
+      "517510",
+      "278611",
+      "517510",
+      "161301",
+      "43370"
+    ],
+    "latency_ms": 11455.4,
+    "total_tokens": 1095,
+    "faithfulness": 0.4677,
+    "ragas_faithfulness": 0.3333,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.25,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Many manufacturers of name brand medication have programs to help those who cannot afford their medication.",
+        "These programs may include sending coupons for discounted or free medication.",
+        "Free clinics may provide medicine if your income is low enough.",
+        "You can pay for the medication out of pocket.",
+        "You can discuss alternatives with your doctor."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3616",
+    "query": "For the first time in my life, I'm going to be making real money\u2026what should I do with it?",
+    "generated_answer": "When you start making real money, it's important to balance your spending and saving. Here are some key steps to consider:\n\n1. **Live Like a College Student**: Maintain a modest lifestyle initially. If you could manage on $20k a year, try to live on that amount even when you earn more, and save the difference [Source 2].\n\n2. **Start Saving Early**: Begin saving a portion of your income right away, even if it's a small amount like $50 from each paycheck. This habit will benefit you in the long run [Source 3].\n\n3. **Avoid Credit Card Debt**: Be cautious with credit. Use it wisely, but do not carry a balance to avoid debt [Source 1].\n\n4. **Invest Wisely**: Consider starting with mutual funds or ETFs for diversification before picking individual stocks. A good rule is to invest in indexed funds alongside individual stocks to mitigate risk [Source 4].\n\n5. **Set Savings Goals**: Focus on building an emergency fund and saving for significant expenses before increasing your lifestyle expenses [Source 2].\n\nBy following these guidelines, you can effectively manage your newfound income.",
+    "relevant_doc_ids": [
+      "141032",
+      "364666",
+      "335436",
+      "480402",
+      "474896"
+    ],
+    "cited_doc_ids": [
+      "480402",
+      "430014",
+      "417787",
+      "279288",
+      "72578"
+    ],
+    "latency_ms": 20836.8,
+    "total_tokens": 1406,
+    "faithfulness": 0.237,
+    "ragas_faithfulness": 0.5833,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.3392,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.2,
+    "self_rag_stats": {
+      "verified_claims": [
+        "It is important to balance spending and saving when you start making real money.",
+        "Maintaining a modest lifestyle initially can help save money.",
+        "Living on $20k a year can be manageable even when earning more.",
+        "Starting to save a portion of your income right away is beneficial.",
+        "Saving a small amount like $50 from each paycheck can create a good habit.",
+        "Avoiding credit card debt is important.",
+        "Using credit wisely means not carrying a balance.",
+        "Investing in mutual funds or ETFs can provide diversification.",
+        "A good rule is to invest in indexed funds alongside individual stocks to mitigate risk.",
+        "Building an emergency fund is important before increasing lifestyle expenses."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "7502",
+    "query": "How do ETF fees get applied?",
+    "generated_answer": "ETF fees are applied in such a way that the price quoted on the stock exchange is not directly referenced to the net asset value (NAV). The fund administrator calculates and publishes the NAV net of all fees, but the ETF price seen in the market is determined by supply and demand, similar to other securities. However, it is generally safe to assume that the quoted ETF price is net of relevant fees [Source 1].",
+    "relevant_doc_ids": [
+      "409995"
+    ],
+    "cited_doc_ids": [
+      "409995",
+      "356819",
+      "45174",
+      "39436",
+      "451729"
+    ],
+    "latency_ms": 9441.7,
+    "total_tokens": 996,
+    "faithfulness": 0.5098,
+    "ragas_faithfulness": 0.4,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "ETF fees are applied in such a way that the price quoted on the stock exchange is not directly referenced to the net asset value (NAV).",
+        "The fund administrator calculates and publishes the NAV net of all fees.",
+        "The ETF price seen in the market is determined by supply and demand, similar to other securities.",
+        "It is generally safe to assume that the quoted ETF price is net of relevant fees."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "9464",
+    "query": "Simple and safe way to manage a lot of cash",
+    "generated_answer": "A simple and safe way to manage a lot of cash is to keep some amount in cash as an emergency fund, with recommendations suggesting around $1,000 or more in liquid cash for emergencies. Additionally, having a checking account and a savings account can help manage funds effectively. It's also advised to consolidate assets after establishing a mix of investments that work well for you, rather than putting all cash into a single mutual fund account initially [Source 1][Source 3].",
+    "relevant_doc_ids": [
+      "598440",
+      "71299",
+      "463636",
+      "575794"
+    ],
+    "cited_doc_ids": [
+      "71299",
+      "570632",
+      "34480",
+      "527583",
+      "333334"
+    ],
+    "latency_ms": 11813.1,
+    "total_tokens": 1442,
+    "faithfulness": 0.3968,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.3904,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.25,
+    "self_rag_stats": {
+      "verified_claims": [
+        "A simple and safe way to manage a lot of cash is to keep some amount in cash as an emergency fund.",
+        "Recommendations suggest around $1,000 or more in liquid cash for emergencies.",
+        "Having a checking account and a savings account can help manage funds effectively.",
+        "It is advised to consolidate assets after establishing a mix of investments that work well for you.",
+        "It is not recommended to put all cash into a single mutual fund account initially."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "632",
+    "query": "What is the field \u201cFolio\u201d in an accounting book for?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "568501"
+    ],
+    "cited_doc_ids": [
+      "570990",
+      "570990",
+      "37987",
+      "70305",
+      "554996"
+    ],
+    "latency_ms": 2567.5,
+    "total_tokens": 924,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "8480",
+    "query": "Why can I see/trade VIX but not S&P/TSX 60 VIX?",
+    "generated_answer": "You can trade VIX because it is an index that represents implied volatility, while S&P/TSX 60 VIX (VIXC) cannot be traded as it is not a tradable product, but rather an important signal for traders based on the implied volatility of TSX 60 options [Source 1][Source 2].",
+    "relevant_doc_ids": [
+      "461165",
+      "25130"
+    ],
+    "cited_doc_ids": [
+      "461165",
+      "25130",
+      "498356",
+      "393140",
+      "238024"
+    ],
+    "latency_ms": 10937.3,
+    "total_tokens": 915,
+    "faithfulness": 0.561,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "VIX is an index that represents implied volatility.",
+        "S&P/TSX 60 VIX (VIXC) cannot be traded.",
+        "S&P/TSX 60 VIX (VIXC) is not a tradable product.",
+        "S&P/TSX 60 VIX (VIXC) is an important signal for traders based on the implied volatility of TSX 60 options."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3183",
+    "query": "Is it better to buy this used car from Craigslist or from a dealership?",
+    "generated_answer": "Buying a used car from Craigslist can save both parties money as the \"middle man\" is cut out, which is a benefit noted in the context [Source 2]. However, purchasing from a dealership, especially a certified pre-owned vehicle, may offer meaningful advantages such as warranty and dealership/manufacturer relationships, particularly for high mileage cars [Source 1]. Ultimately, the choice depends on individual priorities regarding cost savings versus potential warranty benefits.",
+    "relevant_doc_ids": [
+      "519173",
+      "205766",
+      "468984",
+      "389718"
+    ],
+    "cited_doc_ids": [
+      "389718",
+      "519173",
+      "247371",
+      "490352",
+      "247371"
+    ],
+    "latency_ms": 8993.3,
+    "total_tokens": 942,
+    "faithfulness": 0.2034,
+    "ragas_faithfulness": 0.2222,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6367,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Buying a used car from Craigslist can save both parties money as the 'middle man' is cut out.",
+        "Purchasing from a dealership may offer meaningful advantages such as warranty and dealership/manufacturer relationships.",
+        "Certified pre-owned vehicles may offer warranty benefits.",
+        "The choice between buying from Craigslist or a dealership depends on individual priorities regarding cost savings versus potential warranty benefits."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "10595",
+    "query": "Why buying an inverse ETF does not give same results as shorting the ETF",
+    "generated_answer": "Buying an inverse ETF does not yield the same results as shorting the ETF because inverse ETFs are designed to reverse the daily gains and losses of the underlying ETF, which leads to compounding effects. For example, if the underlying ETF gains a certain percentage followed by a loss, the net result differs from a direct short position due to the way returns are compounded over time. This means that an inverse ETF can experience a net loss even when the underlying ETF has a net gain over the same period, as illustrated in the example where the inverse ETF had a net loss of 5.5% while the underlying ETF had a net gain of 4.5% over two days [Source 2]. Additionally, inverse funds adjust their positions continuously to maintain leverage, which can further impact performance compared to a static short position [Source 1].",
+    "relevant_doc_ids": [
+      "356819",
+      "39436"
+    ],
+    "cited_doc_ids": [
+      "39436",
+      "356819",
+      "409995",
+      "108978",
+      "349838"
+    ],
+    "latency_ms": 14900.5,
+    "total_tokens": 1073,
+    "faithfulness": 0.25,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Buying an inverse ETF does not yield the same results as shorting the ETF.",
+        "Inverse ETFs are designed to reverse the daily gains and losses of the underlying ETF.",
+        "The compounding effects of inverse ETFs lead to different net results compared to a direct short position.",
+        "An inverse ETF can experience a net loss even when the underlying ETF has a net gain over the same period.",
+        "In an example, the inverse ETF had a net loss of 5.5% while the underlying ETF had a net gain of 4.5% over two days.",
+        "Inverse funds adjust their positions continuously to maintain leverage."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "8084",
+    "query": "Where does the stock go in a collapse?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "238024",
+      "482517"
+    ],
+    "cited_doc_ids": [
+      "238024",
+      "232880",
+      "580512",
+      "393925",
+      "238024"
+    ],
+    "latency_ms": 3842.2,
+    "total_tokens": 979,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.25,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "6340",
+    "query": "Is there an advantage to keeping a liquid emergency fund if one also has an untapped line of credit?",
+    "generated_answer": "Yes, there is an advantage to keeping a liquid emergency fund if one also has an untapped line of credit. Having both allows you to draw from the line of credit first in an emergency, providing a more stable financial situation. You can use the cash from the emergency fund to pay off the debt or cover other expenses, whereas if you only have cash, once you spend it, it's gone, and you may not be able to borrow money later [Source 3].",
+    "relevant_doc_ids": [
+      "333334",
+      "598272",
+      "108978",
+      "570632",
+      "324680",
+      "355477"
+    ],
+    "cited_doc_ids": [
+      "598272",
+      "108978",
+      "324680",
+      "41417",
+      "243571"
+    ],
+    "latency_ms": 12707.1,
+    "total_tokens": 780,
+    "faithfulness": 0.5312,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.7227,
+    "precision_at_5": 0.6,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "There is an advantage to keeping a liquid emergency fund if one also has an untapped line of credit.",
+        "Having both a liquid emergency fund and an untapped line of credit allows you to draw from the line of credit first in an emergency.",
+        "Drawing from a line of credit first provides a more stable financial situation.",
+        "You can use cash from the emergency fund to pay off debt or cover other expenses.",
+        "If you only have cash in an emergency fund, once you spend it, it's gone."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3460",
+    "query": "How to manage household finances (income & expenses) [duplicate]",
+    "generated_answer": "To manage household finances effectively, consider the following structured key points based on the provided sources:\n\n1. **Budgeting**:\n   - Create a comprehensive list of all expenses, categorizing them into fixed (e.g., rent, loan payments, insurance) and variable (e.g., food, utilities) expenses. Use tools like spreadsheets for better tracking [Source 6].\n   - Keep records of expenses over several months to establish reasonable averages and avoid guessing [Source 6].\n\n2. **Emergency Fund**:\n   - Maintain an emergency fund that covers 3 to 6 months of expenses. The specific amount depends on individual circumstances, such as job stability and financial commitments [Source 1, Source 5, Source 10].\n   - Consider additional mandatory yearly payments (e.g., school fees, insurance premiums) when calculating the emergency fund [Source 3].\n\n3. **Understanding Financial Risks**:\n   - Identify personal financial risks, including potential loss of income and unexpected expenses (e.g., medical emergencies, essential repairs) [Source 8].\n   - Assess the likelihood of job loss and the duration of unemployment to determine the appropriate size of the emergency fund [Source 2, Source 10].\n\n4. **Income Stability**:\n   - Evaluate the stability of your income. If you have a steady job, a 3-month emergency fund may suffice; if your job is less secure, aim for 6 months [Source 10].\n   - Consider the economic environment; during tough times, it may be prudent to increase the emergency fund [Source 4].\n\n5. **Debt Management**:\n   - If you are in debt, prioritize paying it down while maintaining a small emergency fund (e.g., $1000) [Source 10].\n   - Once non-mortgage debt is managed, focus on building a more substantial emergency fund [Source 10].\n\n6. **Long-term Planning**:\n   - Regularly review and adjust your financial strategy based on changes in income, expenses, and personal circumstances [Source 2].\n   - Consider long-term financial products, such as disability insurance, to mitigate risks associated with serious illness or accidents [Source 5].\n\nBy systematically applying these principles, individuals can better manage their household finances and prepare for unexpected financial challenges.",
+    "relevant_doc_ids": [
+      "471957",
+      "70305"
+    ],
+    "cited_doc_ids": [
+      "349544",
+      "437182",
+      "278611",
+      "71299",
+      "446506"
+    ],
+    "latency_ms": 35975.6,
+    "total_tokens": 4269,
+    "faithfulness": 0.2414,
+    "ragas_faithfulness": 0.95,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Create a comprehensive list of fixed expenses and regular but variable expenses.",
+        "Use a tool like an Excel spreadsheet or a simple notepad to track expenses over a few months.",
+        "Allocate a portion of your income for savings and retirement.",
+        "Starting early with savings can significantly benefit you in the long run.",
+        "Total your expenses and compare them to your income.",
+        "If expenses exceed income, identify areas to cut back.",
+        "Aim to save 3 to 6 months' worth of expenses for an emergency fund.",
+        "The amount for an emergency fund depends on the stability of your income.",
+        "If your job is less stable, aim for 6 months of expenses for an emergency fund.",
+        "Assess potential financial risks, such as loss of income or unexpected expenses.",
+        "Plan for financial risks by having insurance for health-related costs or essential possessions.",
+        "Create a schedule for paying bills based on your income frequency."
+      ],
+      "unsupported_claims": [
+        "If your job is secure, 3 months of expenses may suffice for an emergency fund."
+      ],
+      "additional_retrievals": 1,
+      "faithfulness_score": 0.9230769230769231,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "6774",
+    "query": "Deal with stock PSEC",
+    "generated_answer": "The PSEC shareholder experiences a taxable event related to the expiration of rights. Specifically, if a shareholder receives a Subscription Right from PSEC and does not sell or exercise it before it expires, they can expect to have (1) taxable dividend income equal to the fair market value of the Subscription Right on the date of its distribution by PSEC, and (2) a capital loss upon the expiration of the right equal to their adjusted tax basis in such right [Source 2].",
+    "relevant_doc_ids": [
+      "146177"
+    ],
+    "cited_doc_ids": [
+      "146177",
+      "146177",
+      "554996",
+      "498356",
+      "310601"
+    ],
+    "latency_ms": 11523.7,
+    "total_tokens": 1182,
+    "faithfulness": 0.3929,
+    "ragas_faithfulness": 0.2,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The PSEC shareholder experiences a taxable event related to the expiration of rights.",
+        "If a shareholder receives a Subscription Right from PSEC and does not sell or exercise it before it expires, they can expect to have taxable dividend income.",
+        "The taxable dividend income is equal to the fair market value of the Subscription Right on the date of its distribution by PSEC.",
+        "A shareholder can expect to have a capital loss upon the expiration of the right equal to their adjusted tax basis in such right."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "9161",
+    "query": "Common practice for start/end date of balance sheet",
+    "generated_answer": "Based on the provided sources, here are the key points regarding the common practice for the start/end date of a balance sheet:\n\n1. **Year-to-Date (YTD) Reporting**: A paycheck typically includes a Year-to-Date (YTD) number that concludes with the latest check of the year. This indicates that the balance sheet is often aligned with the end of the year or the last paycheck of the year [Source 5].\n\n2. **Pay Periods**: The balance sheet may also reflect specific pay periods. For example, one individual mentions being paid bi-weekly, with their first check of the year covering a specific work period. This suggests that balance sheets can be structured around individual pay periods, which may not necessarily align with calendar months or years [Source 5].\n\n3. **New Sheet Start**: After the end of a pay period, a new balance sheet or financial statement may begin, indicating a clear demarcation between reporting periods [Source 5].\n\nThese points illustrate that balance sheets can be structured around both calendar year-end and specific pay periods, depending on individual circumstances.",
+    "relevant_doc_ids": [
+      "302209"
+    ],
+    "cited_doc_ids": [
+      "302209",
+      "39436",
+      "141032",
+      "349544",
+      "570990"
+    ],
+    "latency_ms": 12160.6,
+    "total_tokens": 2915,
+    "faithfulness": 0.2816,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The balance sheet reflects values as of a specific date, such as 12/31.",
+        "The pay period may end earlier than the balance sheet date, such as 12/24."
+      ],
+      "unsupported_claims": [
+        "A balance sheet typically ends on the latest check of the year."
+      ],
+      "additional_retrievals": 1,
+      "faithfulness_score": 0.6666666666666666,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "4236",
+    "query": "What is the difference between speculating and investing?",
+    "generated_answer": "The difference between speculating and investing lies primarily in the approach to risk and the intent behind the purchase. Investing is characterized by a conscious decision based on well-defined research and grounded in good reasons, aiming for long-term returns while managing risks. For example, purchasing a house to renovate and sell for a profit is considered an investment because it creates value through improvement [Source 3]. \n\nIn contrast, speculation involves taking risks based on hunches or predictions about future market changes, often seeking short-term maximum returns without adequate risk protection. An example of speculation would be buying a house with the hope of selling it for a profit after a short period, relying on market fluctuations rather than intrinsic value [Source 2][Source 3]. Speculation is often viewed as riskier and is associated with the potential for significant losses or gains [Source 1][Source 4].",
+    "relevant_doc_ids": [
+      "248677",
+      "230733",
+      "261804",
+      "106864",
+      "233821",
+      "228521",
+      "349838"
+    ],
+    "cited_doc_ids": [
+      "261804",
+      "248677",
+      "228521",
+      "106864",
+      "233821"
+    ],
+    "latency_ms": 19297.9,
+    "total_tokens": 838,
+    "faithfulness": 0.2857,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 0.7143,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The difference between speculating and investing lies primarily in the approach to risk and the intent behind the purchase.",
+        "Investing is characterized by a conscious decision based on well-defined research and grounded in good reasons.",
+        "Investing aims for long-term returns while managing risks.",
+        "Purchasing a house to renovate and sell for a profit is considered an investment because it creates value through improvement.",
+        "Speculation involves taking risks based on hunches or predictions about future market changes.",
+        "Speculation often seeks short-term maximum returns without adequate risk protection.",
+        "Buying a house with the hope of selling it for a profit after a short period is an example of speculation.",
+        "Speculation relies on market fluctuations rather than intrinsic value.",
+        "Speculation is often viewed as riskier.",
+        "Speculation is associated with the potential for significant losses or gains."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "80",
+    "query": "Get a loan with low interest rate on small business",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "252473"
+    ],
+    "cited_doc_ids": [
+      "72578",
+      "253373",
+      "252473",
+      "345294",
+      "131255"
+    ],
+    "latency_ms": 3999.1,
+    "total_tokens": 1447,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.3333,
+    "ndcg_at_5": 0.5,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "2622",
+    "query": "Is the gross amount of US debt dangerous for the small investor?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "61792"
+    ],
+    "cited_doc_ids": [
+      "61792",
+      "338784",
+      "345294",
+      "527583",
+      "333334"
+    ],
+    "latency_ms": 3655.7,
+    "total_tokens": 551,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "6399",
+    "query": "How is Butterfly Trade Strategy good if the mid Strike price is already past?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "240023"
+    ],
+    "cited_doc_ids": [
+      "240023",
+      "137175",
+      "137175",
+      "263088",
+      "238024"
+    ],
+    "latency_ms": 3134.5,
+    "total_tokens": 832,
+    "faithfulness": 0.5556,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "5091",
+    "query": "Is there a term that better describes a compound annual growth rate (CAGR) when it is negative?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "145143",
+      "37987",
+      "87675"
+    ],
+    "cited_doc_ids": [
+      "37987",
+      "37987",
+      "145143",
+      "37987",
+      "87675"
+    ],
+    "latency_ms": 3059.3,
+    "total_tokens": 649,
+    "faithfulness": 0.4444,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "4234",
+    "query": "Is there a good rule of thumb for how much I should have set aside as emergency cash?",
+    "generated_answer": "Based on the provided sources, here are the key points regarding how much emergency cash one should have set aside:\n\n1. **Emergency Fund Duration**:\n   - It is generally recommended to have an emergency fund that covers **3 to 6 months** of normal expenses. This duration can vary based on individual circumstances and industry [Source 1][Source 2].\n\n2. **Monthly Expenses**:\n   - To determine the appropriate amount for an emergency fund, one should first calculate their **monthly expenses** and then multiply that by the desired duration (3 to 6 months) [Source 2][Source 5].\n\n3. **Consideration of Annual Expenses**:\n   - In addition to monthly expenses, it is important to account for **mandatory annual payments** (e.g., school fees, insurance premiums, property taxes) that may coincide with the emergency fund period [Source 2].\n\n4. **Cash Availability**:\n   - Having a certain amount of **liquid cash** (e.g., around $1,000) is recommended for immediate access during emergencies, especially in situations where electronic payment methods may not be available [Source 6][Source 8].\n\n5. **Personal Financial Situation**:\n   - The amount needed in an emergency fund can depend on individual financial risks, such as the likelihood of job loss or unexpected expenses. Therefore, it is advisable to assess personal circumstances to determine the right amount [Source 4][Source 9].\n\n6. **Flexibility and Adjustments**:\n   - Individuals should consider their lifestyle and spending habits when determining how much to set aside. Adjustments can be made based on what expenses can be reduced during tough times [Source 5].\n\nIn summary, a good rule of thumb is to aim for an emergency fund that covers 3 to 6 months of expenses, including any significant annual payments, while also maintaining a small amount of liquid cash for immediate needs.",
+    "relevant_doc_ids": [
+      "446506",
+      "437182",
+      "160011",
+      "590623",
+      "278611",
+      "243571",
+      "244408",
+      "161301",
+      "111054",
+      "29517",
+      "61093",
+      "261619",
+      "97151"
+    ],
+    "cited_doc_ids": [
+      "111054",
+      "34480",
+      "160011",
+      "570632",
+      "333334"
+    ],
+    "latency_ms": 16212.3,
+    "total_tokens": 4179,
+    "faithfulness": 0.2151,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.5087,
+    "precision_at_5": 0.4,
+    "recall_at_5": 0.1538,
+    "self_rag_stats": {
+      "verified_claims": [
+        "It is recommended to keep around $1,000 in liquid cash for immediate emergencies."
+      ],
+      "unsupported_claims": [
+        "A good rule of thumb for how much to set aside as emergency cash is to have between 3 to 6 times your monthly income in savings.",
+        "Having 3 to 6 times your monthly income in savings can help handle most financial emergency risks."
+      ],
+      "additional_retrievals": 2,
+      "faithfulness_score": 0.3333333333333333,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "2554",
+    "query": "Is there a way to monitor when executives or leaders in a company sell off large holdings?",
+    "generated_answer": "Yes, executives have to file with the SEC when they sell shares, and some websites, like secform4.com, track these transactions. However, many insiders may have selling programs where they sell the same amount regularly, so it's important to do your homework to determine if there are real signals in the activity [Source 3].",
+    "relevant_doc_ids": [
+      "406481",
+      "306961"
+    ],
+    "cited_doc_ids": [
+      "554996",
+      "539664",
+      "406481",
+      "554996",
+      "554996"
+    ],
+    "latency_ms": 7400.8,
+    "total_tokens": 692,
+    "faithfulness": 0.5435,
+    "ragas_faithfulness": 0.75,
+    "hit_at_5": 1.0,
+    "mrr": 0.3333,
+    "ndcg_at_5": 0.3066,
+    "precision_at_5": 0.3333,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Executives have to file with the SEC when they sell shares.",
+        "Some websites, like secform4.com, track these transactions.",
+        "Many insiders may have selling programs where they sell the same amount regularly."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "3393",
+    "query": "How can contractors recoup taxation-related expenses?",
+    "generated_answer": "Contractors can recoup taxation-related expenses by ensuring that these expenses are built into their rates, as companies are indirectly paying for them through the rates charged [Source 2]. Additionally, contractors need to craft their contracts to specify any fees and expenses they wish to be reimbursed for, as the responsibility for calculating and withholding taxes lies with them [Source 4]. It is also important for contractors to report the income they receive, as the company will report it as a business expense [Source 5].",
+    "relevant_doc_ids": [
+      "175889",
+      "490386"
+    ],
+    "cited_doc_ids": [
+      "490386",
+      "175889",
+      "515690",
+      "490386",
+      "175889"
+    ],
+    "latency_ms": 13389.6,
+    "total_tokens": 813,
+    "faithfulness": 0.35,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6667,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Contractors can recoup taxation-related expenses by ensuring that these expenses are built into their rates.",
+        "Companies are indirectly paying for taxation-related expenses through the rates charged.",
+        "Contractors need to craft their contracts to specify any fees and expenses they wish to be reimbursed for.",
+        "The responsibility for calculating and withholding taxes lies with contractors.",
+        "Contractors need to report the income they receive.",
+        "The company will report the income received by contractors as a business expense."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "5044",
+    "query": "How to find trailing 5-year stock returns for 1980s?",
+    "generated_answer": "You can pull stock-related information for the 1980s using Google or Yahoo Finance. You can utilize Google Docs spreadsheets, which have a function for filling in stock and fund prices. This data can then be used to graph the performance over the desired time period [Source 2].",
+    "relevant_doc_ids": [
+      "376396"
+    ],
+    "cited_doc_ids": [
+      "85621",
+      "376396",
+      "417787",
+      "556235",
+      "556235"
+    ],
+    "latency_ms": 7446.3,
+    "total_tokens": 787,
+    "faithfulness": 0.5,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.6309,
+    "precision_at_5": 0.25,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You can pull stock-related information for the 1980s using Google or Yahoo Finance.",
+        "Google Docs spreadsheets have a function for filling in stock and fund prices.",
+        "The data from Google Docs spreadsheets can be used to graph performance over a desired time period."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1762",
+    "query": "Is there a bank account that allows ACH deposits but not ACH withdrawals?",
+    "generated_answer": "Yes, you can talk to local banks about a business account that allows certain employees to make deposits but not withdrawals. This can be set up using sub-accounts with varying access privileges, while you control the master account [Source 2].",
+    "relevant_doc_ids": [
+      "3336",
+      "333292"
+    ],
+    "cited_doc_ids": [
+      "333292",
+      "3336",
+      "65227",
+      "254635",
+      "333292"
+    ],
+    "latency_ms": 8845.5,
+    "total_tokens": 665,
+    "faithfulness": 0.5278,
+    "ragas_faithfulness": 0.6,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.5,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You can talk to local banks about a business account.",
+        "Certain employees can make deposits but not withdrawals.",
+        "Sub-accounts can be set up with varying access privileges.",
+        "You control the master account."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1610",
+    "query": "18 year old making $60k a year; how should I invest? Traditional or Roth IRA?",
+    "generated_answer": "To determine whether an 18-year-old making $60k a year should invest in a Traditional IRA or a Roth IRA, we can analyze the situation based on the information provided in the sources:\n\n### Key Points:\n\n1. **Tax Treatment**:\n   - **Roth IRA**: Contributions are made with after-tax dollars, meaning you pay taxes on the income before contributing. Withdrawals in retirement are tax-free, which can be beneficial if you expect to be in a higher tax bracket later in life [Source 9].\n   - **Traditional IRA**: Contributions may be tax-deductible, reducing taxable income in the year of contribution. However, withdrawals in retirement are taxed as ordinary income [Source 10].\n\n2. **Current Income Level**:\n   - At $60k a year, the individual is likely in a moderate tax bracket. If they expect their income to increase significantly in the future, a Roth IRA could be advantageous as it locks in the current tax rate on contributions [Source 10].\n\n3. **Long-Term Growth Potential**:\n   - A Roth IRA allows for tax-free growth over time. If the individual invests consistently (e.g., maxing out contributions), they could accumulate significant wealth by retirement age due to compounding [Source 9]. For example, investing $5,000 annually at a 10% return could yield substantial tax-free income by retirement.\n\n4. **Access to Contributions**:\n   - Roth IRAs allow for the principal of contributions to be withdrawn at any time without tax or penalty, making it a flexible option for emergencies [Source 1]. This could be particularly relevant for a young adult who may need access to funds.\n\n5. **Investment Strategy**:\n   - The individual should consider their overall financial goals, including whether they plan to save for retirement aggressively or if they have other financial priorities (like building an emergency fund or saving for a major purchase) [Source 5].\n\n### Conclusion:\nBased on the information from the sources, a **Roth IRA** may be more suitable for an 18-year-old making $60k a year due to the benefits of tax-free growth, access to contributions, and the potential for higher future tax rates. However, the decision should also consider personal financial goals and the current tax situation.",
+    "relevant_doc_ids": [
+      "41417",
+      "315780",
+      "31462"
+    ],
+    "cited_doc_ids": [
+      "520597",
+      "31462",
+      "31462",
+      "474896",
+      "41417"
+    ],
+    "latency_ms": 18694.7,
+    "total_tokens": 3599,
+    "faithfulness": 0.1562,
+    "ragas_faithfulness": 0.8824,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.4982,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.6667,
+    "self_rag_stats": {
+      "verified_claims": [
+        "It is advisable to consider opening a Roth IRA at 18.",
+        "Contributions to a Roth IRA can be withdrawn tax-free at any time.",
+        "You can mix and match contributions between Roth and traditional accounts."
+      ],
+      "unsupported_claims": [
+        "An 18-year-old can make $60k a year.",
+        "Tax-free withdrawals from a Roth IRA are available after the account has aged for 5 years."
+      ],
+      "additional_retrievals": 2,
+      "faithfulness_score": 0.6,
+      "regenerated": true
+    }
+  },
+  {
+    "query_id": "5715",
+    "query": "Why do only a handful of Canadian companies have options trading on their stocks?",
+    "generated_answer": "Only a handful of Canadian companies have options trading on their stocks because smaller and/or less liquid stocks do not have enough demand for options. As a result, the options exchange and market makers do not find it cost-effective to create a market for these stocks, leading to a limited number of options available for trading [Source 1].",
+    "relevant_doc_ids": [
+      "498356",
+      "226748"
+    ],
+    "cited_doc_ids": [
+      "498356",
+      "226748",
+      "52878",
+      "393140",
+      "213373"
+    ],
+    "latency_ms": 10405.3,
+    "total_tokens": 1056,
+    "faithfulness": 0.3488,
+    "ragas_faithfulness": 0.5,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Only a handful of Canadian companies have options trading on their stocks.",
+        "Smaller and/or less liquid stocks do not have enough demand for options.",
+        "The options exchange and market makers do not find it cost-effective to create a market for these stocks.",
+        "There is a limited number of options available for trading."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "1668",
+    "query": "How to send money from europe to usa EUR - USD?",
+    "generated_answer": "To send money from Europe to the USA, you can use CurrencyFair, which charges a fee of 3 EUR for an ACH transfer and 8 EUR for a same-day EUR wire transfer. The exchange rate is about 1% off from the mid-market rate [Source 1].",
+    "relevant_doc_ids": [
+      "254635",
+      "507701"
+    ],
+    "cited_doc_ids": [
+      "254635",
+      "451729",
+      "204288",
+      "278611",
+      "251700"
+    ],
+    "latency_ms": 12520.6,
+    "total_tokens": 1216,
+    "faithfulness": 0.4722,
+    "ragas_faithfulness": 0.25,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6131,
+    "precision_at_5": 0.2,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "CurrencyFair can be used to send money from Europe to the USA.",
+        "CurrencyFair charges a fee of 3 EUR for an ACH transfer.",
+        "CurrencyFair charges a fee of 8 EUR for a same-day EUR wire transfer.",
+        "The exchange rate offered by CurrencyFair is about 1% off from the mid-market rate."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "5367",
+    "query": "Buying a house for a shorter term",
+    "generated_answer": "Buying a house for a shorter term can be challenging due to high transaction costs, which can total 6-10% of the house value. This makes it difficult to achieve profitability within a single year, as the margin for miscalculations and market fluctuations is very low. To make a profit in such a short time frame, one would need to minimize these transaction costs, potentially by handling them personally instead of using agents or inspectors [Source 3]. Additionally, if you buy at a low point in the market, you might see some gains shortly after, but generally, a longer holding period is recommended to break even on costs [Source 1].",
+    "relevant_doc_ids": [
+      "410327",
+      "487354",
+      "590614",
+      "285780"
+    ],
+    "cited_doc_ids": [
+      "285780",
+      "410327",
+      "410327",
+      "159403",
+      "590623"
+    ],
+    "latency_ms": 18810.8,
+    "total_tokens": 964,
+    "faithfulness": 0.3448,
+    "ragas_faithfulness": 0.625,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.6367,
+    "precision_at_5": 0.5,
+    "recall_at_5": 0.5,
+    "self_rag_stats": {
+      "verified_claims": [
+        "High transaction costs for buying a house can total 6-10% of the house value.",
+        "It is difficult to achieve profitability within a single year when buying a house.",
+        "The margin for miscalculations and market fluctuations is very low when buying a house for a shorter term.",
+        "Minimizing transaction costs can help in making a profit in a short time frame.",
+        "Handling transaction costs personally instead of using agents or inspectors can reduce costs.",
+        "Buying at a low point in the market might lead to gains shortly after.",
+        "A longer holding period is generally recommended to break even on costs when buying a house."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "5129",
+    "query": "The penalty on early redemption of a personal loan",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "66649"
+    ],
+    "cited_doc_ids": [
+      "479240",
+      "125722",
+      "357280",
+      "345294",
+      "278611"
+    ],
+    "latency_ms": 3074.7,
+    "total_tokens": 657,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "9498",
+    "query": "Meaning of \u201creadily transferable\u201d?",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "17796"
+    ],
+    "cited_doc_ids": [
+      "106864",
+      "63",
+      "554996",
+      "97489",
+      "87435"
+    ],
+    "latency_ms": 1884.7,
+    "total_tokens": 590,
+    "faithfulness": 0.2222,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 0.0,
+    "mrr": 0.0,
+    "ndcg_at_5": 0.0,
+    "precision_at_5": 0.0,
+    "recall_at_5": 0.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "4055",
+    "query": "Recommended finance & economy book/blog for a Software Engineer?",
+    "generated_answer": "For a Software Engineer looking for finance and economy resources, I recommend the book by Hull, which is informative and basic. Additionally, Wilmott's Forum is a good place to find both coders and finance professionals [Source 1]. For economic commentary, Naked Capitalism is also a good blog to consider [Source 2].",
+    "relevant_doc_ids": [
+      "151994",
+      "276032",
+      "29298"
+    ],
+    "cited_doc_ids": [
+      "151994",
+      "276032",
+      "29298",
+      "459253",
+      "160011"
+    ],
+    "latency_ms": 9376.6,
+    "total_tokens": 615,
+    "faithfulness": 0.3333,
+    "ragas_faithfulness": 0.6667,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "Hull has written a book that is informative and basic.",
+        "Wilmott's Forum is a place to find both coders and finance professionals.",
+        "Naked Capitalism is a blog that provides economic commentary."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "823",
+    "query": "Can a husband and wife who are both members of the same LLC file a joint tax return?",
+    "generated_answer": "Yes, a husband and wife who are both members of the same LLC can file a joint tax return. Being members of a partnership (in this case, the LLC) does not affect how they file their own tax return. They can report their K-1 forms from the partnership on the same return [Source 1].",
+    "relevant_doc_ids": [
+      "497567"
+    ],
+    "cited_doc_ids": [
+      "497567",
+      "214685",
+      "31462",
+      "452896",
+      "267592"
+    ],
+    "latency_ms": 9082.3,
+    "total_tokens": 1129,
+    "faithfulness": 0.4872,
+    "ragas_faithfulness": 0.6667,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "A husband and wife who are both members of the same LLC can file a joint tax return.",
+        "Being members of a partnership does not affect how they file their own tax return.",
+        "They can report their K-1 forms from the partnership on the same return."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "6938",
+    "query": "Best buying price on stock marketing based on market depth detail (CSE atrad tool)",
+    "generated_answer": "I could not find this in the provided documents.",
+    "relevant_doc_ids": [
+      "137175",
+      "585552"
+    ],
+    "cited_doc_ids": [
+      "455609",
+      "585552",
+      "137175",
+      "539418",
+      "137175"
+    ],
+    "latency_ms": 3058.4,
+    "total_tokens": 627,
+    "faithfulness": 0.6667,
+    "ragas_faithfulness": 0.0,
+    "hit_at_5": 1.0,
+    "mrr": 0.5,
+    "ndcg_at_5": 0.6934,
+    "precision_at_5": 0.5,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "7907",
+    "query": "Understanding the synthetic long put option",
+    "generated_answer": "A synthetic long put option can be created by combining a short stock position with a long call option. This strategy allows you to profit as the stock price decreases while limiting your risk if the stock price rises. The profit/loss graph of this combination resembles that of a long put option, providing a way to mimic the position without directly purchasing a put option [Source 1].",
+    "relevant_doc_ids": [
+      "232880"
+    ],
+    "cited_doc_ids": [
+      "232880",
+      "240023",
+      "213373",
+      "395783",
+      "85621"
+    ],
+    "latency_ms": 12176.3,
+    "total_tokens": 1561,
+    "faithfulness": 0.4043,
+    "ragas_faithfulness": 0.4,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.2,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "A synthetic long put option can be created by combining a short stock position with a long call option.",
+        "This strategy allows you to profit as the stock price decreases.",
+        "This strategy limits your risk if the stock price rises.",
+        "The profit/loss graph of this combination resembles that of a long put option.",
+        "This strategy provides a way to mimic the position without directly purchasing a put option."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "2147",
+    "query": "Should I buy my house from my landlord?",
+    "generated_answer": "You should consider whether you really want to buy that specific house. If you don't love the house and are planning to move or prefer a different type of place long term, it may be better to continue renting and look for another property that suits you better [Source 3]. Additionally, there are likely many other houses available for purchase, and the one you are currently renting may not be the best option [Source 2].",
+    "relevant_doc_ids": [
+      "47230",
+      "342382",
+      "159403"
+    ],
+    "cited_doc_ids": [
+      "47230",
+      "159403",
+      "342382",
+      "410327",
+      "159403"
+    ],
+    "latency_ms": 10153.8,
+    "total_tokens": 559,
+    "faithfulness": 0.5714,
+    "ragas_faithfulness": 1.0,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 1.0,
+    "precision_at_5": 0.75,
+    "recall_at_5": 1.0,
+    "self_rag_stats": {
+      "verified_claims": [
+        "You should consider whether you really want to buy that specific house.",
+        "If you don't love the house and are planning to move or prefer a different type of place long term, it may be better to continue renting.",
+        "There are likely many other houses available for purchase.",
+        "The one you are currently renting may not be the best option."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  },
+  {
+    "query_id": "5693",
+    "query": "What is the p/e ratio?",
+    "generated_answer": "The price to earnings (P/E) ratio is a measure of a company's current share price compared to its annual net earnings per share. It indicates the number of years a company would take to pay back the share price if the earnings remain constant, and it can serve as an indicator of risk [Source 1].",
+    "relevant_doc_ids": [
+      "466972",
+      "308294",
+      "223823"
+    ],
+    "cited_doc_ids": [
+      "466972",
+      "533818",
+      "533818",
+      "403870",
+      "533818"
+    ],
+    "latency_ms": 8785.1,
+    "total_tokens": 585,
+    "faithfulness": 0.675,
+    "ragas_faithfulness": 0.6667,
+    "hit_at_5": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_5": 0.4693,
+    "precision_at_5": 0.3333,
+    "recall_at_5": 0.3333,
+    "self_rag_stats": {
+      "verified_claims": [
+        "The price to earnings (P/E) ratio is a measure of a company's current share price compared to its annual net earnings per share.",
+        "The P/E ratio indicates the number of years a company would take to pay back the share price if the earnings remain constant.",
+        "The P/E ratio can serve as an indicator of risk."
+      ],
+      "unsupported_claims": [],
+      "additional_retrievals": 0,
+      "faithfulness_score": 1.0,
+      "regenerated": false
+    }
+  }
+]

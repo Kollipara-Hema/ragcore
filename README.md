@@ -5,6 +5,10 @@ automatic query routing, and a configurable Self-RAG generation path.
 The pipeline is benchmarked end-to-end against FiQA-2018, with results,
 failure mode documentation, and reproducible scripts committed alongside
 the code.
+Two faithfulness metrics — token-overlap and LLM-judged (RAGAS) —
+disagree on whether Self-RAG helps. Both deltas are statistically
+significant. The disagreement, not Self-RAG itself, is the headline
+finding.
 
 [![CI](https://github.com/Kollipara-Hema/ragcore/actions/workflows/ci.yml/badge.svg)](https://github.com/Kollipara-Hema/ragcore/actions)
 [![Coverage](https://codecov.io/gh/Kollipara-Hema/ragcore/branch/main/graph/badge.svg)](https://codecov.io/gh/Kollipara-Hema/ragcore)
@@ -33,21 +37,43 @@ the code.
 ## Headline Results
 
 Benchmarked on 50 FiQA-2018 financial Q&A queries. Retrieval metrics are
-identical between strategies; Self-RAG improves faithfulness at the cost of
-latency.
+identical between strategies by construction (same retrieval path); the
+meaningful comparison is faithfulness, where the two metrics disagree.
 
-| Metric | Baseline | Self-RAG | Delta |
-|---|---|---|---|
-| hit@5 | 0.92 | 0.92 | — |
-| MRR | 0.86 | 0.86 | — |
-| NDCG@5 | 0.75 | 0.75 | — |
-| faithfulness | 0.36 | 0.43 | +20% |
-| mean latency | 4.7s | 8.5s | +81% |
+| Metric | Baseline | Self-RAG | Delta | 95% CI | p |
+|---|---|---|---|---|---|
+| hit@5 | 0.92 | 0.92 | — | — | — |
+| MRR | 0.86 | 0.86 | — | — | — |
+| NDCG@5 | 0.75 | 0.75 | — | — | — |
+| faithfulness (word-overlap) | 0.36 | 0.42 | +0.054 | [0.032, 0.083] | 0.0002 |
+| faithfulness (RAGAS, gpt-4o-mini) | 0.56 | 0.45 | −0.109 | [−0.197, −0.019] | 0.0296 |
+| mean latency | 5.9s | 10.6s | +79% | — | — |
 
-Self-RAG's claim verification loop costs 1.8× the latency of basic generation
-for a 20% faithfulness gain; whether that trade-off is worth it depends on how
-much hallucination matters for the use case. Full per-query breakdown:
-[evaluation/notebooks/baseline_vs_selfrag.ipynb](evaluation/notebooks/baseline_vs_selfrag.ipynb)
+The two faithfulness metrics give opposite verdicts. Word-overlap says
+Self-RAG is more faithful (+15% relative). RAGAS says Self-RAG is less
+faithful (−19% relative). Both effects are statistically significant
+(Wilcoxon signed-rank, paired bootstrap CIs over 1000 resamples,
+seed=42). On baseline answers, the two metrics negatively correlate
+(Spearman ρ = −0.385, p=0.006) — they are not measuring the same
+thing.
+
+A plausible mechanism: Self-RAG decomposes answers into atomic claims,
+which raises token overlap with contexts (helping word-overlap) but
+creates more opportunities for any single claim to be flagged as
+unsupported (hurting RAGAS). Whether the RAGAS regression reflects
+worse answers or just more falsifiable claims requires per-claim
+analysis to resolve. See
+[evaluation/results/ragas_analysis_2026-04-26.md](evaluation/results/ragas_analysis_2026-04-26.md)
+for the full statistical breakdown, mechanism hypothesis, and
+limitations.
+
+The pre-registered analysis plan, written before the RAGAS run, is at
+[docs/ragas_run_plan_2026-04-26.md](docs/ragas_run_plan_2026-04-26.md).
+
+The methodology change made after seeing the first run (judge
+max_tokens raised from default to 8192 to recover 14 verification-stage
+truncations) is documented in the analysis file alongside the original
+default-judge run preserved as evidence.
 
 ---
 
@@ -349,9 +375,9 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 75 unit tests passing, 25 integration tests passing. Two tests in
-`TestObservabilityIntegration` fail on scaffolded tracer code — pre-existing,
-not blocking.
+Current: 76 unit tests passing, 26 of 27 integration tests passing. One
+integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
+mock-target resolution bug in the test itself, unrelated to current work.
 
 ---
 
@@ -368,6 +394,9 @@ not blocking.
 - Basic and Self-RAG generation paths, configurable via `GENERATION_STRATEGY`
 - Retrieval evaluation: MRR, NDCG@5, hit@5, precision@5, recall@5 — all
   correctly bounded after dedup fix (see debugging notes)
+- LLM-judged faithfulness via RAGAS (gpt-4o-mini judge) on the same 50 FiQA
+  queries, with paired bootstrap confidence intervals and Wilcoxon signed-rank
+  significance testing — pre-registered analysis plan committed before the run
 - FiQA-2018 benchmark runner and comparison notebook
 
 ### Deferred or scaffolded
@@ -381,8 +410,10 @@ not blocking.
   verified end-to-end
 - Advanced generation: FLARE and Agentic RAG code is in
   `generation/advanced_generation.py` but not wired to the API
-- RAGAS-based generation metrics: currently heuristic word-overlap; install
-  the `eval` extra to enable RAGAS
+- RAGAS evaluation runs end-to-end and produces the LLM-judged faithfulness
+  numbers in the headline table. Word-overlap retained alongside RAGAS as the
+  displaceable historical metric — the headline finding is that the two metrics
+  disagree on Self-RAG.
 
 ---
 
@@ -391,6 +422,15 @@ not blocking.
 - [AUDIT.md](AUDIT.md) — Module-by-module assessment of what's implemented
   versus what's scaffolded or deferred, with README claims rated REAL / PARTIAL /
   OVERSTATED and five previously-undocumented bugs.
+- [evaluation/results/ragas_analysis_2026-04-26.md](evaluation/results/ragas_analysis_2026-04-26.md) —
+  RAGAS vs word-overlap faithfulness analysis on 50 FiQA queries. Paired
+  bootstrap CIs, Wilcoxon signed-rank tests, cross-metric Spearman correlation,
+  top-outlier query analysis, mechanism hypothesis, and limitations. Documents
+  the metric disagreement that motivates the README headline.
+- [docs/ragas_run_plan_2026-04-26.md](docs/ragas_run_plan_2026-04-26.md) —
+  Pre-registered analysis plan, written before the RAGAS benchmark ran. Decision
+  rules committed in advance for three result scenarios; the RAGAS regression
+  triggered Rule 3 (rewrite README), which is what this README does.
 - [docs/debugging-notes.md](docs/debugging-notes.md) — Real bugs caught
   during development: vector store singleton, UUID/corpus-ID mismatch, metric
   inflation from duplicate chunk IDs, Self-RAG prompt escaping. Each entry
@@ -408,9 +448,11 @@ not blocking.
 
 - Wire FLARE and Agentic RAG into the generation strategy dispatch (code
   exists in `advanced_generation.py`, not yet called by orchestrator)
-- Make Self-RAG claim verification provider-agnostic
+- Investigate per-claim support rates to test the metric-disagreement
+  hypothesis: are Self-RAG's "unsupported" claims actually unsupported, or
+  supported by retrieved contexts not surfaced in citations?
 - Emit real Prometheus metrics from retrieval and generation steps
 - Fix the two scaffolded tracer integration tests
-- Expand FiQA evaluation to the full test split to reduce variance in
-  faithfulness estimates
+- Expand to the full FiQA test split (~648 queries) to tighten confidence
+  intervals on both faithfulness deltas
 - **Deploy a live demo** (Streamlit Cloud is the likely path)
