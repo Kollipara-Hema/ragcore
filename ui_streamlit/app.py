@@ -298,9 +298,7 @@ with tab6:
 # BACKEND URL — where your FastAPI is running
 # =============================================================================
 
-# When running locally in Codespaces: http://localhost:8000
-# When both run in same Codespace: http://localhost:8000
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("RAGCORE_BACKEND_URL", "http://localhost:8000")
 
 # =============================================================================
 # SESSION STATE — persists across reruns
