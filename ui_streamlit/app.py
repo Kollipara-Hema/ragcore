@@ -1,631 +1,660 @@
 """
-Streamlit 6-tab RAG pipeline dashboard with multi-provider LLM support.
-
-FEATURES:
-- ⚙️ API Configuration panel in sidebar
-- Select LLM provider: Groq / OpenAI / Anthropic / Ollama / Demo
-- API key input (password masked)
-- Model selection based on provider
-- Test connection button with status indicator
-- Free embedding models (MiniLM, BGE) by default
-- Demo mode banner when no API key provided
+RAGCore Streamlit Demo — single chat surface with full pipeline observability.
 """
-import streamlit as st
-import pandas as pd
-import plotly.express as px
+from __future__ import annotations
+
+import json
 import os
-import requests
-from pathlib import Path
 import time
+from pathlib import Path
+from typing import Optional
 
-# Mock data for demo
-def mock_ingest(file):
-    return f"✅ {file.name} — 5 pages, 1200 words, loaded in 0.2s"
+import altair as alt
+import pandas as pd
+import plotly.graph_objects as go
+import requests
+import streamlit as st
 
-def mock_chunk(strategy, size, overlap):
-    return [
-        {"id": 1, "source": "doc1.pdf", "tokens": 512, "preview": "This is chunk 1..."},
-        {"id": 2, "source": "doc2.txt", "tokens": 480, "preview": "This is chunk 2..."},
-    ]
+# ─── Page config (must be first Streamlit call) ───────────────────────────────
+st.set_page_config(
+    page_title="RAGCore",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
 
-def mock_embed(model):
-    return {"dimensions": 1536 if "3-small" in model else 1024, "time": 1.2, "vectors": 10}
-
-def mock_retrieve(query, strategy, alpha):
-    return [
-        {"rank": 1, "score": 0.95, "source": "doc1.pdf", "page": 2, "preview": "Relevant text..."},
-        {"rank": 2, "score": 0.89, "source": "doc2.txt", "page": 1, "preview": "Another text..."},
-    ]
-
-def mock_generate(query, provider, model):
-    return {
-        "answer": f"Answer for: {query} (via {provider})",
-        "citations": ["doc1.pdf — Page 2", "doc2.txt — Page 1"],
-        "tokens": {"prompt": 100, "completion": 50, "total": 150},
-        "risk": "Low"
-    }
-
-def mock_evaluate(csv):
-    return {
-        "recall": 0.85,
-        "relevance": 0.78,
-        "faithfulness": 0.82,
-        "hallucination": 0.12
-    }
-
-# UI Setup
-st.set_page_config(page_title="DocIntel — RAG Pipeline", layout="wide")
+# ─── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-.stApp { background-color: #0f1724; color: white; }
-.demo-banner { background-color: #ff9800; color: black; padding: 12px; border-radius: 6px; margin: 10px 0; }
+[data-testid='stSidebar'] {
+    background-color: #ffffff;
+    border-right: 1px solid #e9ecef;
+}
+[data-testid='stChatMessage'] {
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    padding: 4px;
+    margin-bottom: 8px;
+}
+.citation-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 3px solid #4a6fa5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    font-size: 13px;
+}
+.citation-source {
+    color: #4a6fa5;
+    font-weight: 600;
+    font-size: 12px;
+}
+.citation-excerpt {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+}
+.stat-badge {
+    display: inline-block;
+    background: #e8f4fd;
+    color: #1a6fa8;
+    border-radius: 99px;
+    padding: 2px 10px;
+    font-size: 12px;
+    margin-right: 6px;
+}
+.strategy-tag {
+    display: inline-block;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 4px;
+}
+.routing-strip {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #495057;
+    margin-bottom: 6px;
+}
+.confidence-high {
+    display: inline-block;
+    background: #d4edda;
+    color: #155724;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.confidence-medium {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.confidence-low {
+    display: inline-block;
+    background: #f8d7da;
+    color: #721c24;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.abstention-card {
+    background: #fff8e1;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+.error-card {
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+.self-rag-verified {
+    display: inline-block;
+    background: #d4edda;
+    color: #155724;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 2px 3px;
+}
+.self-rag-unverified {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 2px 3px;
+}
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if "llm_provider" not in st.session_state:
-    st.session_state.llm_provider = "groq"
-if "embedding_provider" not in st.session_state:
-    st.session_state.embedding_provider = "minilm"
-if "connection_status" not in st.session_state:
-    st.session_state.connection_status = None
-
-st.title("DocIntel — Enterprise RAG Pipeline")
-
-# Sidebar - API Configuration
-with st.sidebar:
-    st.markdown("### ⚙️ API Configuration")
-    
-    # Provider selection
-    provider = st.selectbox(
-        "LLM Provider",
-        ["groq", "openai", "anthropic", "ollama", "demo"],
-        index=["groq", "openai", "anthropic", "ollama", "demo"].index(st.session_state.llm_provider),
-        key="provider_select"
-    )
-    st.session_state.llm_provider = provider
-    
-    # Model selection
-    models = {
-        "groq": ["llama3-70b-8192", "mixtral-8x7b", "gemma2-9b"],
-        "openai": ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"],
-        "anthropic": ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
-        "ollama": ["llama3", "mistral", "phi3"],
-        "demo": ["demo"]
-    }
-    selected_model = st.selectbox("Model", models.get(provider, ["demo"]), key="model_select")
-    
-    # Test connection button
-    if st.button("🔌 Test Connection"):
-        if provider == "demo":
-            st.session_state.connection_status = "✅ Demo Mode"
-        elif provider == "ollama":
-            st.session_state.connection_status = "✅ Connected (Local)"
-        else:
-            st.session_state.connection_status = "✅ Connected"
-    
-    if st.session_state.connection_status:
-        if "✅" in st.session_state.connection_status:
-            st.success(st.session_state.connection_status)
-        else:
-            st.error(st.session_state.connection_status)
-    
-    # Embedding provider
-    st.markdown("### 📊 Embedding Provider")
-    embedding_provider = st.selectbox(
-        "Model",
-        ["minilm (FREE)", "bge (FREE)", "openai"],
-        index=0,
-        key="embedding_select"
-    )
-    
-    st.markdown("---")
-    st.markdown("### 📊 Pipeline Status")
-    st.markdown("✅ Ingest | ⏳ Chunk | ⬜ Embed | ⬜ Retrieve | ⬜ Generate")
-    
-    if st.button("Reset Pipeline"):
-        st.rerun()
-
-# Tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["01 Ingest", "02 Chunk", "03 Embed", "04 Retrieve", "05 Generate", "06 Evaluate"])
-
-with tab1:
-    st.header("Document Ingestion")
-    uploaded = st.file_uploader("Upload documents", accept_multiple_files=True, type=["pdf", "txt", "docx", "csv"])
-    if uploaded:
-        for file in uploaded:
-            st.write(mock_ingest(file))
-        st.success("All files loaded!")
-
-with tab2:
-    st.header("Chunking")
-    col1, col2 = st.columns(2)
-    with col1:
-        strategy = st.selectbox("Strategy", ["Fixed", "Recursive", "Sliding Window", "Semantic"])
-        size = st.slider("Chunk Size", 128, 1024, 512)
-        overlap = st.slider("Overlap", 0, 256, 50)
-    with col2:
-        chunks = mock_chunk(strategy, size, overlap)
-        st.write(f"Total chunks: {len(chunks)}")
-        df = pd.DataFrame(chunks)
-        st.dataframe(df)
-        fig = px.bar(df, x="id", y="tokens", title="Chunk Size Distribution")
-        st.plotly_chart(fig)
-
-with tab3:
-    st.header("Embedding")
-    model = st.selectbox("Model", ["all-MiniLM-L6-v2 (FREE)", "BGE-large (FREE)", "OpenAI text-embedding-3-small"])
-    if st.button("Embed Chunks"):
-        result = mock_embed(model)
-        st.write(f"Dimensions: {result['dimensions']}, Time: {result['time']}s")
-
-with tab4:
-    st.header("Retrieval")
-    query = st.text_input("Query")
-    strategy = st.selectbox("Strategy", ["Dense", "Sparse BM25", "Hybrid"])
-    alpha = st.slider("Hybrid Alpha", 0.0, 1.0, 0.5)
-    if query:
-        results = mock_retrieve(query, strategy, alpha)
-        for res in results:
-            st.write(f"Rank {res['rank']}: {res['score']:.2f} — {res['source']} P{res['page']}")
-
-with tab5:
-    st.header("Generation")
-    if st.button("Generate Answer"):
-        gen = mock_generate("Sample query", st.session_state.llm_provider, selected_model)
-        st.write(gen["answer"])
-        st.write("Citations:")
-        for cit in gen["citations"]:
-            st.write(f"[1] {cit}")
-
-with tab6:
-    st.header("Evaluation")
-    csv = st.file_uploader("Upload Golden Q&A CSV", type=["csv"])
-    if csv:
-        metrics = mock_evaluate(csv)
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Recall @5", f"{metrics['recall']:.2f}")
-        col2.metric("Relevance", f"{metrics['relevance']:.2f}")
-        col3.metric("Faithfulness", f"{metrics['faithfulness']:.2f}")
-        col4.metric("Hallucination", f"{metrics['hallucination']:.2f}")
-
-    st.markdown(
-        """
-        <style>
-        /* Sidebar styling */
-        [data-testid='stSidebar'] {
-            background-color: #ffffff;
-            border-right: 1px solid #e9ecef;
-        }
-
-        /* Chat message styling */
-        [data-testid='stChatMessage'] {
-            background-color: #ffffff;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
-            padding: 4px;
-            margin-bottom: 8px;
-        }
-
-        /* User message bubble */
-        [data-testid='stChatMessage'][data-testid*='user'] {
-            background-color: #e8f4fd;
-        }
-
-        /* Citation card */
-        .citation-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-left: 3px solid #4a90d9;
-            border-radius: 6px;
-            padding: 8px 12px;
-            margin: 4px 0;
-            font-size: 13px;
-        }
-
-        .citation-source {
-            color: #4a90d9;
-            font-weight: 600;
-            font-size: 12px;
-        }
-
-        .citation-excerpt {
-            color: #6c757d;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        /* Stats badges */
-        .stat-badge {
-            display: inline-block;
-            background: #e8f4fd;
-            color: #1a6fa8;
-            border-radius: 99px;
-            padding: 2px 10px;
-            font-size: 12px;
-            margin-right: 6px;
-        }
-
-        /* Upload area */
-        [data-testid='stFileUploader'] {
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 8px;
-        }
-
-        /* Input box */
-        [data-testid='stChatInput'] {
-            border-radius: 24px;
-        }
-
-        /* Strategy tag */
-        .strategy-tag {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border-radius: 4px;
-            padding: 1px 8px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# =============================================================================
-# BACKEND URL — where your FastAPI is running
-# =============================================================================
-
+# ─── Constants ────────────────────────────────────────────────────────────────
 BACKEND_URL = os.getenv("RAGCORE_BACKEND_URL", "http://localhost:8000")
 
-# =============================================================================
-# SESSION STATE — persists across reruns
-# =============================================================================
+SAMPLE_PROMPTS = [
+    "Should I pay off my mortgage early or invest the extra cash?",
+    "What are the contribution limits for a Roth IRA vs Traditional IRA?",
+    "How does a 401k employer match work and how should I maximize it?",
+]
 
-# Chat history — list of {"role": "user"/"assistant", "content": "...", "meta": {...}}
+# ─── Session state ────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-# API key — stored in session only, never saved to disk
-#if "api_key" not in st.session_state:
-#    st.session_state.api_key = ""
-
-# Whether backend is reachable
 if "backend_ok" not in st.session_state:
-    st.session_state.backend_ok = False
-
-# Indexed documents list
+    st.session_state.backend_ok = None
 if "indexed_docs" not in st.session_state:
     st.session_state.indexed_docs = []
+if "prompt_prefill" not in st.session_state:
+    st.session_state.prompt_prefill = ""
 
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
+# ─── Backend helpers ──────────────────────────────────────────────────────────
 
-def check_backend():
-    """Check if the FastAPI backend is running."""
+@st.cache_data(ttl=30)
+def _check_backend_cached(url: str) -> bool:
+    """Health-check the backend; result cached 30 s to avoid re-checking on every rerun."""
     try:
-        response = requests.get(f"{BACKEND_URL}/health", timeout=3)
-        return response.status_code == 200
+        r = requests.get(f"{url}/health", timeout=5)
+        return r.status_code == 200
     except Exception:
         return False
 
 
-#def upload_document(file, api_key: str) -> dict:
-def upload_document(file) -> dict:
-    """
-    Upload a document to the backend for indexing.
-    Returns the response dict with doc_id and chunk count.
-    """
-    try:
-        files = {"file": (file.name, file.getvalue(), file.type)}
-        data = {
-            "title": file.name,
-            "async_processing": "false",   # Wait for indexing to complete
-        }
-        # Pass API key in header so backend can use it
-        headers = {}
-        #if api_key:
-        #    headers["X-API-Key"] = api_key
-
-        response = requests.post(
-            f"{BACKEND_URL}/ingest/file",
-            files=files,
-            data=data,
-            headers=headers,
-            timeout=120,    # Large files can take time
-        )
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-#def ask_question(query: str, strategy: str, api_key: str) -> dict:
 def ask_question(query: str, strategy: str) -> dict:
-    """
-    Send a question to the backend and return the response.
-    """
     try:
-        headers = {"Content-Type": "application/json"}
-        #if api_key:
-        #    headers["X-API-Key"] = api_key
-
         payload = {
             "query": query,
             "strategy_override": strategy if strategy != "auto" else None,
         }
-
-        response = requests.post(
+        r = requests.post(
             f"{BACKEND_URL}/query",
             json=payload,
-            headers=headers,
-            timeout=60,
+            headers={"Content-Type": "application/json"},
+            timeout=90,
         )
-        return response.json()
+        return r.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def format_citations(citations: list) -> str:
-    """Build HTML for citation cards shown below the answer."""
+def upload_document(file) -> dict:
+    try:
+        files = {"file": (file.name, file.getvalue(), file.type or "application/octet-stream")}
+        r = requests.post(f"{BACKEND_URL}/ingest/file", files=files, timeout=120)
+        return r.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ─── Confidence badge (Pattern M) ────────────────────────────────────────────
+
+def compute_confidence(retrieval_candidates: Optional[list]) -> str:
+    """
+    Confidence = f(score gap between top-1 and median pre-rerank candidate).
+
+    Thresholds calibrated 2026-04-28 against 8 queries on Render backend
+    (https://ragcore-api.onrender.com). Citation scores (cross-encoder,
+    post-rerank) used as proxy — retrieval_candidates not yet deployed at
+    calibration time. Recalibrate after Stage 3 deploy using actual
+    retrieval_candidates (pre-rerank hybrid scores).
+
+    Observed gaps: 401k=9.81(H), invest=5.41(H), taxes=3.28(H),
+                   ira=2.12(M), weather=1.76(M), banking=1.70(M),
+                   stock=1.07(L), mortgage=0.39(L)
+    high   >= 3.28  (33rd–100th pct)
+    medium  1.70–3.27  (0th–33rd pct)
+    low    < 1.70   (bottom third)
+
+    NOTE: Initial calibration (2026-04-28) used post-rerank cross-encoder
+    scores as proxy because retrieval_candidates wasn't yet deployed.
+    Recalibrate against pre-rerank hybrid (FAISS+BM25) gaps once Stage 1
+    backend changes are live. Hybrid score range is wider and includes
+    negatives — these thresholds may shift meaningfully.
+    """
+    cands = retrieval_candidates or []
+    if not cands:
+        return "unknown"
+    scores = sorted([c["score"] for c in cands], reverse=True)
+    n = len(scores)
+    if n < 2:
+        return "unknown"
+    gap = scores[0] - scores[n // 2]
+    if gap >= 3.28:
+        return "high"
+    elif gap >= 1.70:
+        return "medium"
+    else:
+        return "low"
+
+
+# ─── UI rendering helpers ─────────────────────────────────────────────────────
+
+def _routing_strip(result: dict) -> None:
+    """Pattern N — inline routing strip above the answer."""
+    qtype = result.get("query_type", "")
+    strategy = result.get("strategy_used", "")
+    cached = result.get("cached", False)
+    parts = []
+    if strategy:
+        parts.append(f"retrieval: <span class='strategy-tag'>{strategy}</span>")
+    if qtype:
+        parts.append(f"query type: <span class='strategy-tag'>{qtype}</span>")
+    if cached:
+        parts.append("<span class='stat-badge'>cached ⚡</span>")
+    if parts:
+        st.markdown(
+            f"<div class='routing-strip'>Routed to: {' · '.join(parts)}</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def _confidence_badge(level: str) -> None:
+    """Pattern M — confidence badge above the answer body."""
+    if level == "unknown":
+        return
+    labels = {"high": "confidence: high ✓", "medium": "confidence: medium ~", "low": "confidence: low ↓"}
+    st.markdown(
+        f"<span class='confidence-{level}'>{labels[level]}</span>",
+        unsafe_allow_html=True,
+    )
+
+
+def _citations_expander(citations: list) -> None:
+    """Pattern A + B — sources panel with per-citation cross-encoder score."""
     if not citations:
-        return ""
-
-    html = "<div style='margin-top: 12px;'>"
-    html += "<p style='font-size:12px;color:#6c757d;margin-bottom:6px;'>Sources used:</p>"
-
-    for i, cite in enumerate(citations):
-        source = cite.get("source", "Unknown")
-        title = cite.get("title", source)
-        excerpt = cite.get("excerpt", "")[:150]
-        score = cite.get("score", 0)
-
-        # Only show filename, not full path
-        filename = Path(source).name if source else title
-
-        html += f"""
-        <div class='citation-card'>
-            <span class='citation-source'>[{i+1}] {filename}</span>
-            <span style='color:#adb5bd;font-size:11px;margin-left:8px'>
-                relevance: {score:.0%}
-            </span>
-            <p class='citation-excerpt'>"{excerpt}..."</p>
-        </div>
-        """
-
-    html += "</div>"
-    return html
+        return
+    with st.expander(f"Sources ({len(citations)})", expanded=False):
+        for i, cite in enumerate(citations):
+            source = cite.get("source", "Unknown")
+            title = cite.get("title") or Path(source).name or source
+            excerpt = (cite.get("excerpt") or "")[:200]
+            score = cite.get("score", 0)
+            chunk_id = cite.get("chunk_id", "")
+            st.markdown(f"""
+<div class='citation-card'>
+  <span class='citation-source'>[{i+1}] {title}</span>
+  <span style='color:#adb5bd;font-size:11px;margin-left:8px'>
+    cross-encoder: {score:.3f}
+  </span>
+  <p class='citation-excerpt'>"{excerpt}"</p>
+  <p style='font-size:10px;color:#adb5bd;margin:2px 0 0'>chunk {chunk_id[:8]}…</p>
+</div>""", unsafe_allow_html=True)
+        st.caption(
+            "Citation scores are post-rerank cross-encoder — "
+            "different scale from retrieval scores below."
+        )
 
 
-# =============================================================================
-# SIDEBAR
-# =============================================================================
+def _retrieval_expander(retrieval_candidates: Optional[list], citations: list) -> None:
+    """Pattern D + E — pre-rerank candidates with score histogram."""
+    cands = retrieval_candidates or []
+    if not cands:
+        return
+    with st.expander(f"Retrieval candidates — {len(cands)} chunks before reranking", expanded=False):
+        # Addition B: score scale annotation
+        st.caption(
+            "Scores are pre-rerank hybrid (FAISS dense + BM25 sparse). "
+            "Citation scores above are post-rerank cross-encoder — different scale."
+        )
+        # Pattern E: score distribution histogram (Altair)
+        scores = [c["score"] for c in cands]
+        df_hist = pd.DataFrame({"score": scores})
+        hist = (
+            alt.Chart(df_hist)
+            .mark_bar(color="#4a6fa5", opacity=0.75)
+            .encode(
+                alt.X("score:Q", bin=alt.Bin(maxbins=12), title="Hybrid score"),
+                alt.Y("count():Q", title="Chunks"),
+            )
+            .properties(height=110, title="Score distribution (top-K pre-rerank)")
+        )
+        st.altair_chart(hist, use_container_width=True)
+
+        # Pattern D: candidates table with used_in_answer indicator
+        df_cands = pd.DataFrame([
+            {
+                "score": round(c["score"], 4),
+                "used": "✅" if c.get("used_in_answer", False) else "—",
+                "source": Path(c.get("source", "")).name or c.get("source", ""),
+                "excerpt": (c.get("excerpt") or "")[:120],
+            }
+            for c in sorted(cands, key=lambda x: x["score"], reverse=True)
+        ])
+        st.dataframe(
+            df_cands,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "score": st.column_config.NumberColumn("Score", format="%.4f", width="small"),
+                "used": st.column_config.TextColumn("Used", width="small"),
+                "source": st.column_config.TextColumn("Source", width="medium"),
+                "excerpt": st.column_config.TextColumn("Excerpt", width="large"),
+            },
+        )
+
+
+def _trace_expander(stage_timings: Optional[dict]) -> None:
+    """Pattern G — per-stage latency as a horizontal stacked bar (Plotly)."""
+    if not stage_timings:
+        return
+    stages = [
+        ("router_ms",   "Router",   "#4a6fa5"),
+        ("retrieve_ms", "Retrieve", "#e07b39"),
+        ("rerank_ms",   "Rerank",   "#6aaa64"),
+        ("prompt_ms",   "Prompt",   "#9b59b6"),
+        ("generate_ms", "Generate", "#e74c3c"),
+    ]
+    total = stage_timings.get("total_ms", 0)
+    with st.expander(f"Stage timings — {total:.0f} ms total", expanded=False):
+        fig = go.Figure()
+        for key, label, color in stages:
+            ms = stage_timings.get(key, 0)
+            fig.add_trace(go.Bar(
+                name=label,
+                x=[ms],
+                y=["Pipeline"],
+                orientation="h",
+                marker_color=color,
+                text=f"{ms:.0f} ms",
+                textposition="inside" if ms > 50 else "outside",
+                hovertemplate=f"{label}: {ms:.1f} ms<extra></extra>",
+            ))
+        fig.update_layout(
+            barmode="stack",
+            height=110,
+            margin=dict(l=0, r=0, t=0, b=0),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            yaxis=dict(showticklabels=False),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def _self_rag_chips(self_rag_stats: Optional[dict]) -> None:
+    """Pattern L — per-claim verification chips for Self-RAG mode."""
+    if not self_rag_stats:
+        return
+    verified = self_rag_stats.get("verified_claims") or []
+    unsupported = self_rag_stats.get("unsupported_claims") or []
+    faithfulness = self_rag_stats.get("faithfulness_score")
+    regenerated = self_rag_stats.get("regenerated", False)
+
+    chips_html = "".join(
+        f"<span class='self-rag-verified'>✅ {c[:70]}</span>" for c in verified
+    ) + "".join(
+        f"<span class='self-rag-unverified'>⚠️ {c[:70]}</span>" for c in unsupported
+    )
+
+    if chips_html or faithfulness is not None:
+        with st.expander("Self-RAG verification", expanded=False):
+            if faithfulness is not None:
+                note = " · answer regenerated with additional context" if regenerated else ""
+                st.caption(f"Faithfulness: {faithfulness:.2f}{note}")
+            if chips_html:
+                st.markdown(chips_html, unsafe_allow_html=True)
+
+
+def _abstention_card() -> None:
+    """Pattern P — graceful refusal when retrieval finds nothing relevant."""
+    st.markdown("""
+<div class='abstention-card'>
+  <strong>Not enough information in the corpus</strong><br>
+  <span style='font-size:13px;color:#6c757d'>
+    The indexed documents don't contain reliable information to answer this question.
+    Try rephrasing, or ask about FiQA-2018 topics: IRAs, 401k, mortgages, taxes, investing.
+  </span>
+</div>
+""", unsafe_allow_html=True)
+
+
+def _render_assistant_message(result: dict, show_retry: bool = False) -> None:
+    """Render a complete assistant turn with all observability panels."""
+    if "error" in result and result["error"]:
+        st.markdown(f"""
+<div class='error-card'>
+  <strong>Something went wrong</strong><br>
+  <span style='font-size:13px;color:#6c757d'>
+    The backend returned an error. Please try again in a moment.
+  </span>
+</div>""", unsafe_allow_html=True)
+        with st.expander("Technical details", expanded=False):
+            st.code(result["error"])
+        if show_retry:
+            if st.button("Retry ↺", key=f"retry_{int(time.time()*1000)}"):
+                # Remove the error message and the user message, re-prefill
+                if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant":
+                    st.session_state.messages.pop()
+                for msg in reversed(st.session_state.messages):
+                    if msg["role"] == "user":
+                        st.session_state.prompt_prefill = msg["content"]
+                        break
+                st.rerun()
+        return
+
+    citations = result.get("citations") or []
+    total_tokens = result.get("total_tokens", 0)
+    retrieval_candidates = result.get("retrieval_candidates")
+    self_rag_stats = result.get("self_rag_stats")
+    stage_timings = result.get("stage_timings")
+    answer = result.get("answer", "")
+
+    is_abstention = not citations and total_tokens == 0
+
+    # Pattern N: routing strip
+    _routing_strip(result)
+
+    # Pattern M: confidence badge
+    confidence = compute_confidence(retrieval_candidates)
+    _confidence_badge(confidence)
+
+    if is_abstention:
+        # Pattern P: abstention card
+        _abstention_card()
+    else:
+        # Stats row
+        parts = []
+        if result.get("latency_ms"):
+            parts.append(f"<span class='stat-badge'>{result['latency_ms']:.0f} ms</span>")
+        if total_tokens:
+            parts.append(f"<span class='stat-badge'>{total_tokens} tokens</span>")
+        if result.get("model_used"):
+            parts.append(f"<span class='stat-badge'>{result['model_used']}</span>")
+        if parts:
+            st.markdown("".join(parts), unsafe_allow_html=True)
+
+        # Pattern C: answer body
+        st.markdown(answer)
+
+        # Pattern A + B: citations
+        _citations_expander(citations)
+
+    # Pattern D + E: retrieval candidates
+    _retrieval_expander(retrieval_candidates, citations)
+
+    # Pattern G: stage timings
+    _trace_expander(stage_timings)
+
+    # Pattern L: Self-RAG verification chips
+    _self_rag_chips(self_rag_stats)
+
+
+# ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("## DocIntel RAG")
-    st.markdown("*Ask questions about your documents*")
+    st.markdown("## RAGCore")
+    st.caption("Retrieval-Augmented Generation demo")
     st.divider()
 
-    # ── API Key input ────────────────────────────────────────────────────────
-    #st.markdown("### API Key")
-   # st.caption(
-   #     "Your key is only stored in this browser session. "
-   #     "It is never saved to disk or sent anywhere except your own backend."
-    #)
-
-    #api_key_input = st.text_input(
-    #    "Paste your Groq or Anthropic key",
-    #    value=st.session_state.api_key,
-    #    type="password",        # Masks the key — shows dots instead of characters
-    #    placeholder="gsk_... or sk-ant-...",
-    #    help="Get a free Groq key at console.groq.com",
-    #)
-
-    # Save key to session state when user types it
-    #if api_key_input != st.session_state.api_key:
-    #    st.session_state.api_key = api_key_input
-    #    st.success("Key saved for this session")
-
-    #st.divider()
-
-    # ── Backend status ────────────────────────────────────────────────────────
-    st.markdown("### Backend Status")
-    if st.button("Check connection", use_container_width=True):
-        st.session_state.backend_ok = check_backend()
-
-    if st.session_state.backend_ok:
-        st.success("Backend running")
+    # Passive backend health check on every load (cached 30 s)
+    is_ok = _check_backend_cached(BACKEND_URL)
+    st.session_state.backend_ok = is_ok
+    if is_ok:
+        st.success("Backend online", icon="✅")
     else:
-        st.error("Backend not reachable")
-        st.caption(f"Expected at: {BACKEND_URL}")
-        st.caption("Run: `python -m uvicorn api.main:app --port 8000`")
+        st.warning("Backend offline", icon="⚠️")
+        st.caption(f"URL: `{BACKEND_URL}`")
+        st.caption("Render free-tier may need ~30 s to wake up.")
 
     st.divider()
 
-    # ── Document upload ───────────────────────────────────────────────────────
-    if os.getenv("STREAMLIT_ENABLE_UPLOAD", "false").lower() == "true":
-        st.markdown("### Upload Documents")
-        st.caption("Supported: PDF, DOCX, TXT, MD, HTML, CSV")
-
-        uploaded_files = st.file_uploader(
-            "Choose files",
-            accept_multiple_files=True,
-            type=["pdf", "docx", "txt", "md", "html", "csv"],
-            label_visibility="collapsed",
-        )
-
-        if uploaded_files:
-            if st.button("Index documents", type="primary", use_container_width=True):
-                for file in uploaded_files:
-                    with st.spinner(f"Indexing {file.name}..."):
-                        result = upload_document(file)
-
-                    if "error" in result:
-                        st.error(f"Failed: {file.name} — {result['error']}")
-                    else:
-                        st.success(f"Indexed: {file.name}")
-                        st.caption(f"Chunks: {result.get('message', '')}")
-                        st.session_state.indexed_docs.append(file.name)
-
-        if st.session_state.indexed_docs:
-            st.divider()
-            st.markdown("### Indexed Documents")
-            for doc in st.session_state.indexed_docs:
-                st.caption(f"📄 {doc}")
-    else:
-        st.caption(
-            "Document upload is available when running locally — see GitHub README."
-        )
-
-    st.divider()
-
-    # ── Retrieval strategy ───────────────────────────────────────────────────
-    st.markdown("### Retrieval Strategy")
+    # Retrieval strategy selector
+    st.markdown("**Retrieval strategy**")
     strategy = st.selectbox(
         "Strategy",
         options=["auto", "hybrid", "semantic", "keyword"],
         index=0,
         help=(
-            "auto = system picks best strategy per query\n"
-            "hybrid = vector + keyword search\n"
-            "semantic = vector search only\n"
-            "keyword = keyword (BM25) only"
+            "auto — router picks best strategy per query\n"
+            "hybrid — FAISS dense + BM25 sparse (recommended)\n"
+            "semantic — vector search only\n"
+            "keyword — BM25 only"
         ),
         label_visibility="collapsed",
     )
 
     st.divider()
 
-    # ── Clear chat ───────────────────────────────────────────────────────────
-    if st.button("Clear chat history", use_container_width=True):
+    # Conditional document upload
+    if os.getenv("STREAMLIT_ENABLE_UPLOAD", "false").lower() == "true":
+        st.markdown("**Upload documents**")
+        st.caption("PDF · DOCX · TXT · MD · HTML · CSV")
+        uploaded_files = st.file_uploader(
+            "Choose files",
+            accept_multiple_files=True,
+            type=["pdf", "docx", "txt", "md", "html", "csv"],
+            label_visibility="collapsed",
+        )
+        if uploaded_files:
+            if st.button("Index documents", type="primary", use_container_width=True):
+                for file in uploaded_files:
+                    with st.spinner(f"Indexing {file.name}…"):
+                        res = upload_document(file)
+                    if "error" in res:
+                        st.error(f"{file.name}: {res['error']}")
+                    else:
+                        st.success(f"Indexed: {file.name}")
+                        st.session_state.indexed_docs.append(file.name)
+
+        if st.session_state.indexed_docs:
+            st.divider()
+            st.markdown("**Indexed documents**")
+            for doc in st.session_state.indexed_docs:
+                st.caption(f"📄 {doc}")
+    else:
+        st.caption("Document upload available when running locally — see README.")
+
+    st.divider()
+
+    if st.button("Clear chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
+    st.divider()
+    with st.expander("About"):
+        st.markdown("""
+**RAGCore** is an open-source RAG reference implementation.
 
-# =============================================================================
-# MAIN CHAT AREA
-# =============================================================================
+**Pipeline:**
+1. Query router — classifies intent, selects strategy
+2. Hybrid retrieval — FAISS dense + BM25 sparse
+3. Cross-encoder reranking — ms-marco-MiniLM-L-6-v2
+4. Prompt construction — token-budget aware
+5. LLM generation — Groq / OpenAI / Anthropic
 
-st.markdown("## Ask your documents")
+**Corpus:** FiQA-2018 financial Q&A (10k+ posts)
 
-# Show welcome message when no messages yet
-if not st.session_state.messages:
+**Generation mode:** basic (single LLM call).
+Self-RAG verification (Pattern L) renders only when
+`GENERATION_STRATEGY=self_rag` is set on the backend.
+Current deployment uses `basic`.
+""")
+
+
+# ─── Main chat area ───────────────────────────────────────────────────────────
+
+st.markdown("## RAGCore")
+st.caption(
+    "Ask questions about personal finance · "
+    "indexed on [FiQA-2018](https://huggingface.co/datasets/explodinggradients/fiqa) · "
+    "pipeline details in each response ↓"
+)
+
+# Cold-start warning (shown once backend comes back online)
+if not st.session_state.backend_ok and st.session_state.messages:
     st.info(
-        "**Getting started:**\n\n"
-        "1. Check backend connection in the sidebar\n"
-        "2. Upload a PDF or document if upload is enabled\n"
-        "3. Ask a question below",
-        icon="👋",
+        "Backend may be starting up (Render free-tier cold start: ~30 s). "
+        "Your question will be sent once it's ready.",
+        icon="⏳",
     )
 
-# ── Render existing chat history ─────────────────────────────────────────────
+# Sample prompts — shown only on empty chat
+if not st.session_state.messages:
+    st.markdown("**Try asking:**")
+    cols = st.columns(len(SAMPLE_PROMPTS))
+    for col, sample in zip(cols, SAMPLE_PROMPTS):
+        with col:
+            if st.button(sample, use_container_width=True):
+                st.session_state.prompt_prefill = sample
+                st.rerun()
+
+# Replay chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-        # Show citations and stats for assistant messages
-        if message["role"] == "assistant" and "meta" in message:
-            meta = message["meta"]
-
-            # Stats row — latency, tokens, strategy
-            stats_html = ""
-            if meta.get("latency_ms"):
-                stats_html += f"<span class='stat-badge'>{meta['latency_ms']:.0f}ms</span>"
-            if meta.get("total_tokens"):
-                stats_html += f"<span class='stat-badge'>{meta['total_tokens']} tokens</span>"
-            if meta.get("strategy_used"):
-                stats_html += f"<span class='strategy-tag'>{meta['strategy_used']}</span>"
-            if meta.get("cached"):
-                stats_html += "<span class='stat-badge'>cached</span>"
-
-            if stats_html:
-                st.markdown(stats_html, unsafe_allow_html=True)
-
-            # Citations
-            if meta.get("citations"):
-                with st.expander(f"View {len(meta['citations'])} sources"):
-                    st.markdown(
-                        format_citations(meta["citations"]),
-                        unsafe_allow_html=True,
-                    )
-
-
-# ── Chat input ────────────────────────────────────────────────────────────────
-if prompt := st.chat_input("Ask a question about your documents..."):
-
-    # Validate — need API key
-    #if not st.session_state.api_key:
-    #    st.error("Please paste your API key in the sidebar first.")
-    #    st.stop()
-
-    # Show user message immediately
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Save user message to history
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt,
-    })
-
-    # Get answer from backend
-    with st.chat_message("assistant"):
-        with st.spinner("Searching documents and generating answer..."):
-            start = time.time()
-            result = ask_question(prompt, strategy)
-            elapsed = time.time() - start
-
-        if "error" in result:
-            # Show error message
-            error_msg = f"Sorry, something went wrong: {result['error']}"
-            st.error(error_msg)
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": error_msg,
-                "meta": {},
-            })
-
+        if message["role"] == "user":
+            st.markdown(message["content"])
         else:
-            # Show the answer
-            answer = result.get("answer", "No answer returned.")
-            st.markdown(answer)
+            _render_assistant_message(message.get("result", {}), show_retry=False)
 
-            # Build meta for stats + citations
-            meta = {
-                "latency_ms": result.get("latency_ms", elapsed * 1000),
-                "total_tokens": result.get("total_tokens", 0),
-                "strategy_used": result.get("strategy_used", strategy),
-                "cached": result.get("cached", False),
-                "citations": result.get("citations", []),
-                "query_type": result.get("query_type", ""),
-            }
+# ─── Chat input ───────────────────────────────────────────────────────────────
 
-            # Stats row
-            stats_html = ""
-            if meta["latency_ms"]:
-                stats_html += f"<span class='stat-badge'>{meta['latency_ms']:.0f}ms</span>"
-            if meta["total_tokens"]:
-                stats_html += f"<span class='stat-badge'>{meta['total_tokens']} tokens</span>"
-            if meta["strategy_used"]:
-                stats_html += f"<span class='strategy-tag'>{meta['strategy_used']}</span>"
-            if meta["cached"]:
-                stats_html += "<span class='stat-badge'>cached</span>"
+# Consume prefill (set by sample-prompt buttons) before rendering chat_input
+prefill = st.session_state.get("prompt_prefill", "")
+if prefill:
+    del st.session_state["prompt_prefill"]
 
-            if stats_html:
-                st.markdown(stats_html, unsafe_allow_html=True)
+typed = st.chat_input("Ask about IRAs, 401k, mortgages, investing…")
+active_prompt = prefill or typed
 
-            # Citations expander
-            if meta["citations"]:
-                with st.expander(f"View {len(meta['citations'])} sources"):
-                    st.markdown(
-                        format_citations(meta["citations"]),
-                        unsafe_allow_html=True,
-                    )
+if active_prompt:
+    with st.chat_message("user"):
+        st.markdown(active_prompt)
+    st.session_state.messages.append({"role": "user", "content": active_prompt})
 
-            # Save assistant message to history
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": answer,
-                "meta": meta,
-            })
+    with st.chat_message("assistant"):
+        if not st.session_state.backend_ok:
+            result = {"error": f"Backend not reachable at {BACKEND_URL}. If this is the Render demo, wait ~30 s and retry."}
+        else:
+            with st.spinner("Searching corpus and generating answer…"):
+                result = ask_question(active_prompt, strategy)
+
+        _render_assistant_message(result, show_retry=True)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": result.get("answer", result.get("error", "")),
+            "result": result,
+        })
