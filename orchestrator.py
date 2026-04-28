@@ -118,6 +118,8 @@ class RAGOrchestrator:
         """
         # Record when we started — used to calculate total latency at the end
         start = time.monotonic()
+        # Per-stage timing (perf_counter for high-resolution wall time)
+        t0 = time.perf_counter()
 
         # Start a trace — creates a unique ID to track this query through all steps
         trace_id = await self._tracer.start_trace(request.query)
@@ -134,6 +136,7 @@ class RAGOrchestrator:
                 strategy_override=request.strategy_override,  # User can force a strategy
                 metadata_filter=request.metadata_filter,       # User can filter by doc type etc.
             )
+            t_router = time.perf_counter()
             # Log routing decision to trace (query_type, strategy chosen, etc.)
             await self._tracer.log_routing(trace_id, decision)
 
@@ -144,6 +147,7 @@ class RAGOrchestrator:
             # Returns the top_k most relevant chunks as RetrievedChunk objects.
             top_k = request.top_k or settings.retrieval_top_k  # From .env or request
             retrieval_result = await self._executor.execute(decision, top_k=top_k)
+            t_retrieve = time.perf_counter()
             # Log retrieval results (how many found, scores, latency)
             await self._tracer.log_retrieval(trace_id, retrieval_result)
 
@@ -151,6 +155,9 @@ class RAGOrchestrator:
             if not retrieval_result.chunks:
                 # Return a graceful "I couldn't find anything" response
                 return self._empty_response(request.query, start)
+
+            # Snapshot pre-rerank candidates before reranking mutates order/scores
+            pre_rerank_chunks = list(retrieval_result.chunks)
 
             # ─────────────────────────────────────────────────────────────────
             # STEP 3: RERANK — Re-score chunks to find the most relevant ones
@@ -164,6 +171,7 @@ class RAGOrchestrator:
                 chunks=retrieval_result.chunks,
                 top_k=settings.rerank_top_k,   # Keep only the top N after reranking
             )
+            t_rerank = time.perf_counter()
             # Log reranking results (which chunks survived, new scores)
             await self._tracer.log_reranking(trace_id, reranked)
 
@@ -179,6 +187,7 @@ class RAGOrchestrator:
                 chunks=reranked,
                 query_type=decision.query_type,  # Affects which template is used
             )
+            t_prompt = time.perf_counter()
 
             # ─────────────────────────────────────────────────────────────────
             # STEP 5: GENERATE — Call the LLM to produce the final answer
@@ -227,6 +236,8 @@ class RAGOrchestrator:
                 gen_tokens = result.total_tokens
                 gen_cached = result.cached
 
+            t_generate = time.perf_counter()
+
         except Exception as e:
             # If anything goes wrong, log the error and re-raise it
             # The API layer will catch this and return a 500 error to the user
@@ -237,6 +248,31 @@ class RAGOrchestrator:
         # Calculate total time from start to finish
         total_latency = (time.monotonic() - start) * 1000  # Convert to milliseconds
         await self._tracer.end_trace(trace_id, total_latency)
+
+        # Build per-stage timing dict (milliseconds)
+        stage_timings = {
+            "router_ms": (t_router - t0) * 1000,
+            "retrieve_ms": (t_retrieve - t_router) * 1000,
+            "rerank_ms": (t_rerank - t_retrieve) * 1000,
+            "prompt_ms": (t_prompt - t_rerank) * 1000,
+            "generate_ms": (t_generate - t_prompt) * 1000,
+            "total_ms": (t_generate - t0) * 1000,
+        }
+
+        # Build pre-rerank candidate list; mark which chunks survived to citations
+        cited_chunk_ids = {c.chunk_id for c in gen_citations}
+        retrieval_candidates = [
+            {
+                "rank": rc.rank,
+                "doc_id": str(rc.chunk.doc_id),
+                "chunk_id": str(rc.chunk.chunk_id),
+                "source": rc.chunk.metadata.get("source", ""),
+                "score": round(rc.score, 4),
+                "used_in_answer": str(rc.chunk.chunk_id) in cited_chunk_ids,
+                "excerpt": rc.chunk.content[:200],
+            }
+            for rc in pre_rerank_chunks
+        ]
 
         # ─────────────────────────────────────────────────────────────────────
         # FORMAT RESPONSE — Build the final API response
@@ -251,6 +287,7 @@ class RAGOrchestrator:
                     "excerpt": c.excerpt,
                     "score": round(c.score, 4),
                     "doc_id": c.doc_id,
+                    "chunk_id": c.chunk_id,
                 }
                 for c in gen_citations
             ],
@@ -261,6 +298,8 @@ class RAGOrchestrator:
             latency_ms=round(total_latency, 2),
             cached=gen_cached,
             self_rag_stats=_self_rag_stats,
+            stage_timings=stage_timings,
+            retrieval_candidates=retrieval_candidates,
         )
 
     async def stream_query(

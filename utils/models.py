@@ -174,6 +174,14 @@ class QueryResponse(BaseModel):
     latency_ms: float
     cached: bool
     self_rag_stats: Optional[dict] = None
+    stage_timings: Optional[dict] = None
+    # Shape: {"router_ms": float, "retrieve_ms": float, "rerank_ms": float,
+    #         "prompt_ms": float, "generate_ms": float, "total_ms": float}
+    retrieval_candidates: Optional[list[dict]] = None
+    # Shape: [{"rank": int, "doc_id": str, "chunk_id": str, "source": str,
+    #          "score": float, "used_in_answer": bool, "excerpt": str}]
+    # Candidates from retrieval BEFORE reranking; used_in_answer = True when
+    # the chunk_id appears in final citations.
 
 
 class IngestRequest(BaseModel):
