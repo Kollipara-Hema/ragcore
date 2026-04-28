@@ -466,38 +466,42 @@ with st.sidebar:
     st.divider()
 
     # ── Document upload ───────────────────────────────────────────────────────
-    st.markdown("### Upload Documents")
-    st.caption("Supported: PDF, DOCX, TXT, MD, HTML, CSV")
+    if os.getenv("STREAMLIT_ENABLE_UPLOAD", "false").lower() == "true":
+        st.markdown("### Upload Documents")
+        st.caption("Supported: PDF, DOCX, TXT, MD, HTML, CSV")
 
-    uploaded_files = st.file_uploader(
-        "Choose files",
-        accept_multiple_files=True,
-        type=["pdf", "docx", "txt", "md", "html", "csv"],
-        label_visibility="collapsed",
-    )
+        uploaded_files = st.file_uploader(
+            "Choose files",
+            accept_multiple_files=True,
+            type=["pdf", "docx", "txt", "md", "html", "csv"],
+            label_visibility="collapsed",
+        )
 
-    if uploaded_files:
-        if st.button("Index documents", type="primary", use_container_width=True):
-            if not st.session_state.api_key:
-                st.warning("Please paste your API key above first")
-            else:
-                for file in uploaded_files:
-                    with st.spinner(f"Indexing {file.name}..."):
-                        result = upload_document(file, st.session_state.api_key)
+        if uploaded_files:
+            if st.button("Index documents", type="primary", use_container_width=True):
+                if not st.session_state.api_key:
+                    st.warning("Please paste your API key above first")
+                else:
+                    for file in uploaded_files:
+                        with st.spinner(f"Indexing {file.name}..."):
+                            result = upload_document(file, st.session_state.api_key)
 
-                    if "error" in result:
-                        st.error(f"Failed: {file.name} — {result['error']}")
-                    else:
-                        st.success(f"Indexed: {file.name}")
-                        st.caption(f"Chunks: {result.get('message', '')}")
-                        st.session_state.indexed_docs.append(file.name)
+                        if "error" in result:
+                            st.error(f"Failed: {file.name} — {result['error']}")
+                        else:
+                            st.success(f"Indexed: {file.name}")
+                            st.caption(f"Chunks: {result.get('message', '')}")
+                            st.session_state.indexed_docs.append(file.name)
 
-    # Show indexed documents
-    if st.session_state.indexed_docs:
-        st.divider()
-        st.markdown("### Indexed Documents")
-        for doc in st.session_state.indexed_docs:
-            st.caption(f"📄 {doc}")
+        if st.session_state.indexed_docs:
+            st.divider()
+            st.markdown("### Indexed Documents")
+            for doc in st.session_state.indexed_docs:
+                st.caption(f"📄 {doc}")
+    else:
+        st.caption(
+            "Document upload is available when running locally — see GitHub README."
+        )
 
     st.divider()
 

@@ -27,6 +27,7 @@ class VectorStoreProvider(str, Enum):
     PINECONE = "pinecone"   # Paid managed cloud
     QDRANT = "qdrant"       # Free self-hosted, fast
     CHROMA = "chroma"       # Free local (dev only)
+    FAISS = "faiss"         # In-process local (deployed default)
 
 
 class LLMProvider(str, Enum):
@@ -64,7 +65,7 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: LLMProvider = LLMProvider.GROQ
-    llm_model: str = "gpt-4o-mini"
+    llm_model: str = "llama-3.1-70b-versatile"
     llm_temperature: float = 0.1
     llm_max_tokens: int = 2048
     llm_streaming: bool = True

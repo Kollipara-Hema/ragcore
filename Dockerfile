@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir sentence-transformers==2.6.1 && \
     # Core data science and ML
     pip install --no-cache-dir rank-bm25==0.2.2 && \
-    pip install --no-cache-dir langgraph==0.0.40 && \
+    pip install --no-cache-dir "langgraph>=1.0.0" && \
     pip install --no-cache-dir typing_extensions && \
     # Data processing and vector stores
     pip install --no-cache-dir chromadb==0.4.24 && \
@@ -48,7 +48,15 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir uvicorn[standard]==0.27.1 && \
     pip install --no-cache-dir python-multipart==0.0.9 && \
     pip install --no-cache-dir httpx==0.27.0 && \
-    pip install --no-cache-dir openai==1.14.0
+    pip install --no-cache-dir openai==1.14.0 && \
+    pip install --no-cache-dir "groq>=0.5"
+
+# Pre-download ML models — eliminates HuggingFace Hub downloads at runtime
+RUN python -c "\
+from sentence_transformers import SentenceTransformer; \
+SentenceTransformer('BAAI/bge-large-en-v1.5'); \
+from sentence_transformers import CrossEncoder; \
+CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
 
 COPY . .
 
@@ -58,4 +66,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
