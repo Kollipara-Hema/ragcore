@@ -347,6 +347,62 @@ A broad `except Exception as e: logger.warning("...", e)` style handler upstream
 
 ---
 
+## 2026-04-28 — RetrievedChunk.rank not set by most retrieval strategies
+
+### Symptom
+
+Most retrieval strategies leave `RetrievedChunk.rank` at its dataclass default of `0`. Discovered while exposing `retrieval_candidates` on `QueryResponse` for the Stage 2 UI redesign: the candidates table has a rank column, but nearly all rows show `0`.
+
+### Root cause
+
+Only `_multi_query_search` in `retrieval/strategies/retrieval_executor.py` assigns ranks explicitly (via Reciprocal Rank Fusion). `_semantic_search`, `_keyword_search`, `_hybrid_search`, and `_metadata_filter_search` all return chunks without calling `enumerate`. The field defaults to `0` and is never overwritten.
+
+### Impact
+
+Minor — metadata hygiene, not a correctness bug. The UI sorts candidates by `score` instead of `rank`, so production retrieval is unaffected. The `rank` field is accessible but unreliable for those strategies.
+
+### Status
+
+Deferred. Fix: each strategy should call `enumerate(chunks, start=1)` and assign `chunk.rank` before returning.
+
+---
+
+## 2026-04-28 — Render free-tier 502s under rapid sequential LLM burst
+
+### Symptom
+
+During confidence threshold calibration (Stage 2, 2026-04-28): 10 queries attempted against the Render backend sequentially with no delay. Q09 and Q10 returned HTTP 502 Bad Gateway. Q01–Q08 all succeeded. 8 successful responses were used for p33/p66 threshold calculation.
+
+### Pattern
+
+502s appeared at the tail of the batch, not at the start. Rules out cold-start. Consistent with Render free-tier rate limiting or ephemeral resource exhaustion after sustained burst load (8 full LLM round-trips in rapid succession).
+
+### Impact
+
+Negligible under normal single-user usage. A real user wouldn't fire 8+ LLM queries in rapid succession.
+
+### Status
+
+No action required. If it recurs during a future calibration run: add a 2 s sleep between queries, or upgrade to Render Starter tier for sustained load.
+
+---
+
+## 2026-04-28 — Testing gap: orchestrator stage_timings has no unit test
+
+### Symptom
+
+Stage 1 added `stage_timings` population to `orchestrator.py`. There is no automated test that asserts the six timing keys (`router_ms`, `retrieve_ms`, `rerank_ms`, `prompt_ms`, `generate_ms`, `total_ms`) are all present and non-zero on a real query.
+
+### Status
+
+Exercised only by the manual curl pre-flight in Stage 3 (all six keys confirmed non-zero). No automated regression coverage exists.
+
+### Deferred fix
+
+Add a unit test (or integration test) for `orchestrator.query()` that mocks the five pipeline stages and asserts the returned `QueryResponse.stage_timings` dict contains all six keys with positive float values.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
