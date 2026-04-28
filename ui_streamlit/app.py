@@ -65,8 +65,6 @@ st.markdown("""
 # Initialize session state
 if "llm_provider" not in st.session_state:
     st.session_state.llm_provider = "groq"
-if "llm_api_key" not in st.session_state:
-    st.session_state.llm_api_key = os.getenv("GROQ_API_KEY", "")
 if "embedding_provider" not in st.session_state:
     st.session_state.embedding_provider = "minilm"
 if "connection_status" not in st.session_state:
@@ -87,16 +85,6 @@ with st.sidebar:
     )
     st.session_state.llm_provider = provider
     
-    # API Key input
-    if provider != "demo" and provider != "ollama":
-        api_key = st.text_input(
-            "API Key",
-            value=st.session_state.llm_api_key,
-            type="password",
-            key="api_key_input"
-        )
-        st.session_state.llm_api_key = api_key
-    
     # Model selection
     models = {
         "groq": ["llama3-70b-8192", "mixtral-8x7b", "gemma2-9b"],
@@ -113,10 +101,8 @@ with st.sidebar:
             st.session_state.connection_status = "✅ Demo Mode"
         elif provider == "ollama":
             st.session_state.connection_status = "✅ Connected (Local)"
-        elif st.session_state.llm_api_key:
-            st.session_state.connection_status = "✅ Connected"
         else:
-            st.session_state.connection_status = "❌ No API Key"
+            st.session_state.connection_status = "✅ Connected"
     
     if st.session_state.connection_status:
         if "✅" in st.session_state.connection_status:
@@ -139,14 +125,6 @@ with st.sidebar:
     
     if st.button("Reset Pipeline"):
         st.rerun()
-
-# Demo mode banner
-if st.session_state.llm_provider == "demo" or not st.session_state.llm_api_key:
-    st.markdown("""
-    <div class="demo-banner">
-    ⚠️ <b>Running in Demo Mode</b> — Enter API key in sidebar for real AI responses
-    </div>
-    """, unsafe_allow_html=True)
 
 # Tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["01 Ingest", "02 Chunk", "03 Embed", "04 Retrieve", "05 Generate", "06 Evaluate"])
@@ -309,8 +287,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # API key — stored in session only, never saved to disk
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
+#if "api_key" not in st.session_state:
+#    st.session_state.api_key = ""
 
 # Whether backend is reachable
 if "backend_ok" not in st.session_state:
@@ -334,7 +312,8 @@ def check_backend():
         return False
 
 
-def upload_document(file, api_key: str) -> dict:
+#def upload_document(file, api_key: str) -> dict:
+def upload_document(file) -> dict:
     """
     Upload a document to the backend for indexing.
     Returns the response dict with doc_id and chunk count.
@@ -347,8 +326,8 @@ def upload_document(file, api_key: str) -> dict:
         }
         # Pass API key in header so backend can use it
         headers = {}
-        if api_key:
-            headers["X-API-Key"] = api_key
+        #if api_key:
+        #    headers["X-API-Key"] = api_key
 
         response = requests.post(
             f"{BACKEND_URL}/ingest/file",
@@ -362,14 +341,15 @@ def upload_document(file, api_key: str) -> dict:
         return {"error": str(e)}
 
 
-def ask_question(query: str, strategy: str, api_key: str) -> dict:
+#def ask_question(query: str, strategy: str, api_key: str) -> dict:
+def ask_question(query: str, strategy: str) -> dict:
     """
     Send a question to the backend and return the response.
     """
     try:
         headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["X-API-Key"] = api_key
+        #if api_key:
+        #    headers["X-API-Key"] = api_key
 
         payload = {
             "query": query,
@@ -428,26 +408,26 @@ with st.sidebar:
     st.divider()
 
     # ── API Key input ────────────────────────────────────────────────────────
-    st.markdown("### API Key")
-    st.caption(
-        "Your key is only stored in this browser session. "
-        "It is never saved to disk or sent anywhere except your own backend."
-    )
+    #st.markdown("### API Key")
+   # st.caption(
+   #     "Your key is only stored in this browser session. "
+   #     "It is never saved to disk or sent anywhere except your own backend."
+    #)
 
-    api_key_input = st.text_input(
-        "Paste your Groq or Anthropic key",
-        value=st.session_state.api_key,
-        type="password",        # Masks the key — shows dots instead of characters
-        placeholder="gsk_... or sk-ant-...",
-        help="Get a free Groq key at console.groq.com",
-    )
+    #api_key_input = st.text_input(
+    #    "Paste your Groq or Anthropic key",
+    #    value=st.session_state.api_key,
+    #    type="password",        # Masks the key — shows dots instead of characters
+    #    placeholder="gsk_... or sk-ant-...",
+    #    help="Get a free Groq key at console.groq.com",
+    #)
 
     # Save key to session state when user types it
-    if api_key_input != st.session_state.api_key:
-        st.session_state.api_key = api_key_input
-        st.success("Key saved for this session")
+    #if api_key_input != st.session_state.api_key:
+    #    st.session_state.api_key = api_key_input
+    #    st.success("Key saved for this session")
 
-    st.divider()
+    #st.divider()
 
     # ── Backend status ────────────────────────────────────────────────────────
     st.markdown("### Backend Status")
@@ -477,19 +457,16 @@ with st.sidebar:
 
         if uploaded_files:
             if st.button("Index documents", type="primary", use_container_width=True):
-                if not st.session_state.api_key:
-                    st.warning("Please paste your API key above first")
-                else:
-                    for file in uploaded_files:
-                        with st.spinner(f"Indexing {file.name}..."):
-                            result = upload_document(file, st.session_state.api_key)
+                for file in uploaded_files:
+                    with st.spinner(f"Indexing {file.name}..."):
+                        result = upload_document(file)
 
-                        if "error" in result:
-                            st.error(f"Failed: {file.name} — {result['error']}")
-                        else:
-                            st.success(f"Indexed: {file.name}")
-                            st.caption(f"Chunks: {result.get('message', '')}")
-                            st.session_state.indexed_docs.append(file.name)
+                    if "error" in result:
+                        st.error(f"Failed: {file.name} — {result['error']}")
+                    else:
+                        st.success(f"Indexed: {file.name}")
+                        st.caption(f"Chunks: {result.get('message', '')}")
+                        st.session_state.indexed_docs.append(file.name)
 
         if st.session_state.indexed_docs:
             st.divider()
@@ -536,10 +513,9 @@ st.markdown("## Ask your documents")
 if not st.session_state.messages:
     st.info(
         "**Getting started:**\n\n"
-        "1. Paste your API key in the sidebar\n"
-        "2. Upload a PDF or document\n"
-        "3. Click Index documents\n"
-        "4. Ask a question below",
+        "1. Check backend connection in the sidebar\n"
+        "2. Upload a PDF or document if upload is enabled\n"
+        "3. Ask a question below",
         icon="👋",
     )
 
@@ -579,9 +555,9 @@ for message in st.session_state.messages:
 if prompt := st.chat_input("Ask a question about your documents..."):
 
     # Validate — need API key
-    if not st.session_state.api_key:
-        st.error("Please paste your API key in the sidebar first.")
-        st.stop()
+    #if not st.session_state.api_key:
+    #    st.error("Please paste your API key in the sidebar first.")
+    #    st.stop()
 
     # Show user message immediately
     with st.chat_message("user"):
@@ -597,7 +573,7 @@ if prompt := st.chat_input("Ask a question about your documents..."):
     with st.chat_message("assistant"):
         with st.spinner("Searching documents and generating answer..."):
             start = time.time()
-            result = ask_question(prompt, strategy, st.session_state.api_key)
+            result = ask_question(prompt, strategy)
             elapsed = time.time() - start
 
         if "error" in result:
