@@ -19,6 +19,7 @@ dependencies = [
     # LLM providers
     "openai>=1.14",
     "anthropic>=0.20",
+    "groq>=0.5",
     # Embeddings & vector search
     "sentence-transformers>=2.6",
     "faiss-cpu>=1.8",
