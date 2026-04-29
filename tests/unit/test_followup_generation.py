@@ -117,6 +117,69 @@ async def test_extra_text_before_array():
 
 
 @pytest.mark.asyncio
+async def test_three_separate_single_element_arrays():
+    """Production Llama shape: three separate single-element arrays on consecutive lines."""
+    q1 = "How does a Roth IRA differ from a Traditional IRA?"
+    q2 = "What are the income limits for contributing to a Roth IRA?"
+    q3 = "Can I convert a 401k to a Roth IRA without penalty?"
+    raw = f'{json.dumps([q1])}\n{json.dumps([q2])}\n{json.dumps([q3])}'
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == [q1, q2, q3]
+
+
+@pytest.mark.asyncio
+async def test_five_element_array_returns_first_three():
+    """LLM emits 5 questions — parser takes the first 3."""
+    questions = [
+        "How does a Roth IRA differ from a Traditional IRA?",
+        "What are the income limits for a Roth IRA in 2025?",
+        "Can I have both a Roth IRA and a 401k simultaneously?",
+        "What happens to a Roth IRA after I turn 72?",
+        "Is a backdoor Roth IRA still legal in 2025?",
+    ]
+    svc = _make_service(json.dumps(questions))
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == questions[:3]
+
+
+@pytest.mark.asyncio
+async def test_mixed_strings_and_arrays_on_lines():
+    """Lines contain a mix of bare JSON strings and single-element arrays."""
+    q1 = "How does a Roth IRA differ from a Traditional IRA?"
+    q2 = "What is the annual Roth IRA contribution limit?"
+    q3 = "When can I start withdrawing from a Roth IRA tax-free?"
+    raw = f'{json.dumps(q1)}\n{json.dumps([q2])}\n{json.dumps(q3)}'
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == [q1, q2, q3]
+
+
+@pytest.mark.asyncio
+async def test_mixed_lines_insufficient_returns_empty():
+    """Only 2 parseable strings across lines — must return []."""
+    q1 = "How does a Roth IRA differ from a Traditional IRA?"
+    q2 = "What is the annual Roth IRA contribution limit?"
+    raw = f'{json.dumps([q1])}\n{json.dumps([q2])}'
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_markdown_wrapped_multi_array():
+    """Markdown fences around three separate single-element arrays."""
+    q1 = "How does a Roth IRA differ from a Traditional IRA?"
+    q2 = "What are the income limits for a Roth IRA?"
+    q3 = "Can I convert a 401k to a Roth IRA?"
+    inner = f'{json.dumps([q1])}\n{json.dumps([q2])}\n{json.dumps([q3])}'
+    raw = f"```json\n{inner}\n```"
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == [q1, q2, q3]
+
+
+@pytest.mark.asyncio
 async def test_llm_exception():
     svc = GenerationService.__new__(GenerationService)
     mock_llm = MagicMock()
