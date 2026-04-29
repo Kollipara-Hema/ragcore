@@ -97,7 +97,7 @@ footer    {{visibility: hidden;}}
 }}
 
 /* ── Pipeline rows ── */
-.pipeline-total {{ font-size: 12px; color: {TEXT_SECONDARY}; margin-bottom: 4px; font-weight: 600; }}
+.pipeline-total {{ font-size: 12px; color: {TEXT_PRIMARY}; margin-bottom: 4px; font-weight: 700; }}
 .pipeline-row {{
     display: flex; align-items: center; padding: 4px 0;
     font-size: 13px; color: {TEXT_SECONDARY};
@@ -109,7 +109,7 @@ footer    {{visibility: hidden;}}
 .pipeline-label {{ flex: 1; }}
 .conf-pill {{ padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }}
 .conf-high {{ background: {SUCCESS_BG}; color: {SUCCESS_DARK}; }}
-.conf-med  {{ background: #f3f4f6;      color: {TEXT_SECONDARY}; }}
+.conf-med  {{ background: {AMBER_TINT};  color: {AMBER}; }}
 .conf-low  {{ background: {ERROR_BG};   color: {ERROR_DARK}; }}
 
 /* ── Chat message bubbles ── */
@@ -578,7 +578,7 @@ with st.sidebar:
         if ret_cands_s:
             level = compute_confidence(ret_cands_s)
             if level != "unknown":
-                dot_color = SUCCESS_DARK if level == "high" else (ERROR_DARK if level == "low" else TEXT_MUTED)
+                dot_color = SUCCESS_DARK if level == "high" else (ERROR_DARK if level == "low" else AMBER)
                 badge = _confidence_badge_html(level)
                 rows_html += (
                     f'<div class="pipeline-row">'
@@ -634,10 +634,18 @@ st.markdown(f"""
     A production-grade RAG system combining query routing, hybrid retrieval,
     cross-encoder reranking, inline citations, and hallucination verification.
     Built for grounded answers, not guesswork. Explore questions in personal
-    finance using the FiQA-2018 dataset.
+    finance using the <a href="https://huggingface.co/datasets/vibrantlabsai/fiqa"
+    target="_blank" style="color:{ACCENT};text-decoration:underline">FiQA-2018</a> dataset.
   </p>
 </div>
 """, unsafe_allow_html=True)
+
+st.markdown(
+    f'<p style="text-align:center;font-size:11px;font-style:italic;color:{TEXT_MUTED};'
+    f'max-width:540px;margin:12px auto 16px">'
+    f'Aggregate benchmark on the FiQA-2018 corpus. Per-query metrics in sidebar after each response.</p>',
+    unsafe_allow_html=True,
+)
 
 # M2. Stat cards
 # Stat values from evaluation/results/basic_fiqa_2026-04-26.json
