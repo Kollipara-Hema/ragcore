@@ -93,6 +93,28 @@ Question: {query}
 Answer based on the provided sources with citations.""",
 }
 
+FOLLOWUP_SYSTEM = (
+    "You are a helpful assistant suggesting follow-up questions for a "
+    "personal-finance Q&A system."
+)
+
+FOLLOWUP_TEMPLATE = """Given the following question and answer about personal finance, \
+suggest exactly 3 follow-up questions a curious user might naturally ask next. \
+Each should explore a related angle, dig deeper into a specific point, or compare \
+to an alternative.
+
+Constraints:
+- Each question stands alone (no "And what about..." continuations)
+- Each is 8-15 words
+- Each is grounded in personal finance topics (IRAs, 401k, taxes, investing, mortgages, similar)
+- Return ONLY a JSON array of 3 strings. No prose, no markdown fences, no explanation.
+
+Question: {question}
+
+Answer: {answer}
+
+JSON array:"""
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constructed prompt output

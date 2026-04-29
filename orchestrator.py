@@ -238,6 +238,16 @@ class RAGOrchestrator:
 
             t_generate = time.perf_counter()
 
+            # Post-answer: generate follow-up questions (graceful fallback)
+            follow_ups: list[str] = []
+            try:
+                follow_ups = await self._generation.generate_followups(
+                    question=request.query,
+                    answer=gen_answer,
+                )
+            except Exception as e:
+                logger.warning("Follow-up generation failed: %s", e)
+
         except Exception as e:
             # If anything goes wrong, log the error and re-raise it
             # The API layer will catch this and return a 500 error to the user
@@ -298,6 +308,7 @@ class RAGOrchestrator:
             latency_ms=round(total_latency, 2),
             cached=gen_cached,
             self_rag_stats=_self_rag_stats,
+            follow_up_questions=follow_ups if follow_ups else None,
             stage_timings=stage_timings,
             retrieval_candidates=retrieval_candidates,
         )

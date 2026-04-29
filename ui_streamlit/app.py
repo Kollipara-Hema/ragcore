@@ -192,6 +192,24 @@ footer    {{visibility: hidden;}}
     background: {ACCENT_TINT} !important; border-color: {ACCENT} !important;
     color: {TEXT_PRIMARY} !important;
 }}
+
+/* ── Follow-up chips (inside chat messages only) ── */
+.followup-label {{
+    color: {TEXT_MUTED}; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-top: 16px; margin-bottom: 8px;
+}}
+[data-testid="stChatMessage"] div[data-testid="column"] [data-testid="stButton"] > button {{
+    background: white !important; border: 1px solid {BORDER} !important;
+    border-radius: 99px !important; padding: 6px 14px !important;
+    font-size: 13px !important; line-height: 1.4 !important;
+    text-align: left !important; white-space: normal !important;
+    height: auto !important; color: {TEXT_PRIMARY} !important;
+    transition: all 0.15s ease !important;
+}}
+[data-testid="stChatMessage"] div[data-testid="column"] [data-testid="stButton"] > button:hover {{
+    background: {ACCENT_TINT} !important; border-color: {ACCENT} !important;
+    cursor: pointer !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -333,6 +351,22 @@ def _sources_grid(citations: list) -> None:
     )
 
 
+def _follow_up_chips(follow_ups: list[str]) -> None:
+    if not follow_ups:
+        return
+    st.markdown('<div class="followup-label">FOLLOW UP</div>', unsafe_allow_html=True)
+    cols = st.columns(len(follow_ups))
+    for col, question in zip(cols, follow_ups):
+        with col:
+            if st.button(
+                question,
+                key=f"followup_{hash(question)}",
+                use_container_width=True,
+            ):
+                st.session_state.prompt_prefill = question
+                st.rerun()
+
+
 def _retrieval_expander(retrieval_candidates: Optional[list], citations: list) -> None:
     """Pre-rerank candidates with Altair histogram — diagnostic expander."""
     cands = retrieval_candidates or []
@@ -470,6 +504,7 @@ def _render_assistant_message(result: dict, show_retry: bool = False) -> None:
     retrieval_candidates = result.get("retrieval_candidates")
     self_rag_stats       = result.get("self_rag_stats")
     stage_timings        = result.get("stage_timings")
+    follow_up_questions  = result.get("follow_up_questions") or []
     answer               = result.get("answer", "")
     is_abstention        = not citations and total_tokens == 0
 
@@ -490,6 +525,7 @@ def _render_assistant_message(result: dict, show_retry: bool = False) -> None:
     else:
         st.markdown(answer)
         _sources_grid(citations)
+        _follow_up_chips(follow_up_questions)
 
     _retrieval_expander(retrieval_candidates, citations)
     _trace_expander(stage_timings)

@@ -174,6 +174,7 @@ class QueryResponse(BaseModel):
     latency_ms: float
     cached: bool
     self_rag_stats: Optional[dict] = None
+    follow_up_questions: Optional[list[str]] = None
     stage_timings: Optional[dict] = None
     # Shape: {"router_ms": float, "retrieve_ms": float, "rerank_ms": float,
     #         "prompt_ms": float, "generate_ms": float, "total_ms": float}
