@@ -598,10 +598,15 @@ Current deployment uses `basic`.
 # ─── Main chat area ───────────────────────────────────────────────────────────
 
 st.markdown("## RAGCore")
-st.caption(
+st.markdown(
+    "<p style='color:#6c757d; font-size:14px; margin-top:-8px; margin-bottom:0'>"
     "Ask questions about personal finance · "
-    "indexed on [FiQA-2018](https://huggingface.co/datasets/explodinggradients/fiqa) · "
+    "indexed on <a href='https://huggingface.co/datasets/explodinggradients/fiqa' "
+    "target='_blank' style='color:#6c757d; font-weight:600; text-decoration:underline'>"
+    "FiQA-2018</a> · "
     "pipeline details in each response ↓"
+    "</p>",
+    unsafe_allow_html=True,
 )
 
 # Cold-start warning (shown once backend comes back online)
@@ -614,6 +619,31 @@ if not st.session_state.backend_ok and st.session_state.messages:
 
 # Sample prompts — shown only on empty chat
 if not st.session_state.messages:
+    # Stat values from evaluation/results/basic_fiqa_2026-04-26.json
+    # (50-query FiQA benchmark, baseline strategy, run 2026-04-26).
+    # Chunk count from faiss_metadata.pkl.
+    _sc1, _sc2, _sc3 = st.columns(3, gap="small")
+    with _sc1:
+        st.markdown("""
+<div style='border:1px solid #e9ecef;border-radius:6px;padding:12px 16px;text-align:center;margin-bottom:8px'>
+  <div style='color:#6c757d;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase'>Chunks Indexed</div>
+  <div style='font-size:22px;font-weight:700;margin:4px 0'>380</div>
+</div>""", unsafe_allow_html=True)
+    with _sc2:
+        st.markdown("""
+<div style='border:1px solid #e9ecef;border-radius:6px;padding:12px 16px;text-align:center;margin-bottom:8px'>
+  <div style='color:#6c757d;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase'>HIT@5</div>
+  <div style='font-size:22px;font-weight:700;margin:4px 0'>0.92</div>
+  <div style='color:#6c757d;font-size:11px;font-style:italic'>fraction of queries with a correct chunk in top 5</div>
+</div>""", unsafe_allow_html=True)
+    with _sc3:
+        st.markdown("""
+<div style='border:1px solid #e9ecef;border-radius:6px;padding:12px 16px;text-align:center;margin-bottom:8px'>
+  <div style='color:#6c757d;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase'>MRR</div>
+  <div style='font-size:22px;font-weight:700;margin:4px 0'>0.86</div>
+  <div style='color:#6c757d;font-size:11px;font-style:italic'>mean reciprocal rank — higher means correct chunks rank earlier</div>
+</div>""", unsafe_allow_html=True)
+
     st.markdown("**Try asking:**")
     cols = st.columns(len(SAMPLE_PROMPTS))
     for col, sample in zip(cols, SAMPLE_PROMPTS):
