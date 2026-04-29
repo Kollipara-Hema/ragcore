@@ -108,12 +108,13 @@ Constraints:
 - Each is 8-15 words
 - Each is grounded in personal finance topics (IRAs, 401k, taxes, investing, mortgages, similar)
 - Return ONLY a JSON array of 3 strings. No prose, no markdown fences, no explanation.
+- Do not include any text before or after the array. Your entire response must be the array.
 
 Question: {question}
 
 Answer: {answer}
 
-JSON array:"""
+JSON array (your entire response, nothing else):"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────

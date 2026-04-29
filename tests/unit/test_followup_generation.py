@@ -89,6 +89,34 @@ async def test_empty_string_in_list():
 
 
 @pytest.mark.asyncio
+async def test_extra_text_after_array():
+    """LLM appends prose after the JSON array — the real failure seen on Render."""
+    questions = [
+        "How does a Roth IRA differ from a Traditional IRA?",
+        "What are the income limits for contributing to a Roth IRA?",
+        "Can I withdraw Roth IRA contributions early without penalty?",
+    ]
+    raw = json.dumps(questions) + "\nNote: these are common follow-up questions."
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == questions
+
+
+@pytest.mark.asyncio
+async def test_extra_text_before_array():
+    """LLM prefixes the JSON array with prose."""
+    questions = [
+        "What is the Roth IRA contribution limit for 2025?",
+        "How does a Roth IRA conversion work for high earners?",
+        "When can I start withdrawing from a Roth IRA tax-free?",
+    ]
+    raw = "Here are three follow-up questions:\n" + json.dumps(questions)
+    svc = _make_service(raw)
+    result = await svc.generate_followups(QUESTION, ANSWER)
+    assert result == questions
+
+
+@pytest.mark.asyncio
 async def test_llm_exception():
     svc = GenerationService.__new__(GenerationService)
     mock_llm = MagicMock()

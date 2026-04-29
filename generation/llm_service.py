@@ -381,6 +381,51 @@ class GroqLLM(BaseLLM):
                 yield delta
 
 
+def _extract_first_json_array(text: str):
+    """
+    Extract the first well-formed JSON array from text.
+
+    Fast path: the whole text is valid JSON.
+    Slow path: scan for the opening '[' and walk brackets to find the
+    matching ']', then parse that substring. Handles extra prose before
+    or after the array (e.g. "Here you go:\n[...]\nHope that helps.").
+    Returns None if no valid array is found.
+    """
+    import json
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    start = text.find("[")
+    if start == -1:
+        return None
+    depth = 0
+    in_string = False
+    escape_next = False
+    for i, ch in enumerate(text[start:], start):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\" and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start : i + 1])
+                except json.JSONDecodeError:
+                    return None
+    return None
+
+
 class GenerationService:
     """
     Orchestrates prompt → LLM → formatted response.
@@ -506,17 +551,17 @@ class GenerationService:
                 text = re.sub(r"^```(?:json)?\s*", "", text)
                 text = re.sub(r"\s*```$", "", text)
                 text = text.strip()
-            parsed = json.loads(text)
+            parsed = _extract_first_json_array(text)
             if (
                 isinstance(parsed, list)
                 and len(parsed) == 3
                 and all(isinstance(q, str) and q.strip() for q in parsed)
             ):
                 return parsed
-            logger.warning("Follow-up response failed validation: %r", parsed)
+            logger.debug("Follow-up response failed validation: %r", parsed)
             return []
         except Exception as e:
-            logger.warning("generate_followups failed: %s", e)
+            logger.debug("generate_followups failed: %s", e)
             return []
 
 
