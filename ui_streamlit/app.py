@@ -89,7 +89,7 @@ footer    {{visibility: hidden;}}
 /* ── Strategy radio ── */
 [data-testid="stRadio"] label {{
     padding: 2px 8px; border-radius: 6px; border: 1px solid transparent;
-    cursor: pointer; display: block; margin-bottom: 0;
+    cursor: pointer; margin-bottom: 0;
 }}
 [data-testid="stRadio"] > div > label + label {{ margin-top: 1px; }}
 [data-testid="stRadio"] label:has(input:checked) {{
