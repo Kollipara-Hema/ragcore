@@ -330,7 +330,7 @@ def _retrieval_expander(retrieval_candidates: Optional[list], citations: list) -
                 alt.X("score:Q", bin=alt.Bin(maxbins=12), title="Hybrid score"),
                 alt.Y("count():Q", title="Chunks"),
             )
-            .properties(height=110, title="Score distribution (top-K pre-rerank)")
+            .properties(height=200, title="Score distribution (top-K pre-rerank)")
         )
         st.altair_chart(hist, use_container_width=True)
 
