@@ -162,6 +162,10 @@ class QueryRequest(BaseModel):
     metadata_filter: Optional[dict[str, Any]] = None
     strategy_override: Optional[RetrievalStrategy] = None
     stream: bool = False
+    verify_claims: bool = PField(
+        default=False,
+        description="Opt in to Self-RAG per-claim verification. ~3x slower.",
+    )
 
 
 class QueryResponse(BaseModel):
