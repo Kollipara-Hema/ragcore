@@ -231,6 +231,8 @@ if "indexed_docs" not in st.session_state:
     st.session_state.indexed_docs = []
 if "prompt_prefill" not in st.session_state:
     st.session_state.prompt_prefill = ""
+if "verify_claims" not in st.session_state:
+    st.session_state.verify_claims = False
 
 # ─── Backend helpers (verbatim) ───────────────────────────────────────────────
 @st.cache_data(ttl=30)
@@ -242,11 +244,12 @@ def _check_backend_cached(url: str) -> bool:
         return False
 
 
-def ask_question(query: str, strategy: str) -> dict:
+def ask_question(query: str, strategy: str, verify_claims: bool = False) -> dict:
     try:
         payload = {
             "query": query,
             "strategy_override": strategy if strategy != "auto" else None,
+            "verify_claims": verify_claims,
         }
         r = requests.post(
             f"{BACKEND_URL}/query",
@@ -351,16 +354,16 @@ def _sources_grid(citations: list) -> None:
     )
 
 
-def _follow_up_chips(follow_ups: list[str]) -> None:
+def _follow_up_chips(follow_ups: list[str], message_idx: int = 0) -> None:
     if not follow_ups:
         return
     st.markdown('<div class="followup-label">FOLLOW UP</div>', unsafe_allow_html=True)
     cols = st.columns(len(follow_ups))
-    for col, question in zip(cols, follow_ups):
+    for i, (col, question) in enumerate(zip(cols, follow_ups)):
         with col:
             if st.button(
                 question,
-                key=f"followup_{hash(question)}",
+                key=f"followup_{message_idx}_{i}",
                 use_container_width=True,
             ):
                 st.session_state.prompt_prefill = question
@@ -476,7 +479,7 @@ def _abstention_card() -> None:
 </div>""", unsafe_allow_html=True)
 
 
-def _render_assistant_message(result: dict, show_retry: bool = False) -> None:
+def _render_assistant_message(result: dict, show_retry: bool = False, message_idx: int = 0) -> None:
     """Render a complete assistant turn (no routing strip; sources via P2 grid)."""
     if "error" in result and result["error"]:
         st.markdown(f"""
@@ -525,7 +528,7 @@ def _render_assistant_message(result: dict, show_retry: bool = False) -> None:
     else:
         st.markdown(answer)
         _sources_grid(citations)
-        _follow_up_chips(follow_up_questions)
+        _follow_up_chips(follow_up_questions, message_idx)
 
     _retrieval_expander(retrieval_candidates, citations)
     _trace_expander(stage_timings)
@@ -580,6 +583,10 @@ with st.sidebar:
         index=0,
         label_visibility="collapsed",
     ).lower()
+
+    st.markdown('<span class="sec-label" style="margin-top:10px">Verification</span>', unsafe_allow_html=True)
+    st.checkbox("Hallucination verifier", key="verify_claims")
+    st.caption("Per-claim grounding check (~3x slower)")
 
     st.divider()
 
@@ -754,13 +761,13 @@ st.markdown(
 )
 
 # ─── Chat history replay ──────────────────────────────────────────────────────
-for message in st.session_state.messages:
+for i, message in enumerate(st.session_state.messages):
     if message["role"] == "user":
         with st.chat_message("user", avatar=USER_AVATAR):
             st.markdown(message["content"])
     else:
         with st.chat_message("assistant", avatar=ASST_AVATAR):
-            _render_assistant_message(message.get("result", {}), show_retry=False)
+            _render_assistant_message(message.get("result", {}), show_retry=False, message_idx=i)
 
 # ─── Chat input + query dispatch ─────────────────────────────────────────────
 prefill = st.session_state.get("prompt_prefill", "")
@@ -788,10 +795,16 @@ if active_prompt:
                 )
             }
         else:
-            with st.spinner("Searching corpus and generating answer…"):
-                result = ask_question(active_prompt, strategy)
+            verify = st.session_state.get("verify_claims", False)
+            spinner_text = (
+                "Generating verified answer (slower with per-claim check)…"
+                if verify else
+                "Searching corpus and generating answer…"
+            )
+            with st.spinner(spinner_text):
+                result = ask_question(active_prompt, strategy, verify_claims=verify)
 
-        _render_assistant_message(result, show_retry=True)
+        _render_assistant_message(result, show_retry=True, message_idx=len(st.session_state.messages))
         st.session_state.messages.append({
             "role": "assistant",
             "content": result.get("answer", result.get("error", "")),

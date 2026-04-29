@@ -192,8 +192,17 @@ class RAGOrchestrator:
             # ─────────────────────────────────────────────────────────────────
             # STEP 5: GENERATE — Call the LLM to produce the final answer
             # ─────────────────────────────────────────────────────────────────
+            # Per-query verification override:
+            # If the request opts in via verify_claims=True and the deployed
+            # default strategy is basic, upgrade to self_rag for this single
+            # query. No effect when strategy is already self_rag (no-op) or
+            # when verify_claims=False (default).
+            effective_strategy = settings.generation_strategy
+            if request.verify_claims and effective_strategy != "self_rag":
+                effective_strategy = "self_rag"
+
             _self_rag_stats: Optional[dict] = None
-            if settings.generation_strategy == "self_rag":
+            if effective_strategy == "self_rag":
                 # NOTE: SelfRAGGenerator's internal claim extraction and verification
                 # steps are currently hardcoded to OpenAI (gpt-4o-mini). If
                 # LLM_PROVIDER is not OpenAI, ensure OPENAI_API_KEY is set, or
