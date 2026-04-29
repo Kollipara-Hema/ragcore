@@ -558,10 +558,11 @@ class GenerationService:
                 and all(isinstance(q, str) and q.strip() for q in parsed)
             ):
                 return parsed
+            logger.warning("FOLLOWUP_RAW_RESPONSE: %r", text)
             logger.debug("Follow-up response failed validation: %r", parsed)
             return []
         except Exception as e:
-            logger.debug("generate_followups failed: %s", e)
+            logger.warning("generate_followups failed: %s", e)
             return []
 
 
