@@ -222,3 +222,4 @@ venv311/
 # Chainlit config
 .chainlit/
 chainlit.md
+.DS_Store
