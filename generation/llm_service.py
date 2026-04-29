@@ -426,6 +426,49 @@ def _extract_first_json_array(text: str):
     return None
 
 
+def _extract_followup_questions(text: str) -> list[str]:
+    """
+    Extract exactly 3 follow-up question strings from LLM output.
+
+    Handles:
+      1. Single JSON array of 3+ strings on one line (happy path)
+      2. Multiple single-element arrays on separate lines (production Llama shape)
+      3. Mix of bare JSON strings and arrays across lines
+
+    Returns [] if fewer than 3 non-empty strings can be collected.
+    """
+    import json
+
+    # Happy path: whole text is one JSON array
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            strings = [q for q in parsed if isinstance(q, str) and q.strip()]
+            if len(strings) >= 3:
+                return strings[:3]
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback: parse each non-empty line independently and collect strings
+    collected: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            val = json.loads(line)
+            if isinstance(val, list):
+                collected.extend(q for q in val if isinstance(q, str) and q.strip())
+            elif isinstance(val, str) and val.strip():
+                collected.append(val)
+        except json.JSONDecodeError:
+            pass
+
+    if len(collected) >= 3:
+        return collected[:3]
+    return []
+
+
 class GenerationService:
     """
     Orchestrates prompt → LLM → formatted response.
@@ -551,15 +594,10 @@ class GenerationService:
                 text = re.sub(r"^```(?:json)?\s*", "", text)
                 text = re.sub(r"\s*```$", "", text)
                 text = text.strip()
-            parsed = _extract_first_json_array(text)
-            if (
-                isinstance(parsed, list)
-                and len(parsed) == 3
-                and all(isinstance(q, str) and q.strip() for q in parsed)
-            ):
-                return parsed
-            logger.warning("FOLLOWUP_RAW_RESPONSE: %r", text)
-            logger.debug("Follow-up response failed validation: %r", parsed)
+            questions = _extract_followup_questions(text)
+            if questions:
+                return questions
+            logger.debug("FOLLOWUP_RAW_RESPONSE: %r", text)
             return []
         except Exception as e:
             logger.warning("generate_followups failed: %s", e)

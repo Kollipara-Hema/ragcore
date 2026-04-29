@@ -107,8 +107,10 @@ Constraints:
 - Each question stands alone (no "And what about..." continuations)
 - Each is 8-15 words
 - Each is grounded in personal finance topics (IRAs, 401k, taxes, investing, mortgages, similar)
-- Return ONLY a JSON array of 3 strings. No prose, no markdown fences, no explanation.
-- Do not include any text before or after the array. Your entire response must be the array.
+- Return a single JSON array containing exactly 3 strings. The entire output must be one array — not multiple arrays, not an object wrapping an array, not text before or after.
+
+Example output:
+["First question?", "Second question?", "Third question?"]
 
 Question: {question}
 
