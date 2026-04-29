@@ -639,7 +639,13 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-    # S7. About expander
+    # S7. Version marker (temporary — remove after cloud deploy confirmed)
+    st.markdown(
+        f'<p style="font-size:10px;color:{TEXT_MUTED};margin:8px 0 0">UI build: 2026-04-29-followup-v1</p>',
+        unsafe_allow_html=True,
+    )
+
+    # S8. About expander
     with st.expander("About"):
         st.markdown(
             "Llama 3.3 70B via Groq for generation. FAISS dense + BM25 sparse hybrid retrieval. "
