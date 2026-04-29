@@ -482,6 +482,43 @@ class GenerationService:
         async for chunk in self._llm.stream(prompt):
             yield chunk
 
+    async def generate_followups(self, question: str, answer: str) -> list[str]:
+        """Generate 3 follow-up questions. Returns [] on any failure."""
+        import json
+        from generation.prompts.prompt_builder import FOLLOWUP_SYSTEM, FOLLOWUP_TEMPLATE
+
+        user_content = FOLLOWUP_TEMPLATE.format(question=question, answer=answer)
+        prompt = ConstructedPrompt(
+            messages=[
+                {"role": "system", "content": FOLLOWUP_SYSTEM},
+                {"role": "user", "content": user_content},
+            ],
+            citations=[],
+            chunks_used=0,
+            estimated_tokens=0,
+        )
+
+        try:
+            raw, _ = await self._llm.generate(prompt)
+            text = raw.strip()
+            # Strip markdown code fences if present
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\s*", "", text)
+                text = re.sub(r"\s*```$", "", text)
+                text = text.strip()
+            parsed = json.loads(text)
+            if (
+                isinstance(parsed, list)
+                and len(parsed) == 3
+                and all(isinstance(q, str) and q.strip() for q in parsed)
+            ):
+                return parsed
+            logger.warning("Follow-up response failed validation: %r", parsed)
+            return []
+        except Exception as e:
+            logger.warning("generate_followups failed: %s", e)
+            return []
+
 
 def get_generation_service() -> GenerationService:
     return GenerationService()
