@@ -216,24 +216,17 @@ def compute_confidence(retrieval_candidates: Optional[list]) -> str:
     """
     Confidence = f(score gap between top-1 and median pre-rerank candidate).
 
-    Thresholds calibrated 2026-04-28 against 8 queries on Render backend
-    (https://ragcore-api.onrender.com). Citation scores (cross-encoder,
-    post-rerank) used as proxy — retrieval_candidates not yet deployed at
-    calibration time. Recalibrate after Stage 3 deploy using actual
-    retrieval_candidates (pre-rerank hybrid scores).
+    Thresholds calibrated 2026-04-29 against 10 queries on deployed backend
+    (https://ragcore-api.onrender.com) using live pre-rerank hybrid
+    (FAISS+BM25) scores from retrieval_candidates. All 10 queries returned
+    non-empty candidates (n=20 each). Hybrid scores are unbounded and may
+    include negatives — range is wider than the previous cross-encoder proxy.
 
-    Observed gaps: 401k=9.81(H), invest=5.41(H), taxes=3.28(H),
-                   ira=2.12(M), weather=1.76(M), banking=1.70(M),
-                   stock=1.07(L), mortgage=0.39(L)
-    high   >= 3.28  (33rd–100th pct)
-    medium  1.70–3.27  (0th–33rd pct)
-    low    < 1.70   (bottom third)
-
-    NOTE: Initial calibration (2026-04-28) used post-rerank cross-encoder
-    scores as proxy because retrieval_candidates wasn't yet deployed.
-    Recalibrate against pre-rerank hybrid (FAISS+BM25) gaps once Stage 1
-    backend changes are live. Hybrid score range is wider and includes
-    negatives — these thresholds may shift meaningfully.
+    Observed gaps (sorted): 1.05, 2.85, 3.70, 3.79, 6.12, 7.12, 8.20,
+                             8.23, 13.15, 13.83
+    high   >= 8.13  (66th–100th pct)
+    medium  3.79–8.12  (33rd–66th pct)
+    low    < 3.79   (bottom third)
     """
     cands = retrieval_candidates or []
     if not cands:
@@ -243,9 +236,9 @@ def compute_confidence(retrieval_candidates: Optional[list]) -> str:
     if n < 2:
         return "unknown"
     gap = scores[0] - scores[n // 2]
-    if gap >= 3.28:
+    if gap >= 8.13:
         return "high"
-    elif gap >= 1.70:
+    elif gap >= 3.79:
         return "medium"
     else:
         return "low"
