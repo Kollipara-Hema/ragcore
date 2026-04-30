@@ -1,9 +1,10 @@
 # RAGCore — Self-Audit
 
-**Date:** 2026-04-19  
-**Auditor:** Hema Kollipara  
-**Scope:** Post-Day-2 state — singleton fix, Self-RAG wired, mock agent deleted,
-FiQA-2018 benchmark complete.
+**Date:** 2026-04-30
+**Auditor:** Hema Kollipara
+**Scope:** Post-citation-spans state — attributed_spans backend parser, attributed_spans
+frontend rendering, follow-up question generation, hallucination verifier toggle, confidence
+threshold recalibration, visual rebuild.
 
 ---
 
@@ -20,51 +21,116 @@ FiQA-2018 benchmark complete.
 
 ## Module Status
 
+### Vector Store
+
 | Module | File | State | Notes |
 |--------|------|-------|-------|
 | FAISSVectorStore | vectorstore/vector_store.py | WORKING | IndexFlatIP + BM25 hybrid. Singleton confirmed via integration tests. |
-| get_vector_store() singleton | vectorstore/vector_store.py | WORKING | Module-level `_vector_store_instance`. `reset_vector_store()` for test isolation. |
-| Weaviate / Chroma / Pinecone | vectorstore/vector_store.py | DEFERRED | Config keys exist; `get_vector_store()` logs a warning and falls through to FAISS. |
+| get_vector_store() singleton | vectorstore/vector_store.py | WORKING | Module-level `_vector_store_instance`; `reset_vector_store()` for test isolation. |
+| Weaviate / Chroma / Pinecone | vectorstore/vector_store.py | DEFERRED | Config keys exist; `get_vector_store()` logs a warning and falls through to FAISS for any unrecognized provider. |
+
+### Embeddings
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
 | BGEEmbedder | embeddings/embedder.py | WORKING | BAAI/bge-large-en-v1.5, local, async via ThreadPoolExecutor. Default in benchmark. |
 | MiniLMEmbedder | embeddings/embedder.py | WORKING | Alternative local model; selectable via `EMBEDDING_MODEL`. |
-| CachedEmbedder | embeddings/embedder.py | PARTIAL | Redis wrapper exists; silently degrades to underlying embedder if Redis is absent. |
-| CohereEmbedder | embeddings/embedder.py | PARTIAL | **Bug:** passes `settings.openai_api_key` to Cohere client instead of a Cohere key. |
-| MatryoshkaEmbedder / ColBERTEmbedder / EmbeddingFineTuner | embeddings/advanced_embeddings.py | SCAFFOLD | Not registered in `get_embedder()`; not reachable from any pipeline path. |
+| CachedEmbedder | embeddings/embedder.py | PARTIAL | Redis wrapper; degrades silently to underlying embedder if Redis is absent. |
+| CohereEmbedder | embeddings/embedder.py | PARTIAL | API key bug fixed (now passes `settings.cohere_api_key`); not exercised end-to-end. |
+| MatryoshkaEmbedder / ColBERTEmbedder / EmbeddingFineTuner | embeddings/advanced_embeddings.py | SCAFFOLD | Not registered in `get_embedder()`; unreachable from any pipeline path. |
+
+### Ingestion
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
 | FixedSize / Semantic / Hierarchical / SentenceWindow chunkers | ingestion/chunkers/ | WORKING | All four dispatched by `get_chunker()`. |
 | Propositional / TableAware / DocumentStructure chunkers | ingestion/chunkers/ | SCAFFOLD | Classes exist; not registered in `get_chunker()`. |
 | PDF / DOCX / TXT / HTML / Web / GitHub loaders | ingestion/loaders/ | WORKING | All exercise real parsing libraries. |
-| HeuristicRouter | retrieval/router/query_router.py | WORKING | Regex patterns for MULTI_HOP, ANALYTICAL, LOOKUP; returns None for uncertain. |
-| LLMQueryClassifier | retrieval/router/query_router.py | WORKING | gpt-4o-mini, json_object mode. Degrades to SEMANTIC on API error. |
+
+### Retrieval
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| HeuristicRouter | retrieval/router/query_router.py | WORKING | Regex patterns for MULTI_HOP, ANALYTICAL, LOOKUP; returns None for uncertain queries. |
+| LLMQueryClassifier | retrieval/router/query_router.py | WORKING | gpt-4o-mini, json_object mode; degrades to SEMANTIC on API error. |
 | QueryExpander | retrieval/router/query_router.py | PARTIAL | Code works; disabled by default (`ENABLE_QUERY_EXPANSION=false`). Not exercised in benchmark. |
 | Hybrid / Keyword / Semantic / MultiQuery strategies | retrieval/strategies/retrieval_executor.py | WORKING | All four dispatch correctly. Confirmed end-to-end. |
-| ParentChild retrieval | retrieval/strategies/retrieval_executor.py | SCAFFOLD | `_parent_child_search()` filters on `is_child_chunk=True` — a metadata key ingestion never sets. Returns `child_results[0]` repeated `top_k` times. |
-| Dead retrieval methods | retrieval/strategies/retrieval_executor.py | SCAFFOLD | `dense_retrieval()`, `sparse_retrieval()`, `hybrid_retrieval()` reference `self.embedder` and `self.vector_store` which don't exist on the class. Would raise AttributeError. Never called by `execute()`. |
+| ParentChild retrieval | retrieval/strategies/retrieval_executor.py | DEFERRED | `RetrievalStrategy.PARENT_CHILD` enum value retained; removed from strategy dispatch in commit `4a7d800`. Passing it now raises `ValueError`. |
+
+### Reranking
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
 | CrossEncoderReranker | reranking/reranker.py | WORKING | cross-encoder/ms-marco-MiniLM-L-6-v2. Verified end-to-end. |
-| NoOpReranker | reranking/reranker.py | WORKING | Passthrough; assigns ranks. Correct placeholder. |
-| PromptBuilder | generation/prompts/prompt_builder.py | WORKING | Token-budget-aware; per-query-type templates; labels sources. |
+| NoOpReranker | reranking/reranker.py | WORKING | Passthrough; assigns ranks. |
+
+### Generation
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| PromptBuilder | generation/prompts/prompt_builder.py | WORKING | `SYSTEM_BASE` updated to instruct `<cite source="N">` trailing markers; `FOLLOWUP_SYSTEM` and `FOLLOWUP_TEMPLATE` added. Token-budget-aware. |
 | GenerationService (GroqLLM / OpenAILLM / AnthropicLLM) | generation/llm_service.py | WORKING | Three providers wired; streaming works. |
-| Ollama / demo providers | generation/llm_service.py | DEFERRED | `_build_llm()` falls through to OpenAI for all unrecognized providers including ollama and demo. |
-| LLMService class (legacy) | generation/llm_service.py | SCAFFOLD | Synchronous, dict-format chunks. Never called by orchestrator. |
-| Azure OpenAI | generation/llm_service.py | PARTIAL | Config keys present; `OpenAILLM` constructor checks for azure endpoint and builds `AzureOpenAI` client. Not exercised end-to-end. |
-| SelfRAGGenerator | generation/advanced_generation.py | WORKING | Wired in orchestrator. Verified end-to-end. Claim extraction and verification confirmed running post-fix. |
-| FLAREGenerator | generation/advanced_generation.py | SCAFFOLD | Class present, structured. `orchestrator.py` falls through to basic generation for `GENERATION_STRATEGY=flare` with no warning. |
-| AgenticRAG | generation/advanced_generation.py | SCAFFOLD | Same — not dispatched. `GENERATION_STRATEGY=agentic` silently runs basic generation. |
-| RAGOrchestrator | orchestrator.py | WORKING | Full pipeline confirmed. Self-RAG and basic paths both verified. |
-| FastAPI endpoints (/ingest, /query, /query/stream, /health) | api/main.py | WORKING | Tested via integration tests and manual smoke tests. |
-| /agent/query endpoint | api/main.py | PARTIAL | **Bug:** calls `graph.astream_events(state)` to collect events, then `graph.ainvoke(state)` — graph executes twice per request. No comment explaining the double call. |
-| /metrics endpoint | api/main.py | DEFERRED | Returns `{"message": "Integrate prometheus_client for production metrics."}`. Emits no real metrics. |
-| Celery async ingestion | api/main.py | PARTIAL | Code correct; requires a running Redis and Celery worker. Not tested in CI. |
-| LangGraph StateGraph | agent/graph.py | PARTIAL | Graph wires 5 nodes with retry conditional edge. Double-invoke in API endpoint means graph runs twice per request. |
-| Agent nodes (router, retriever, reranker, generator, evaluator) | agent/nodes/ | WORKING | Each node delegates to the same pipeline modules as the main orchestrator. |
-| NoOpTracer | monitoring/tracer.py | WORKING | All methods are pass/return immediately. Correct placeholder. |
-| LangfuseTracer | monitoring/tracer.py | PARTIAL | **Bug:** `_record_step()` treats a QueryTrace dataclass as a dict — `self._traces[trace_id]["steps"]` raises TypeError at runtime. Only triggered when `ENABLE_TRACING=true` and `LANGFUSE_PUBLIC_KEY` is set. |
-| RetrievalEvaluator | evaluation/evaluator.py | WORKING | hit@K, MRR, NDCG@K, precision@K, recall@K all correctly bounded [0,1] post-dedup fix. |
-| GenerationEvaluator (heuristic) | evaluation/evaluator.py | PARTIAL | Word-overlap proxy is the live path. Reports "faithfulness" but measures token co-occurrence, not factual grounding. |
-| GenerationEvaluator (RAGAS) | evaluation/evaluator.py | PARTIAL | Code present; requires `pip install -e "[eval]"`. Not run in benchmark — FiQA faithfulness numbers are heuristic. |
-| Old Evaluator class | evaluation/evaluator.py | SCAFFOLD | `evaluate()` raises NotImplementedError with a migration message. Dead code. |
-| FiQA-2018 benchmark runner | evaluation/scripts/run_benchmark.py | WORKING | 50-query eval. UUID→FiQA-ID translation, chunk dedup. Reproducible. |
-| Unit tests (75) | tests/unit/ | WORKING | No external services. All passing. |
-| Integration tests (25) | tests/integration/ | PARTIAL | 23 passing; 2 failing in TestObservabilityIntegration on scaffolded tracer code. |
+| generate_followups | generation/llm_service.py | WORKING | Separate LLM call post-answer. `_extract_followup_questions` handles multi-line Llama JSON shape (one array per line). Orchestrator wraps call in `try/except`; any failure returns `[]`. |
+| _extract_first_json_array | generation/llm_service.py | SCAFFOLD | **Bug:** defined as a JSON array extractor (line 384) but never called. `generate_followups` uses `_extract_followup_questions` directly. Dead code — see Known Limitations. |
+| Ollama / demo providers | generation/llm_service.py | DEFERRED | `_build_llm()` has no branch for ollama or demo; falls through to `OpenAILLM`. |
+| LLMService class (legacy) | generation/llm_service.py | SCAFFOLD | Synchronous dict-format interface. Never called by orchestrator. |
+| Azure OpenAI | generation/llm_service.py | PARTIAL | Config keys present; `OpenAILLM` builds `AzureOpenAI` client when `AZURE_OPENAI_ENDPOINT` is set. Not exercised end-to-end. |
+| SelfRAGGenerator | generation/advanced_generation.py | WORKING | Wired in orchestrator. Activated via `verify_claims=True` per-query override or `GENERATION_STRATEGY=self_rag`. |
+| FLAREGenerator | generation/advanced_generation.py | SCAFFOLD | Not dispatched by orchestrator; `GENERATION_STRATEGY=flare` silently runs basic generation with no warning. |
+| AgenticRAG | generation/advanced_generation.py | SCAFFOLD | Same — `GENERATION_STRATEGY=agentic` silently runs basic generation. |
+
+### Orchestrator & API
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| RAGOrchestrator | orchestrator.py | WORKING | Full pipeline confirmed. Includes per-query `verify_claims` override, attributed span extraction, and follow-up generation. |
+| _extract_attributed_spans | orchestrator.py | WORKING | Trailing `<cite source="N">` marker parser. Runs on every non-empty response. Graceful `except → (answer, [])` fallback. |
+| FastAPI endpoints (/ingest, /query, /query/stream, /health) | api/main.py | WORKING | Integration-tested and smoke-tested. |
+| /agent/query endpoint | api/main.py | PARTIAL | Double-invoke removed in commit `1a79581`. One integration test (`test_agent_graph_with_tracing`) fails on mock-target resolution — test bug, not graph bug. |
+| /metrics endpoint | api/main.py | DEFERRED | Returns `{"message": "Integrate prometheus_client for production metrics."}`. No real metrics emitted. |
+| Celery async ingestion | api/main.py | PARTIAL | Code correct; requires running Redis + Celery worker. Not tested in CI. |
+
+### Agent
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| LangGraph StateGraph | agent/graph.py | PARTIAL | Single-invoke path works after commit `1a79581`. One integration test still failing. |
+| Agent nodes (router, retriever, reranker, generator, evaluator) | agent/nodes/ | WORKING | Each delegates to the same pipeline modules as the main orchestrator. |
+
+### Monitoring
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| NoOpTracer | monitoring/tracer.py | WORKING | All methods are pass/return. Correct placeholder. |
+| LangfuseTracer | monitoring/tracer.py | PARTIAL | Singleton fix applied (commit `6e4c1b6`); `_record_step` TypeError fixed (commit `f424495`). Still never exercised end-to-end against a live Langfuse instance. |
+
+### Evaluation
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| RetrievalEvaluator | evaluation/evaluator.py | WORKING | hit@K, MRR, NDCG@K, precision@K, recall@K all correctly bounded [0,1]. |
+| GenerationEvaluator (heuristic) | evaluation/evaluator.py | PARTIAL | Word-overlap proxy. Reports "faithfulness" but measures token co-occurrence, not factual grounding. |
+| GenerationEvaluator (RAGAS) | evaluation/evaluator.py | WORKING | `LLMFaithfulnessEvaluator` wired into `run_benchmark.py`; results committed to `evaluation/results/`. Live API path (`EVAL_STRATEGY=ragas`) remains unvalidated end-to-end. |
+| Old Evaluator class | evaluation/evaluator.py | SCAFFOLD | `evaluate()` raises `NotImplementedError`. Dead code. |
+| FiQA-2018 benchmark runner | evaluation/scripts/run_benchmark.py | WORKING | 50-query eval; `date.today()` (hardcoded date removed in commit `b04070b`). Reproducible. |
+
+### UI
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| _render_answer_with_spans | ui_streamlit/app.py | WORKING | Inline `<mark>` highlights with `<sup>` source chips. Falls back to `st.markdown` when `attributed_spans` is empty or None. |
+| _follow_up_chips | ui_streamlit/app.py | WORKING | Clickable pill buttons; sets `prompt_prefill` and calls `st.rerun()`. |
+| Hallucination verifier toggle | ui_streamlit/app.py | WORKING | Sidebar checkbox (`key="verify_claims"`); passes `verify_claims=True` to `QueryRequest`; activates Self-RAG per-query override in orchestrator. |
+| compute_confidence | ui_streamlit/app.py | WORKING | Score-gap heuristic on pre-rerank candidates. Thresholds 3.79/8.13 calibrated 2026-04-29 on n=10 live backend queries; docstring records methodology. |
+| Sidebar pipeline (S4) | ui_streamlit/app.py | WORKING | Per-query `stage_timings`, `latency_ms`, `total_tokens`, and confidence; populated from `_latest_result()` in session state. |
+| Visual rebuild (hero, sources grid, prompt cards) | ui_streamlit/app.py | WORKING | Design tokens, 2×2 source grid, stat cards, prompt card buttons. |
+
+### Tests
+
+| Module | File | State | Notes |
+|--------|------|-------|-------|
+| Unit tests (103) | tests/unit/ | WORKING | No external services. `pytest --collect-only` returns 103. README claims 76 — stale (see README Claims Audit). |
+| Integration tests (30) | tests/integration/ | PARTIAL | `pytest --collect-only` returns 30. README claims 26/27 — stale. One test (`test_agent_graph_with_tracing`) fails on mock-target resolution in the test itself. |
 
 ---
 
@@ -74,87 +140,120 @@ FiQA-2018 benchmark complete.
 
 **"Benchmarked on 50 FiQA-2018 financial Q&A queries."**
 → **REAL.** `evaluation/datasets/` has 50 queries seeded at 42. Raw JSON output in
-`evaluation/results/` is committed. Numbers are reproducible via
+`evaluation/results/` is committed. Numbers reproducible via
 `python evaluation/scripts/run_benchmark.py --strategy basic`.
 
-**"faithfulness 0.36 → 0.43, +20%"**
-→ **PARTIAL.** Numbers are real outputs from the benchmark run. However, "faithfulness"
-here is word-overlap between the answer and retrieved contexts — not an LLM-judged
-factual entailment score. RAGAS faithfulness is an optional install, not what produced
-these numbers. The README does not state this distinction.
+**Two-metric faithfulness table (word-overlap +0.054, RAGAS −0.109)**
+→ **REAL.** Both runs are committed. Word-overlap numbers match `basic_fiqa.json` and
+`self_rag_fiqa.json`. RAGAS numbers match `basic_fiqa_2026-04-26_default-judge.json`.
+CIs and Wilcoxon p-values are computed in the analysis notebook. The negative Spearman
+correlation between metrics on baseline answers (ρ = −0.385) is reproducible from the
+same data. The framing is honest: both effects are statistically significant, the metrics
+genuinely disagree on baseline answers, and pointing readers at the measurement problem
+is more accurate than picking a winner. The framing does not, however, plainly say "RAGAS
+shows Self-RAG is worse on its own metric" — that statement is technically derivable from
+the numbers but not made explicit.
 
 **"Self-RAG's claim verification loop costs 1.8× the latency of basic generation"**
-→ **REAL.** 4.7s vs 8.5s is consistent with the per-query data in the benchmark JSON.
+→ **REAL** in spirit, but the README headline table now reports 10.6s vs 5.9s (+79%),
+not 1.8×. The body text says "1.8×"; the table says "+79%". These are inconsistent
+(1.8× = +80%). Minor rounding discrepancy; both figures are within measurement noise
+of the same underlying data.
 
-**Retrieval metrics identical between strategies (hit@5=0.92, MRR=0.86, NDCG@5=0.75)**
-→ **REAL.** Both strategy runs use the same retrieval path. Retrieval metrics being
-identical is correct by construction.
+**Retrieval metrics identical between strategies**
+→ **REAL.** Both strategy runs use the same retrieval path. Identical numbers are
+correct by construction.
+
+### Live Demo
+
+**"ragcore.streamlit.app — try the deployed demo"**
+→ **REAL.** Frontend is deployed on Streamlit Cloud. Backend at
+`ragcore-api.onrender.com` on Render free tier.
+
+**"First request may take ~30s on free tier (Render cold start)"**
+→ **REAL.** Render free-tier services spin down after inactivity. The caveat is
+accurate.
+
+**"Optional Self-RAG verification toggle in the sidebar"**
+→ **REAL.** Sidebar checkbox (`verify_claims`) wired to `QueryRequest.verify_claims`;
+orchestrator upgrades strategy to `self_rag` for that query only.
 
 ### Architecture Diagram
 
 **"Hybrid Index: FAISS Dense Vectors + BM25 Sparse Index"**
-→ **REAL.** Both are in-memory in FAISSVectorStore. Alpha-weighted fusion implemented.
+→ **REAL.** Both are in-memory in `FAISSVectorStore`.
 
 **"Query Router: Heuristic → LLM fallback"**
-→ **REAL.** HeuristicRouter (regex) → LLMQueryClassifier (gpt-4o-mini) exactly as drawn.
+→ **REAL.** `HeuristicRouter` (regex) → `LLMQueryClassifier` (gpt-4o-mini) exactly
+as drawn.
 
-**"Reranker: Cross-Encoder"**
-→ **REAL.** CrossEncoderReranker (ms-marco-MiniLM-L-6-v2) in the live path.
+**"LLM Generator + Citations"**
+→ **REAL.** Citations present. Attributed spans (inline citation highlights) are
+produced by `_extract_attributed_spans` and rendered by the UI, but this is not
+mentioned in the diagram or README body text — it is a gap in README coverage.
 
 ### Retrieval Strategy Routing
 
 **"6 query types → strategy pairs"**
-→ **REAL.** All 6 pairs present in STRATEGY_MAP. 5 of 6 strategies dispatch correctly.
-ParentChild is the exception (see module table).
+→ **REAL** for 5 of 6 strategies. ParentChild is enumerated but dispatch was removed;
+the README's Status section correctly notes "parent-child is enumerated but not wired."
 
-**ParentChild implied as a live strategy**
-→ **OVERSTATED.** The strategy exists in STRATEGY_MAP but `_parent_child_search()`
-filters on metadata that ingestion never sets. Returns the top chunk repeated `top_k`
-times.
+### Pre-Registered Analysis Plan
+
+**"The pre-registered analysis plan, written before the RAGAS run, is at
+docs/ragas_run_plan_2026-04-26.md"**
+→ **REAL.** The file exists and is committed. Git history confirms it predates the
+RAGAS run results.
+
+**"The methodology change made after seeing the first run (judge max_tokens raised
+from default to 8192 to recover 14 verification-stage truncations) is documented
+in the analysis file alongside the original default-judge run preserved as evidence."**
+→ **REAL.** Both judge runs are present in `evaluation/results/`. The analysis file
+documents the methodology change and its rationale.
 
 ### Configuration
 
 **`GENERATION_STRATEGY` options: `basic`, `self_rag`, `flare`, `agentic`**
 → **OVERSTATED.** Only `basic` and `self_rag` dispatch to distinct code paths.
-`flare` and `agentic` fall through to basic generation in `orchestrator.py` with no
-warning logged and no error raised.
+`flare` and `agentic` fall through to basic generation with no warning.
 
 **`LLM_PROVIDER=ollama` and `LLM_PROVIDER=demo`**
 → **OVERSTATED.** `_build_llm()` has no branch for ollama or demo. Both fall through
-to the OpenAI client, which will fail if no `OPENAI_API_KEY` is set.
+to `OpenAILLM`, which will fail without `OPENAI_API_KEY`.
 
 **`VECTOR_STORE_PROVIDER=weaviate|chroma`**
-→ **OVERSTATED.** `get_vector_store()` logs a warning and creates a FAISSVectorStore
-for any unrecognized provider.
+→ **OVERSTATED.** `get_vector_store()` falls through to FAISS for any unrecognized
+provider.
 
 **`ENABLE_TRACING=true` (Langfuse)**
-→ **PARTIAL.** `LangfuseTracer` would fail on first traced request due to the
-`_record_step()` TypeError. Tracing has never been exercised end-to-end.
+→ **PARTIAL.** `LangfuseTracer` is structurally correct and the singleton bug is
+fixed. It has never been exercised end-to-end against a live Langfuse instance.
 
 **`ENABLE_EVALUATION=true`, `EVAL_STRATEGY=ragas`**
-→ **PARTIAL.** RAGAS path exists; requires extra install. Not run in any committed
-benchmark. Heuristic path is the default and what produces the committed results.
+→ **PARTIAL.** RAGAS runs in the benchmark script. The live API path
+(`EVAL_STRATEGY=ragas` per-query) remains unvalidated.
 
 ### Status Section
 
-The README's Status section is the most honest part of the document. It correctly
-flags:
+The README's Status section is accurate. It correctly flags: Self-RAG hardcoded to
+gpt-4o-mini, NoOpTracer, no real Prometheus metrics, FLARE and Agentic RAG not wired
+to the API, Weaviate/Chroma/Pinecone unverified, RAGAS requiring extra install.
+No corrections needed in this section.
 
-- Self-RAG hardcoded to gpt-4o-mini for verification
-- NoOpTracer, Langfuse off by default
-- Prometheus/Grafana emitting no real metrics
-- FLARE and Agentic RAG not wired to API
-- Weaviate/Chroma/Pinecone unverified
-- RAGAS requiring extra install
+### Testing Section
 
-No corrections needed here. The Status section reads as written by someone who ran
-the system, not as aspirational documentation.
+**"76 unit tests passing, 26 of 27 integration tests passing"**
+→ **STALE.** `pytest --collect-only` on 2026-04-30 returns **103 unit tests** and
+**30 integration tests** — substantially higher than both figures. Tests were added
+for attributed spans, follow-up generation, orchestrator verify_claims, and the tracer
+singleton since the README was last updated. The README count needs updating.
 
 ### Project Structure
 
-The directory tree in the README matches the actual structure. All listed paths exist.
-The description of `agent/nodes/` as "router · retriever · reranker · generator ·
-evaluator" is accurate.
+The directory tree matches the actual structure. `utils/models.py` description
+("Shared types: Chunk · Document · RetrievedChunk") understates what the file
+contains — it also defines `QueryRequest`, `QueryResponse`, `QueryTrace`, and all
+agent API models. Accurate enough not to mislead; worth noting.
 
 ---
 
@@ -171,55 +270,44 @@ evaluator" is accurate.
 
 3. **FLARE and AgenticRAG are scaffolded.** Setting `GENERATION_STRATEGY=flare`
    or `GENERATION_STRATEGY=agentic` silently runs basic generation. No warning,
-   no error. A user following the README's config table would not know this.
+   no error.
 
-4. **Faithfulness metric is word-overlap, not LLM-judged.** The 0.36/0.43
-   faithfulness numbers in the README are word co-occurrence scores. RAGAS
-   (semantic, LLM-judged) exists but is not run in any committed evaluation.
+4. **Faithfulness metric disagreement is unresolved.** Word-overlap and RAGAS give
+   opposite verdicts on Self-RAG. Per-claim support-rate analysis is required to
+   determine which signal is more reliable.
 
-5. **50-query evaluation set is small.** The faithfulness delta (+20%) from
-   50 queries has high variance. Extending to the full FiQA test split would
-   reduce uncertainty.
+5. **50-query evaluation set is small.** The faithfulness deltas on 50 queries carry
+   non-trivial variance. Extending to the full FiQA test split (~648 queries) would
+   tighten the CIs on both metrics.
 
-6. **Celery async ingestion requires a running Redis and worker.** Not tested
-   in CI. The synchronous ingest path works without it.
+6. **Celery async ingestion requires a running Redis and worker.** Not tested in CI.
+   The synchronous ingest path works without it.
 
-### Bugs discovered during this audit (to fix)
+7. **Follow-up prompt is domain-specific.** `FOLLOWUP_TEMPLATE` hardcodes
+   "personal-finance topics (IRAs, 401k, taxes, investing, mortgages, similar)."
+   Would produce off-domain suggestions if the indexed corpus changes.
 
-7. **Agent double-invoke** (FIXED — see below) ([api/main.py](api/main.py)). `agent_query()` calls
-   `graph.astream_events(state)` to collect trace events, then calls
-   `graph.ainvoke(state)` for the result. The full graph executes twice per
-   `/agent/query` request. No comment explains the double call.
+### Bugs discovered during this audit
 
-8. **LangfuseTracer TypeError** (FIXED — see below) ([monitoring/tracer.py](monitoring/tracer.py)).
-   `_record_step()` accesses `self._traces[trace_id]["steps"]` — treating a
-   `QueryTrace` dataclass as a dict. Raises `TypeError` on first traced request
-   when `ENABLE_TRACING=true`.
+8. **`_extract_first_json_array` is dead code**
+   ([generation/llm_service.py:384](generation/llm_service.py#L384)).
+   Defined as a JSON array extractor for follow-up parsing. `generate_followups`
+   uses `_extract_followup_questions` directly; `_extract_first_json_array` is never
+   called from anywhere. A future reader tracing the follow-up path will be confused
+   about which function is live. Either delete it or add a comment explaining the
+   relationship.
 
-9. **CohereEmbedder wrong API key** (FIXED — see below) ([embeddings/embedder.py](embeddings/embedder.py)).
-   `CohereEmbedder` initializes with `api_key=settings.openai_api_key`. Will
-   authenticate against Cohere with the wrong credential type.
+9. **Version marker still rendering in production**
+   ([ui_streamlit/app.py:682](ui_streamlit/app.py#L682)).
+   The sidebar renders `"UI build: 2026-04-29-followup-v1"` on every page load of
+   the deployed demo. The inline comment says "remove after cloud deploy confirmed"
+   — that condition has passed.
 
-10. **ParentChild retrieval is broken** (FIXED — see below)
-    ([retrieval/strategies/retrieval_executor.py](retrieval/strategies/retrieval_executor.py)).
-    `_parent_child_search()` filters on `is_child_chunk=True` — metadata the
-    ingestion pipeline never writes. Returns `child_results[0]` repeated `top_k`
-    times when called.
-
-11. **Dead retrieval methods with wrong attributes** (FIXED — see below)
-    ([retrieval/strategies/retrieval_executor.py](retrieval/strategies/retrieval_executor.py)).
-    `dense_retrieval()`, `sparse_retrieval()`, and `hybrid_retrieval()` reference
-    `self.embedder` and `self.vector_store`, which are not attributes of
-    `RetrievalExecutor`. Would raise `AttributeError` if called. Not reachable
-    from `execute()`.
-
-### Fixed in 2026-04-26 cleanup
-
-- Item 7 — Agent double-invoke removed; single `ainvoke` call — commit `1a79581`
-- Item 8 — LangfuseTracer `_record_step` stale recording path deleted — commit `f424495`
-- Item 9 — CohereEmbedder now passes `settings.cohere_api_key`; field added to Settings — commit `c376880`
-- Item 10 — PARENT_CHILD removed from `_dispatch`; `_parent_child_search` deleted — commit `4a7d800`
-- Item 11 — `dense_retrieval`, `sparse_retrieval`, `hybrid_retrieval` deleted — commit `9e9440e`
+10. **`verify_claims` toggle resets to `False` on page reload**
+    ([ui_streamlit/app.py:620](ui_streamlit/app.py#L620)).
+    Streamlit session state does not persist across page reloads. A user who enables
+    the hallucination verifier and reloads will silently lose the setting. The verifier
+    is the only stateful sidebar control; no UI text communicates the reset behavior.
 
 ---
 
@@ -227,103 +315,70 @@ evaluator" is accurate.
 
 ### Bugs found during this audit
 
-These are broken — they will error if the relevant code path is exercised:
-
-- Fix agent double-invoke in `api/main.py`: replace `astream_events` + `ainvoke`
-  with a single `astream_events` call that captures both events and the final state,
-  or drop event collection and use `ainvoke` alone.
-- Fix `LangfuseTracer._record_step()`: access the `QueryTrace` dataclass by
-  attribute (`self._traces[trace_id].steps`) not by dict key.
-- Fix `CohereEmbedder`: pass `settings.cohere_api_key` (add to settings if missing)
-  instead of `settings.openai_api_key`.
-- Fix or remove `_parent_child_search()`: either implement parent chunk metadata in
-  the ingestion pipeline or remove PARENT_CHILD from STRATEGY_MAP.
-- Remove or clearly gate the dead retrieval methods (`dense_retrieval`,
-  `sparse_retrieval`, `hybrid_retrieval`) to prevent confusion.
+- Remove `_extract_first_json_array` from `llm_service.py` (dead code, never called).
+- Remove the version-marker `<p>` block from the sidebar (deploy condition has passed).
+- Either persist `verify_claims` to `st.query_params` so reload restores it, or add
+  a caption noting that the setting resets on reload.
 
 ### Migrating SCAFFOLD → WORKING
-
-These are structured but not wired — lower risk, higher ROI than greenfield:
 
 - Wire `FLAREGenerator` into `orchestrator.py`'s strategy dispatch. The class
   structure is complete; only the `elif settings.generation_strategy == "flare":`
   branch is missing.
-- Wire `AgenticRAG` similarly. Then the four `GENERATION_STRATEGY` values in the
-  README config table will all correspond to real code paths.
+- Wire `AgenticRAG` similarly. Both `GENERATION_STRATEGY` options would then
+  correspond to real code paths.
 - Register `PropositionalChunker`, `TableAwareChunker`, `DocumentStructureChunker`
   in `get_chunker()` if they are intended to be user-selectable.
-- Make Self-RAG claim verification provider-agnostic: pass the orchestrator's
-  `_generation` service into `SelfRAGGenerator` instead of constructing a new
-  `AsyncOpenAI` client internally.
 
 ### Migrating PARTIAL → WORKING
 
-- Run RAGAS faithfulness evaluation on the committed benchmark queries and replace
-  or supplement the word-overlap faithfulness numbers.
-- Fix the two failing `TestObservabilityIntegration` tests.
-- Exercise `LangfuseTracer` end-to-end (after fixing the TypeError) — it has
-  never been called against a live Langfuse instance.
+- Fix `test_agent_graph_with_tracing` (mock-target resolution bug in the test).
+- Exercise `LangfuseTracer` end-to-end against a live Langfuse instance.
 - Test Celery async ingestion in CI with a Redis service container.
+- Update README test counts to 103 unit / 30 integration.
+- Make Self-RAG claim verification provider-agnostic.
 
 ### Extending what's working
 
-- Expand FiQA evaluation to the full test split (~648 queries) to reduce
-  variance in faithfulness estimates.
-- Emit real Prometheus metrics from retrieval and generation steps; the
-  `/metrics` stub currently returns a plain text message.
-- Deploy a live demo (Streamlit Cloud is the likely path, per README).
+- Expand FiQA evaluation to the full test split to tighten CI widths on both
+  faithfulness deltas.
+- Investigate per-claim support rates to test the metric-disagreement mechanism
+  hypothesis.
+- Emit real Prometheus metrics from retrieval and generation steps.
 
 ---
 
 ## Honest Verdict
 
-RAGCore's core retrieval and generation pipeline is real. The FAISS + BM25 hybrid
-retrieval, cross-encoder reranking, and Self-RAG generation all execute against
-live data, and the FiQA benchmark numbers are reproducible from committed code.
-The debugging notes document real bugs and real fixes, not hypothetical ones.
+At 2026-04-30 the system has moved from "one well-tested pipeline path with surrounding
+scaffolding" to a deployed interactive demo with materially more surface area. The
+citation-span pipeline, follow-up generation, hallucination verifier toggle, recalibrated
+confidence indicator, and visual rebuild are all live at ragcore.streamlit.app. The
+benchmark pipeline now carries two faithfulness signals, not one — and their disagreement,
+not Self-RAG's effect size, is the headline finding.
 
-The project also carries a meaningful layer of scaffolding. Three generation
-strategies listed in the README config table are silent no-ops. Three chunkers and
-three embedders are unreachable from any pipeline path. The vector store provider
-config allows four values but only one works. This is normal for a research project
-that built and benchmarked one solid path rather than five shallow ones — but the
-README's Configuration table implies parity that doesn't exist.
+The deployed story is real. The frontend runs on Streamlit Cloud; the backend runs on
+Render free tier at ragcore-api.onrender.com. The cold-start caveat in the README is
+accurate. The stat cards in the UI (hit@5 = 0.92, MRR = 0.86) are populated from the
+committed benchmark JSON, not hardcoded aspirationally.
 
-Five bugs found during this audit were not previously documented: the agent
-double-invoke, the LangfuseTracer TypeError, the CohereEmbedder wrong API key,
-the broken ParentChild retrieval, and the dead retrieval methods with wrong
-attribute references. These are latent, not active — none are in the benchmarked
-code path — but they would surface immediately if the corresponding config options
-were exercised. All five were fixed in the 2026-04-26 cleanup commits (`1a79581` through `4a7d800`).
+The metric-disagreement finding signals something substantive about evaluation rigor: word-overlap
+and RAGAS are measuring different constructs. The negative Spearman correlation between them on
+baseline answers (ρ = −0.385) makes this concrete. The pre-registered analysis plan, dual-run
+preservation, and documented methodology change mean the disagreement is surfaced rather than
+buried.
 
-The honest summary: one well-tested path in production shape, surrounded by
-correctly-structured scaffolding and a small set of latent bugs. The benchmark
-is real; the breadth is not yet there.
+Scaffolding remains where it was in April: FLARE and AgenticRAG still run basic generation
+when selected, three chunkers and three embedders are unreachable, and four provider config
+values still fall through to FAISS. None of this has gotten worse since the April 27 audit.
 
----
+Three latent bugs found in this audit: dead code in `llm_service.py`, a visible cosmetic
+artifact in the production demo, and a Streamlit session-state UX limitation on the verifier
+toggle. None are in the benchmarked code path. The previously documented bugs (agent
+double-invoke, LangfuseTracer TypeError, CohereEmbedder wrong key, broken ParentChild
+retrieval, dead retrieval methods) were all fixed in the April 26 cleanup commits and are
+not carried forward here.
 
-## 2026-04-27 Update
-
-Eight days after the original audit. The April 19 module table and headline classifications above are unchanged unless explicitly noted here.
-
-### Bugs fixed since April 19
-
-**get_tracer() non-singleton** (commit `6e4c1b6`, this session). Every call to `get_tracer()` constructed a fresh `LangfuseTracer` with its own empty `_traces` dict, so traces written by the orchestrator were invisible to the `/trace/{trace_id}` endpoint — silent 404 on every lookup when `ENABLE_TRACING=true`. Fixed by the same module-level cache pattern applied to `get_vector_store()` on April 17 (`953e62d`): `_tracer_instance` held at module scope, `reset_tracer()` added for test isolation. Covered by `tests/integration/test_tracer_singleton.py` — structural identity test and a behavioral test that reproduces the 404 directly.
-
-**LangfuseTracer._record_step TypeError** (commit `f424495`). The vestigial `_record_step` call path treated `QueryTrace` as a dict and referenced a non-existent `steps` field; would have raised `TypeError` and `AttributeError` on any active trace. Resolved by removing the dead path entirely. This was the `LangfuseTracer TypeError` item flagged in the April 19 audit.
-
-**test_tracer_initialization** (this session). Updated `tests/integration/test_evaluation.py` to call `reset_tracer()` between the two `patch.object` settings contexts so each block constructs a fresh tracer. The test was broken by the singleton fix as designed — this is the expected adaptation, not a regression.
-
-### Status changes
-
-**RAGAS faithfulness: PARTIAL → WORKING** for the benchmark-runner path (commits `2cbb80f`, `35ab385`). `LLMFaithfulnessEvaluator` is now wired into `run_benchmark.py` and executed against the FiQA dataset; results are in `evaluation/results/basic_fiqa_2026-04-26_default-judge.json` with analysis in `docs/ragas_analysis_2026-04-26.md`. The live API path (`EVAL_STRATEGY=ragas`) remains unvalidated end-to-end, so the overall classification stays PARTIAL.
-
-**RUN_DATE hardcoding in benchmark runner** (commit `b04070b`, this session). The literal date string in `run_benchmark.py` is replaced with `date.today().isoformat()`.
-
-### Still scaffolded (unchanged from April 19)
-
-`FLAREGenerator` and `AgenticRAG` are enumerated but not dispatched. `LLM_PROVIDER=ollama` and `LLM_PROVIDER=demo` have no branch in the generator. `VECTOR_STORE_PROVIDER` accepts four values but only `faiss` is functional. ParentChild dispatch and the `_parent_child_search()` implementation were removed in `4a7d800`; the enum value `RetrievalStrategy.PARENT_CHILD` is retained but unsupported — passing it raises `ValueError`. README updated this session: "parent-child is enumerated but not wired."
-
-### Updated honest verdict
-
-The April 19 verdict holds. The well-tested path is now slightly broader: the RAGAS faithfulness judge runs in the benchmark pipeline and produces reproducible numbers, and the tracer singleton means trace data written during a query is actually retrievable. The scaffolding is the same set it was — three unreachable generation strategies, provider configs that silently fall through to FAISS. The latent bug list from April 19 is now empty. The benchmark is still real; the breadth is still not yet there.
+The honest summary: one solid pipeline deployed end-to-end, a benchmark that is honest about
+what it measures and what it doesn't, and a scaffolding perimeter that is accurately described
+in the README and unchanged since April.
