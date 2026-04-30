@@ -24,6 +24,7 @@ HOW TO USE:
 # --- Standard library ---
 from __future__ import annotations   # Allows forward type references
 import logging                        # For writing log messages
+import re                             # For cite-tag parsing
 import time                           # For measuring how long things take
 from typing import AsyncIterator, Optional  # Type hints
 
@@ -48,6 +49,103 @@ from monitoring.tracer import get_tracer                       # Observability
 
 # Set up logger for this file — messages appear in console as "orchestrator: ..."
 logger = logging.getLogger(__name__)
+
+_TRAILING_MARKER_RE = re.compile(r'<cite source="([^"]*)">')
+# Matches inline [Source N] notation (with surrounding whitespace) emitted by
+# GPT-4o-mini / Llama alongside the structured <cite> marker.
+_SOURCE_BRACKET_RE = re.compile(r'\s*\[Source \d+\]\s*')
+
+
+def _extract_attributed_spans(answer: str) -> tuple[str, list[dict]]:
+    """
+    Extract trailing citation markers emitted by Llama and attribute them
+    to the preceding clause.
+
+    Llama emits <cite source="N"> as a trailing marker (similar to its
+    native [Source N] pattern) rather than wrapping spans. This parser
+    detects each marker, attributes the preceding clause (text from the
+    last sentence boundary ". ", "! ", or "? " before the marker) to the
+    named source, and strips all markers from the cleaned answer.
+
+    Heuristics documented:
+    - Clause boundary: last ". ", "! ", or "? " before the marker, or
+      start of text since the previous marker if no boundary found.
+    - Empty clauses (marker at start of text, or two consecutive markers
+      with nothing between them) are skipped; no span recorded.
+    - Multi-source single sentence handled: second marker sees zero text
+      between markers → skipped.
+    - source_num must be a valid integer; non-integer group → span skipped.
+    - [Source N] inline brackets are stripped from both cleaned_answer and
+      span.text (models emit both notations as a pair; brackets are redundant
+      in the structured output).
+
+    Returns:
+        (cleaned_answer, spans)
+        cleaned_answer: original text with all <cite source="N"> markers and
+                        [Source N] brackets removed.
+        spans: list of {"source": int, "start": int, "end": int, "text": str}
+               Offsets reference positions in cleaned_answer.
+
+    Graceful fallback: any exception returns (answer, []).
+    """
+    spans: list[dict] = []
+    cleaned_parts: list[str] = []
+    last_consumed = 0   # position in original answer
+    cleaned_pos = 0     # position being built in cleaned answer
+
+    try:
+        for match in _TRAILING_MARKER_RE.finditer(answer):
+            # Text between last marker end and this marker start.
+            # Strip [Source N] brackets so cleaned_answer omits them.
+            between = answer[last_consumed : match.start()]
+            between_clean = _SOURCE_BRACKET_RE.sub(' ', between)
+            cleaned_parts.append(between_clean)
+            cleaned_pos += len(between_clean)
+
+            # Locate clause boundary within the cleaned segment
+            boundary = max(
+                between_clean.rfind(". "),
+                between_clean.rfind("! "),
+                between_clean.rfind("? "),
+            )
+            if boundary >= 0:
+                raw_clause = between_clean[boundary + 2:]  # skip ". " / "! " / "? "
+            else:
+                raw_clause = between_clean                  # whole segment since last marker
+
+            # Strip trailing whitespace and track how many chars were removed
+            # so span_end can be adjusted to maintain the offset invariant.
+            rstrip_count = len(raw_clause) - len(raw_clause.rstrip())
+            clause_text = raw_clause.strip()
+
+            if not clause_text:
+                last_consumed = match.end()
+                continue
+
+            try:
+                source_num = int(match.group(1))
+            except ValueError:
+                last_consumed = match.end()
+                continue
+
+            span_end = cleaned_pos - rstrip_count
+            span_start = max(0, span_end - len(clause_text))
+            spans.append({
+                "source": source_num,
+                "start": span_start,
+                "end": span_end,
+                "text": clause_text,
+            })
+
+            last_consumed = match.end()
+
+        # Remainder after last marker — also strip [Source N] brackets
+        cleaned_parts.append(_SOURCE_BRACKET_RE.sub(' ', answer[last_consumed:]))
+        return "".join(cleaned_parts), spans
+
+    except Exception as e:
+        logger.warning("Attribution span parsing failed: %s", e)
+        return answer, []
 
 
 class RAGOrchestrator:
@@ -247,6 +345,9 @@ class RAGOrchestrator:
 
             t_generate = time.perf_counter()
 
+            # Strip trailing citation markers → clean answer + attributed spans
+            gen_answer, attributed_spans = _extract_attributed_spans(gen_answer)
+
             # Post-answer: generate follow-up questions (graceful fallback)
             follow_ups: list[str] = []
             try:
@@ -320,6 +421,7 @@ class RAGOrchestrator:
             follow_up_questions=follow_ups if follow_ups else None,
             stage_timings=stage_timings,
             retrieval_candidates=retrieval_candidates,
+            attributed_spans=attributed_spans if attributed_spans else None,
         )
 
     async def stream_query(
