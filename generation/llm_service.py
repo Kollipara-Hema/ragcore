@@ -381,51 +381,6 @@ class GroqLLM(BaseLLM):
                 yield delta
 
 
-def _extract_first_json_array(text: str):
-    """
-    Extract the first well-formed JSON array from text.
-
-    Fast path: the whole text is valid JSON.
-    Slow path: scan for the opening '[' and walk brackets to find the
-    matching ']', then parse that substring. Handles extra prose before
-    or after the array (e.g. "Here you go:\n[...]\nHope that helps.").
-    Returns None if no valid array is found.
-    """
-    import json
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-    start = text.find("[")
-    if start == -1:
-        return None
-    depth = 0
-    in_string = False
-    escape_next = False
-    for i, ch in enumerate(text[start:], start):
-        if escape_next:
-            escape_next = False
-            continue
-        if ch == "\\" and in_string:
-            escape_next = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if ch == "[":
-            depth += 1
-        elif ch == "]":
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(text[start : i + 1])
-                except json.JSONDecodeError:
-                    return None
-    return None
-
-
 def _extract_followup_questions(text: str) -> list[str]:
     """
     Extract exactly 3 follow-up question strings from LLM output.
