@@ -187,6 +187,10 @@ class QueryResponse(BaseModel):
     #          "score": float, "used_in_answer": bool, "excerpt": str}]
     # Candidates from retrieval BEFORE reranking; used_in_answer = True when
     # the chunk_id appears in final citations.
+    attributed_spans: Optional[list[dict]] = None
+    # Shape: [{"source": int, "start": int, "end": int, "text": str}]
+    # Character offsets into answer. Produced by trailing-marker heuristic;
+    # None when LLM emitted no <cite source="N"> markers.
 
 
 class IngestRequest(BaseModel):

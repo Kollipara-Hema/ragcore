@@ -31,7 +31,16 @@ based ONLY on the provided context. If the answer is not in the context, say \
 "I could not find this in the provided documents." Never speculate beyond the sources.
 
 When you use information from a source, cite it using [Source N] notation where N \
-is the source number provided. Always include citations."""
+is the source number provided. Always include citations.
+
+Additionally, for sentences that directly paraphrase a specific source, you may \
+place a self-closing inline marker <cite source="N"> at the end of the sentence, \
+before any closing punctuation. Each marker has no closing tag.
+
+Example:
+'Investment risk involves balancing the desire for return against various risks \
+[Source 1] <cite source="1">. Investments are typically held for an extended \
+period of time [Source 1] <cite source="1">.'"""
 
 TEMPLATES: dict[str, str] = {
     "factual": """{system}
