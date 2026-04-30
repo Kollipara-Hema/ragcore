@@ -118,7 +118,7 @@ flowchart TD
     E1 --> I
     E2 --> I
 ```
-
+Citations include attributed_spans — the parser extracts the clause preceding each `<cite source="N">` trailing marker emitted by the LLM, allowing the UI to render inline yellow highlights with source chips.
 ---
 
 ## Retrieval Strategy Routing
@@ -387,7 +387,7 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 76 unit tests passing, 26 of 27 integration tests passing. One
+Current: 103 unit tests passing, 29 of 30 integration tests passing. One
 integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
 mock-target resolution bug in the test itself, unrelated to current work.
 
@@ -410,6 +410,11 @@ mock-target resolution bug in the test itself, unrelated to current work.
   queries, with paired bootstrap confidence intervals and Wilcoxon signed-rank
   significance testing — pre-registered analysis plan committed before the run
 - FiQA-2018 benchmark runner and comparison notebook
+- Citation span attribution with inline highlights (yellowmark + numbered source chips)
+- Follow-up question suggestions (LLM-generated, click to prefill chat)
+- Hallucination verifier toggle (per-query Self-RAG opt-in, ~3x slower)
+- Per-query pipeline section in sidebar (router, retrieve, rerank, generate, 
+  latency, tokens, confidence with recalibrated thresholds)
 
 ### Deferred or scaffolded
 
