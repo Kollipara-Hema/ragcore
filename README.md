@@ -20,6 +20,7 @@ finding.
 
 ## Table of Contents
 
+- [Live demo](#live-demo)
 - [Headline Results](#headline-results)
 - [Architecture](#architecture)
 - [Retrieval Strategy Routing](#retrieval-strategy-routing)
@@ -34,6 +35,17 @@ finding.
 
 ---
 
+## Live demo
+
+**[ragcore.streamlit.app](https://ragcore.streamlit.app)** — try the deployed demo
+
+Indexed on [FiQA-2018](https://huggingface.co/datasets/explodinggradients/fiqa) (380 chunks of personal-finance Q&A). Llama 3.3 70B via Groq for generation, FAISS + BM25 hybrid retrieval, ms-marco cross-encoder reranking. Optional Self-RAG verification toggle in the sidebar.
+
+First request may take ~30s on free tier (Render cold start).
+
+![RAGCore Demo](docs/assets/demo.png)
+
+---
 ## Headline Results
 
 Benchmarked on 50 FiQA-2018 financial Q&A queries. Retrieval metrics are
@@ -455,4 +467,3 @@ mock-target resolution bug in the test itself, unrelated to current work.
 - Fix the two scaffolded tracer integration tests
 - Expand to the full FiQA test split (~648 queries) to tighten confidence
   intervals on both faithfulness deltas
-- **Deploy a live demo** (Streamlit Cloud is the likely path)
