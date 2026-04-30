@@ -468,6 +468,37 @@ def _self_rag_chips(self_rag_stats: Optional[dict]) -> None:
                 st.markdown(chips_html, unsafe_allow_html=True)
 
 
+def _render_answer_with_spans(answer: str, attributed_spans: list[dict]) -> None:
+    if not attributed_spans:
+        st.markdown(answer)
+        return
+
+    spans_sorted = sorted(attributed_spans, key=lambda s: s["start"])
+
+    html_parts = []
+    last_end = 0
+    for span in spans_sorted:
+        html_parts.append(html.escape(answer[last_end:span["start"]]))
+        html_parts.append(
+            f'<mark style="background:#fff8c5; '
+            f'border-bottom:2px solid #d4a017; '
+            f'padding:0 2px; border-radius:2px;">'
+            f'{html.escape(span["text"])}'
+            f'</mark>'
+        )
+        html_parts.append(
+            f'<sup style="background:{ACCENT}; color:white; '
+            f'padding:1px 5px; border-radius:3px; margin-left:2px; '
+            f'font-size:11px; font-weight:600;">{span["source"]}</sup>'
+        )
+        last_end = span["end"]
+
+    html_parts.append(html.escape(answer[last_end:]))
+
+    final_html = "".join(html_parts).replace("\n", "<br>")
+    st.markdown(final_html, unsafe_allow_html=True)
+
+
 def _abstention_card() -> None:
     st.markdown("""
 <div class="abstention-card">
@@ -526,7 +557,8 @@ def _render_assistant_message(result: dict, show_retry: bool = False, message_id
     if is_abstention:
         _abstention_card()
     else:
-        st.markdown(answer)
+        attributed = result.get("attributed_spans") or []
+        _render_answer_with_spans(answer, attributed)
         _sources_grid(citations)
         _follow_up_chips(follow_up_questions, message_idx)
 
