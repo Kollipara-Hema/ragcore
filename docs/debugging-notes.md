@@ -403,6 +403,115 @@ Add a unit test (or integration test) for `orchestrator.query()` that mocks the 
 
 ---
 
+## 2026-04-29 — Production Llama emitted multi-line JSON arrays for follow-up questions
+
+### Symptom
+
+Production Render backend returned `follow_up_questions: null` on every `/query`. Local backend with the same prompt and the same model (Llama 3.3 70B via Groq) returned well-formed 3-element arrays in 4/4 test cases.
+
+### Initial hypothesis (wrong)
+
+Stale deploy — Render hadn't picked up the updated prompt code. Was about to add deploy-SHA logging to confirm when the actual issue surfaced.
+
+### Actual root cause
+
+Production Llama emitted three consecutive single-element JSON arrays on separate lines:
+
+```
+["First question?"]
+["Second question?"]
+["Third question?"]
+```
+
+Each line is valid JSON. The parser called `json.loads(text)`, which reads the first complete value — a 1-element list — failed the "exactly 3 strings" validation, and returned `[]`. Local Llama with the same prompt produced a single 3-element array. Same model, same prompt, different output shape in production.
+
+The root cause was found by bumping the existing DEBUG-level error log to WARNING with `%r` format: `logger.warning("FOLLOWUP_RAW_RESPONSE: %r", text)`. The `repr()` output preserved the embedded newlines that made the multi-line shape visible. `%s` would have collapsed the lines and hidden the structure entirely.
+
+### Fix
+
+Two layers:
+
+1. **Prompt**: added an explicit structural example block specifying "ONE array, not multiple" to reduce shape variation.
+2. **Parser**: made robust to the multi-array case — try the happy path first (single `json.loads`), fall back to line-by-line parsing that strips non-array lines and flattens results.
+
+Production compliance went from 0% to 100% across five varied test queries after the fix.
+
+### Lesson
+
+LLM output shape is not deterministic across deploys, even with the same model and the same prompt. Local testing establishes a floor on compliance, not a ceiling on shapes the model might emit in production. Build parsers that handle multiple shapes when the cost of rigidity is silent failure. Log raw responses at WARNING (not DEBUG) on validation failures — production failures must be visible without log-level changes. Use `%r` format rather than `%s` so invisible characters (newlines, quotes) are preserved in the log output.
+
+### Commits
+
+- `8588194` — Log raw LLM response on follow-up validation failure
+- `cf68e2a` — Make follow-up parser robust to multi-line JSON arrays
+
+---
+
+## 2026-04-29 — Streamlit widget key collision via hash() across multi-turn chat history
+
+### Symptom
+
+Clicking a follow-up suggestion chip in the second response raised:
+
+```
+StreamlitDuplicateElementKey: There are multiple elements with the same key='followup_4618601950993349981'
+```
+
+The error message named the issue directly.
+
+### Root cause
+
+Follow-up chips used content-based hash keys: `key=f"followup_{hash(question)}"`. Streamlit re-renders the entire chat history on every interaction, including all previous follow-up chip sets. Two scenarios trigger collision: the LLM produces the same follow-up question text in two different responses, or two different strings hash to the same value. Either way, two `st.button` calls with identical keys raise `StreamlitDuplicateElementKey`.
+
+The bug was invisible in single-turn testing because one response produces one set of follow-up chips with no possibility of duplication. Collision requires at least two rendered responses in the same session — which only happens in real multi-turn chat history.
+
+### Fix
+
+Position-based keys: `key=f"followup_{message_idx}_{i}"` where `message_idx` is the message's index in chat history and `i` is the chip's position within that message. Threaded `message_idx` through `_render_assistant_message` and `_follow_up_chips`. Uniqueness is guaranteed by construction, independent of question content.
+
+### Lesson
+
+For any framework that requires globally unique widget keys across re-renders, avoid content-based hashing. Position-based keys are simpler and provably unique. Hash-based keys appear stable but fail silently in collision cases that only surface once a feature is exercised across more than one turn. Multi-turn chat features need multi-turn testing.
+
+### Commit
+
+`2ba58cd` — Add hallucination verifier toggle and fix follow-up chip key collision (the chip-key fix landed bundled with the verifier toggle — both touched the same file and the collision surfaced while testing the toggle)
+
+---
+
+## 2026-04-30 — Llama wrapping prior: \<cite\> tags never adopted despite 4 prompt iterations
+
+### Symptom
+
+After four prompt iterations asking Llama 3.3 70B to wrap cited content in `<cite source="N">...</cite>` tags, local compliance was 0/5. The model consistently emitted trailing markers (`<cite source="1">` after the sentence end, not wrapping it) regardless of prompt wording.
+
+### Initial hypothesis (wrong)
+
+Prompt engineering issue — better examples, explicit CORRECT/WRONG contrast blocks, few-shot demonstration, or answer-completion framing would move the model to wrapping behavior. Tried all four. Each iteration produced the same trailing-marker output.
+
+### Actual root cause
+
+Llama 3.3 70B has heavy RLHF training on `[Source N]` trailing citation patterns. The pattern occupies a fixed slot in the model's representation of how to attribute a claim. `<cite source="N">` mapped to that same trailing slot — the prompt asked for wrapping, the model's prior for what a citation marker is produced trailing output every time. Four varied prompt rewrites hitting the same wall is the signal that the prior won't move.
+
+### Decision
+
+Adapt the parser rather than the model. Switched from attempting to extract spans the model was supposed to delimit, to extracting the clause preceding each trailing marker using a sentence-boundary heuristic (last `. `, `! `, or `? ` before the marker). Renamed the field from `cited_spans` to `attributed_spans` to accurately describe what's produced: the parser attributes source N to the clause preceding marker N — it is not reporting boundaries the LLM drew.
+
+The visual output (yellow highlight + source chip per attributed clause) is identical to what wrapping would have produced. The difference is in the README, commit messages, and field name: what shipped is sentence-level attribution, not LLM-bounded citation spans.
+
+### Lesson
+
+When a model has strong RLHF-trained priors, 3+ varied prompt rewrites all producing the same non-target shape is the signal to stop iterating and adapt downstream instead. Prompt iteration past that point burns time without changing the prior.
+
+Honest naming is a separate decision from adapting the implementation, but it follows from the same reasoning. `cited_spans` would have been accurate if the LLM drew the boundaries. `attributed_spans` is accurate for what the parser actually produces. The visual output was identical; the field name is where the honesty lives.
+
+### Commits
+
+- `8567eaa` — Add attributed_spans to QueryResponse via trailing-marker parser
+- `9e49d6c` — Render attributed_spans as inline highlights with source chips
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -414,3 +523,11 @@ Across the bugs documented in this file, a recurring pattern: code in the repo's
 The 2026-04-26 audit cleanup confirmed the PARTIAL prediction held precisely. All five latent bugs (items 7–11 in AUDIT.md) were found in modules the audit had flagged as PARTIAL or SCAFFOLD — the agent endpoint, the tracer, the Cohere embedder, and the retrieval executor's dead and broken methods. Not one surfaced from a module the audit marked WORKING. The audit's classification scheme was accurate as a forward predictor: WORKING modules were safe, PARTIAL and SCAFFOLD modules contained every bug found.
 
 The audit's PARTIAL prediction held again on a 2026-04-26 RAGAS integration. AUDIT.md flagged `GenerationEvaluator`'s RAGAS code path as PARTIAL — "code present; requires extra install." Installing the extra was the easy part; what surfaced on first end-to-end use was a chain of distinct integration issues. The benchmark runner had no RAGAS code path despite the existing class. The 0.4.x library had migrated from the API the existing code targeted (column names changed, llm wrapper deprecated). The default judge configuration truncated on long answers, dropping 14 of 50 queries with no in-band warning. Each issue was invisible until the integration was forced to execute end-to-end, exactly matching the singleton bug, the UUID mismatch, and the NDCG dedup before it. PARTIAL means "looks correct in isolation but has never been exercised against real workflow." That's the right level of skepticism to apply.
+
+Two of the 2026-04-29 bugs share a structural pattern that's distinct from the PARTIAL-module theme: "worked locally" was the wrong test bar. Production Llama emitted multi-array JSON that local Llama never produced with the same model and prompt; the Streamlit key collision only manifested once chat history held more than one rendered response. In both cases, local testing exercised the feature against a narrower input space than production would. The multi-line JSON bug was invisible until a WARNING-level log with `%r` format surfaced the raw production response shape; the key-collision bug was invisible until a second response was rendered in the same session.
+
+**Takeaway:** "works locally" misses shape variations that only appear at scale or with state accumulation. For features whose correctness depends on runtime behavior — LLM output shape, stateful re-renders — plan for production-shaped variation: log raw responses at WARNING (not DEBUG) on validation failures so failures are visible without log-level changes; use `%r` to preserve invisible characters; exercise multi-turn flows in feature testing, not just the single-turn happy path.
+
+The 2026-04-30 attribution-spans investigation surfaced a separate pattern. Four varied prompt rewrites all asked Llama 3.3 70B to wrap cited content in `<cite>` tags; all four produced the same trailing-marker output. The signal was clear by iteration three — the model's RLHF-trained `[Source N]` prior wasn't moving. Adapting the parser downstream to attribute the preceding clause from trailing markers was cheaper and more reliable than a fifth iteration.
+
+**Takeaway:** when 3+ varied prompt rewrites produce the same non-target shape, stop iterating and adapt post-processing instead. The honest corollary: when adapting changes what's actually shipped, rename to match reality. `cited_spans` would have implied the LLM drew the span boundaries; `attributed_spans` accurately describes parser-derived clause attribution. The visual output was identical; the field name is where the honesty lives.
