@@ -678,11 +678,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-    # S7. Version marker (temporary — remove after cloud deploy confirmed)
-    st.markdown(
-        f'<p style="font-size:10px;color:{TEXT_MUTED};margin:8px 0 0">UI build: 2026-04-29-followup-v1</p>',
-        unsafe_allow_html=True,
-    )
+    # S7. Version marker (temporary — removed after cloud deploy confirmed)
 
     # S8. About expander
     with st.expander("About"):
