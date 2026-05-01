@@ -328,6 +328,34 @@ class RAGOrchestrator:
                     "faithfulness_score": self_rag_result.faithfulness_score,
                     "regenerated": self_rag_result.additional_retrievals > 0,
                 }
+            elif effective_strategy == "flare":
+                from generation.advanced_generation import FLAREGenerator
+                flare_gen = FLAREGenerator(
+                    llm_service=self._generation,
+                    retrieval_executor=self._executor,
+                    prompt_builder=self._prompt_builder,
+                    max_retrieval_rounds=settings.flare_max_retrieval_rounds,
+                )
+                flare_result = await flare_gen.generate(
+                    query=request.query,
+                    initial_chunks=reranked,
+                )
+                logger.info(
+                    "FLARE: %d retrieval round(s), novel tokens per round: %s",
+                    flare_result.retrieval_rounds,
+                    flare_result.novel_tokens_per_round,
+                )
+                # Build citations from the full merged chunk pool
+                flare_prompt = self._prompt_builder.build(
+                    query=request.query,
+                    chunks=flare_result.all_chunks,
+                    query_type=decision.query_type,
+                )
+                gen_answer = flare_result.answer
+                gen_citations = flare_prompt.citations
+                gen_model = settings.llm_model
+                gen_tokens = flare_result.total_tokens
+                gen_cached = False
             else:
                 # Standard path: single LLM call with cache support
                 result = await self._generation.generate(
