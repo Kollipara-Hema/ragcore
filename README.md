@@ -285,7 +285,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 | `AZURE_OPENAI_API_KEY` | — | Azure OpenAI API key |
 | `AZURE_OPENAI_DEPLOYMENT` | — | Model deployment name |
 | `AZURE_OPENAI_API_VERSION` | `2024-02-15-preview` | Azure API version |
-| `GENERATION_STRATEGY` | `basic` | Options: `basic`, `self_rag`, `flare`, `agentic`. Self-RAG adds claim verification. |
+| `GENERATION_STRATEGY` | `basic` | `basic`, `self_rag` (claim verification loop), `flare` (FLARE-inspired with numeric-novelty re-retrieval trigger), `agentic` (scaffolded — falls through to basic). |
 
 ### Evaluation
 
@@ -337,7 +337,7 @@ ragcore/
 │
 ├── generation/
 │   ├── llm_service.py      # Provider switcher: Groq / OpenAI / Anthropic / Ollama
-│   ├── advanced_generation.py  # SelfRAGGenerator · FLAREGenerator (not wired to API)
+│   ├── advanced_generation.py  # SelfRAGGenerator · FLAREGenerator · AgenticRAG
 │   └── prompts/            # Prompt templates
 │
 ├── ingestion/
@@ -404,6 +404,7 @@ mock-target resolution bug in the test itself, unrelated to current work.
 - Query routing: heuristic regex + LLM fallback, dispatches to 5 of 6
   retrieval strategies; parent-child is enumerated but not wired
 - Basic and Self-RAG generation paths, configurable via `GENERATION_STRATEGY`
+- FLARE-inspired iterative generation: dollar-token novelty between response and retrieved chunks triggers re-retrieval; configurable via `GENERATION_STRATEGY=flare`. Heuristic deviates from Jiang et al. 2023 (which uses token logprobs unavailable on Groq's Llama 3.3 70B endpoint); see the `FLAREGenerator` docstring for rationale.
 - Retrieval evaluation: MRR, NDCG@5, hit@5, precision@5, recall@5 — all
   correctly bounded after dedup fix (see debugging notes)
 - LLM-judged faithfulness via RAGAS (gpt-4o-mini judge) on the same 50 FiQA
@@ -425,8 +426,7 @@ mock-target resolution bug in the test itself, unrelated to current work.
   application emits no metrics
 - Multi-vector-store: Weaviate/Chroma/Pinecone configs exist; only FAISS is
   verified end-to-end
-- Advanced generation: FLARE and Agentic RAG code is in
-  `generation/advanced_generation.py` but not wired to the API
+- Agentic RAG: code is in `generation/advanced_generation.py` but not wired to the orchestrator; `GENERATION_STRATEGY=agentic` falls through to basic generation
 - RAGAS evaluation runs end-to-end and produces the LLM-judged faithfulness
   numbers in the headline table. Word-overlap retained alongside RAGAS as the
   displaceable historical metric — the headline finding is that the two metrics
@@ -463,8 +463,8 @@ mock-target resolution bug in the test itself, unrelated to current work.
 
 ## What's next
 
-- Wire FLARE and Agentic RAG into the generation strategy dispatch (code
-  exists in `advanced_generation.py`, not yet called by orchestrator)
+- Wire Agentic RAG into the generation strategy dispatch (code exists in
+  `advanced_generation.py`, not yet called by orchestrator)
 - Investigate per-claim support rates to test the metric-disagreement
   hypothesis: are Self-RAG's "unsupported" claims actually unsupported, or
   supported by retrieved contexts not surfaced in citations?
