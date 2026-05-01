@@ -419,8 +419,6 @@ mock-target resolution bug in the test itself, unrelated to current work.
 
 ### Deferred or scaffolded
 
-- Self-RAG claim verification hardcodes `gpt-4o-mini` for the verification
-  step — works if `OPENAI_API_KEY` is set, not provider-agnostic
 - Monitoring: `NoOpTracer` methods are all `pass`; Langfuse tracing is off by
   default; Prometheus/Grafana appear in `docker-compose.yml` but the
   application emits no metrics
