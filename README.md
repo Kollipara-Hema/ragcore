@@ -387,7 +387,7 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 103 unit tests passing, 29 of 30 integration tests passing. One
+Current: 113 unit tests passing, 29 of 30 integration tests passing. One
 integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
 mock-target resolution bug in the test itself, unrelated to current work.
 
