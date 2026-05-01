@@ -512,6 +512,133 @@ Honest naming is a separate decision from adapting the implementation, but it fo
 
 ---
 
+## 2026-04-30 — FLARE [UNCERTAIN: topic] heuristic abandoned for numeric-novelty after Llama 3.3 70B failed to emit self-signaling markers
+
+### Symptom
+
+The existing `FLAREGenerator`'s iterative loop was gated on detecting
+`[UNCERTAIN: topic]` markers in LLM responses. Empirical test against
+Llama 3.3 70B via Groq: the marker never appeared. Round 0 didn't
+include the instruction at all (gated behind `if answer_parts:`); round
+1+ included an explicit instruction to emit `[UNCERTAIN: topic]` when
+uncertain. Both rounds returned fully-formed confident answers with
+zero markers.
+
+### Initial hypotheses (wrong)
+
+1. Prompt wording too weak — clearer instruction would move the model.
+2. The gating logic prevents the instruction from reaching the model in
+   the meaningful path.
+
+### Actual root cause
+
+Hypothesis (2) was confirmed by reading the gating logic — the instruction
+was absent from round 0. Round 1 confirmed (1) was also wrong: the
+instruction reached the model and was ignored. Llama 3.3 70B's RLHF
+training produces complete, confident answers; structural self-interruption
+with `[UNCERTAIN: topic]` markers is not a behavior the model was trained
+to emit on command.
+
+### Fix
+
+Abandoned the `[UNCERTAIN: topic]` heuristic entirely. Replaced with
+dollar-token novelty: extract `$`-prefixed numeric tokens from the
+response, diff against tokens present in the retrieved chunks,
+re-retrieve when novel tokens appear. No model self-signaling required.
+The new heuristic is robust to Llama's output style because it operates
+on the response's content rather than structural markers the model must
+voluntarily emit.
+
+### Lesson
+
+When a model has strong RLHF-trained priors, 2–3 varied prompt rewrites
+all producing the same non-target shape is the signal to stop iterating
+and adapt downstream instead. Same pattern as the 2026-04-30
+attribution-spans entry above — that one abandoned `<cite>...</cite>`
+wrapping for trailing-marker parsing after four prompt iterations failed
+to move Llama's trailing-citation prior. Both cases: the right move is
+a downstream adaptation that produces the desired observable behavior
+without requiring the model to change its output shape.
+
+### Commit
+
+`6affffb` — Wire FLARE-inspired generator into orchestrator with numeric-novelty heuristic
+
+---
+
+## 2026-04-30 — FLARE non-convergent loop: regex asymmetry between response and chunk dollar-token extraction
+
+### Symptom
+
+End-to-end curl test of `GENERATION_STRATEGY=flare` with the query
+"What is the difference between a Roth 401k and a traditional 401k in
+terms of contribution limits and tax treatment?" hit the iteration cap:
+4 rounds, 38s latency, 5629 tokens. The novel token set was identical
+across every round: `['$18,000', '$54,000']`. Round 1 added 2 new
+chunks; rounds 2 and 3 added 0. The loop ran to cap without converging.
+
+### Hypotheses considered
+
+1. Heuristic is over-sensitive — every query with dollar figures produces
+   unverifiable tokens.
+2. Corpus genuinely doesn't contain the exact figures the LLM produced.
+3. Regex applied asymmetrically between response and chunk content.
+
+### Tests run
+
+Dumped the 2 chunks added in round 1 and grepped for `$18,000`,
+`$18000`, `18,000`, `18000`, `$54,000`. Chunk `09c1ac43` contained
+`"contribute up to $18k/year"` and `"$54k/year total"` — the source of
+both figures. The corpus contained the facts. **Ruled out (2).**
+
+### Actual root cause
+
+The regex `\$\d{1,3}(?:,\d{3})*(?:\.\d+)?` matched `$18,000` in the
+response but matched only `$18` in the chunk's `$18k/year` (the regex
+stopped before the `k`). Result: `chunk_dollars = {'$18'}`,
+`answer_dollars = {'$18,000'}` — no overlap. The heuristic flagged
+`$18,000` as novel every round even though it was grounded in the corpus
+all along. Asymmetric regex application against differently-formatted
+text.
+
+### Fix
+
+Two layers:
+
+1. **Regex normalization**: extended `_extract_dollar_tokens` to run two
+   passes — the original regex (with a skip if the match ends immediately
+   before `k`/`K`), plus a second pass `\$(\d+)[kK]\b` that normalizes
+   abbreviated thousands (`$18k` → `$18,000`) before comparison.
+2. **Zero-new-chunks exit condition**: if de-duplicating by `chunk_id`
+   produces an empty `new_chunks` list after re-retrieval, the loop
+   breaks before the next LLM call. This bottoms out gracefully when the
+   retriever has nothing more to offer regardless of heuristic state.
+
+Post-fix curl on the same query: 1 round, 10.5s latency, 1211 tokens.
+Mortgage query unchanged at 1 round (no dollar tokens in answer).
+
+### Regression tests or verification
+
+`test_flare_exits_when_reretrieval_adds_no_new_chunks` covers the
+zero-new-chunks exit condition explicitly.
+
+### Lesson
+
+When a heuristic fires repeatedly without converging, suspect asymmetric
+comparison — two sets generated by processes that don't share the same
+normalization. The bug is rarely "the heuristic is too sensitive"; it's
+usually "the comparison is apples-to-oranges in some subtle way."
+Generalizes beyond regex: any time a system computes set-difference
+between two collections that pass through different extraction or
+formatting paths, verify the formats are normalized before treating the
+difference as meaningful.
+
+### Commit
+
+`6affffb` — Wire FLARE-inspired generator into orchestrator with numeric-novelty heuristic
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -530,4 +657,8 @@ Two of the 2026-04-29 bugs share a structural pattern that's distinct from the P
 
 The 2026-04-30 attribution-spans investigation surfaced a separate pattern. Four varied prompt rewrites all asked Llama 3.3 70B to wrap cited content in `<cite>` tags; all four produced the same trailing-marker output. The signal was clear by iteration three — the model's RLHF-trained `[Source N]` prior wasn't moving. Adapting the parser downstream to attribute the preceding clause from trailing markers was cheaper and more reliable than a fifth iteration.
 
-**Takeaway:** when 3+ varied prompt rewrites produce the same non-target shape, stop iterating and adapt post-processing instead. The honest corollary: when adapting changes what's actually shipped, rename to match reality. `cited_spans` would have implied the LLM drew the span boundaries; `attributed_spans` accurately describes parser-derived clause attribution. The visual output was identical; the field name is where the honesty lives.
+When 3+ varied prompt rewrites produce the same non-target shape, stop iterating and adapt post-processing instead. The honest corollary: when adapting changes what's actually shipped, rename to match reality. `cited_spans` would have implied the LLM drew the span boundaries; `attributed_spans` accurately describes parser-derived clause attribution. The visual output was identical; the field name is where the honesty lives.
+
+The 2026-04-30 FLARE `[UNCERTAIN]` investigation is the second instance of the RLHF-prior pattern. Two rounds, two different failure modes — instruction absent in round 0, instruction ignored in round 1 — same output: complete confident answers with no self-interruption marker. The pivot to numeric-novelty was faster than the attribution-spans pivot because the prior entry had already established the threshold. Each recurrence narrows the generalization: it is not only `[Source N]` trailing citations that are entrenched; Llama's RLHF priors resist structural self-interruption markers of any shape. The downstream adaptation strategy now has two confirming cases.
+
+The 2026-04-30 regex-asymmetry bug introduces a pattern distinct from the PARTIAL-module and RLHF-prior themes: asymmetric set-difference in heuristics. The `$18k` vs `$18,000` case is the archetype — two sets extracted from text that passed through different formatting conventions, compared as if normalized to the same space. The heuristic fired every round not because it was wrong about what it was measuring, but because the measure was applied inconsistently across the two sides of the comparison. Before treating a set-difference as meaningful, verify that both sets were produced by extraction paths that normalize to the same format. When a heuristic fires without converging across multiple rounds with no change in the underlying data, asymmetric normalization is the first thing to check. Generalizes beyond regex: any time two collections pass through separate extraction or formatting paths before being compared, the difference may be measuring format divergence rather than semantic novelty.
