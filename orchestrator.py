@@ -301,10 +301,6 @@ class RAGOrchestrator:
 
             _self_rag_stats: Optional[dict] = None
             if effective_strategy == "self_rag":
-                # NOTE: SelfRAGGenerator's internal claim extraction and verification
-                # steps are currently hardcoded to OpenAI (gpt-4o-mini). If
-                # LLM_PROVIDER is not OpenAI, ensure OPENAI_API_KEY is set, or
-                # Self-RAG will fail at the verification step.
                 from generation.advanced_generation import SelfRAGGenerator
                 self_rag_gen = SelfRAGGenerator(
                     max_additional_retrievals=settings.self_rag_max_additional_retrievals

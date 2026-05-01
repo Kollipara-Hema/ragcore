@@ -2,51 +2,39 @@
 Unit tests for SelfRAGGenerator claim verification and extraction parsers.
 
 Covers the JSON parsing layer in _verify_claim and _extract_claims,
-mocking the OpenAI client so no real API calls are made.
+mocking the GenerationService interface so no real API calls are made.
 """
 from __future__ import annotations
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 
-def _make_openai_response(content: str):
-    """Build a minimal fake openai ChatCompletion response."""
-    message = MagicMock()
-    message.content = content
-    choice = MagicMock()
-    choice.message = message
-    response = MagicMock()
-    response.choices = [choice]
-    return response
+def _make_mock_service(content: str):
+    """Build a mock GenerationService returning `content` as .answer."""
+    mock_result = MagicMock()
+    mock_result.answer = content
+    mock_service = AsyncMock()
+    mock_service.generate = AsyncMock(return_value=mock_result)
+    return mock_service
 
 
 def _run_verify(content: str) -> tuple:
-    """Call _verify_claim with a mocked LLM returning `content`."""
+    """Call _verify_claim with a mocked LLM service returning `content`."""
     from generation.advanced_generation import SelfRAGGenerator
 
     gen = SelfRAGGenerator()
-    fake_response = _make_openai_response(content)
-
-    with patch("openai.AsyncOpenAI") as mock_cls:
-        mock_client = AsyncMock()
-        mock_cls.return_value = mock_client
-        mock_client.chat.completions.create = AsyncMock(return_value=fake_response)
-        return asyncio.run(gen._verify_claim("some claim", "some context"))
+    mock_service = _make_mock_service(content)
+    return asyncio.run(gen._verify_claim("some claim", "some context", mock_service))
 
 
 def _run_extract(content: str) -> list:
-    """Call _extract_claims with a mocked LLM returning `content`."""
+    """Call _extract_claims with a mocked LLM service returning `content`."""
     from generation.advanced_generation import SelfRAGGenerator
 
     gen = SelfRAGGenerator()
-    fake_response = _make_openai_response(content)
-
-    with patch("openai.AsyncOpenAI") as mock_cls:
-        mock_client = AsyncMock()
-        mock_cls.return_value = mock_client
-        mock_client.chat.completions.create = AsyncMock(return_value=fake_response)
-        return asyncio.run(gen._extract_claims("some answer text"))
+    mock_service = _make_mock_service(content)
+    return asyncio.run(gen._extract_claims("some answer text", mock_service))
 
 
 class TestVerifyClaimParser:
@@ -88,3 +76,30 @@ class TestExtractClaimsParser:
         claims = _run_extract(content)
         assert len(claims) == 2
         assert any("self-attention" in c for c in claims)
+
+
+class TestSelfRAGVerificationCrossProvider:
+
+    def test_self_rag_verification_with_anthropic_provider(self):
+        """Anthropic path: raw string response (no native JSON mode), parsed defensively."""
+        from generation.advanced_generation import SelfRAGGenerator
+
+        gen = SelfRAGGenerator()
+        mock_service = _make_mock_service(
+            json.dumps({"supported": True, "evidence": "direct context quote"})
+        )
+        result = asyncio.run(gen._verify_claim("some claim", "some context", mock_service))
+        assert result == (True, "direct context quote")
+        mock_service.generate.assert_awaited_once()
+
+    def test_self_rag_verification_with_groq_provider(self):
+        """Groq path: same interface, confirm no regression on string-bool edge case."""
+        from generation.advanced_generation import SelfRAGGenerator
+
+        gen = SelfRAGGenerator()
+        mock_service = _make_mock_service(
+            json.dumps({"supported": "false", "evidence": ""})
+        )
+        result = asyncio.run(gen._verify_claim("unverifiable claim", "unrelated context", mock_service))
+        assert result == (False, "")
+        mock_service.generate.assert_awaited_once()
