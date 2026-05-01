@@ -328,153 +328,138 @@ Context:
 # PHASE 5B: FLARE Generator
 # =============================================================================
 
+@dataclass
+class FLAREResult:
+    """Result from FLARE-inspired generation including iterative retrieval details."""
+    answer: str
+    all_chunks: list          # RetrievedChunk objects from all retrieval rounds
+    retrieval_rounds: int
+    total_tokens: int
+    novel_tokens_per_round: list[list[str]]  # For observability
+
+
 class FLAREGenerator:
     """
-    FLARE: Forward-Looking Active REtrieval Augmented Generation.
+    FLARE-inspired variant. Uses dollar-token novelty as the re-retrieval trigger,
+    not the paper's token-logprob mechanism.
 
-    PROBLEM WITH BASIC RAG:
-        - Retrieves documents ONCE at the start based on the original query
-        - If the answer requires information not in those documents, it hallucinates
-        - Long answers may need different information at different points
+    The paper (Jiang et al. 2023) checks per-token confidence via logprobs and
+    re-retrieves when a sentence's average log-prob falls below a threshold.
+    Groq's Llama 3.3 70B endpoint does not expose per-token logprobs.
 
-    HOW FLARE WORKS:
-        - Generates answer sentence by sentence
-        - Before generating each sentence, checks confidence in what it knows
-        - If confidence is LOW → pauses and retrieves more specific information
-        - Continues generating with fresh context
-        - Retrieval is TARGETED to exactly what the model is uncertain about
+    The original [UNCERTAIN: topic] self-signaling approach was abandoned:
+    Llama 3.3 70B's RLHF fine-tuning causes it to emit confident, complete
+    answers and reliably ignore structural self-interruption instructions.
+    Verified empirically over two test rounds against the existing prompt.
 
-    ANALOGY:
-        Like a researcher who writes a report and looks up specific facts
-        as they need them, rather than reading everything upfront.
+    Heuristic: after each generation round, extract $-prefixed numeric tokens
+    from the response using r'\\$\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)?'. Compare
+    against the same tokens present in the current chunk pool. Any $-token in
+    the response but absent from all chunks is a potential hallucination —
+    re-retrieve using (original_query + novel tokens) as the query, then
+    regenerate with the expanded chunk pool.
 
-    WHEN TO USE:
-        - Long-form answers (reports, summaries)
-        - Complex questions that span multiple topics
-        - When the initial retrieval might miss relevant information
+    Validated on: "How does the 2024 IRA contribution limit compare to 2023,
+    and what's the catch-up provision for people over 50?" — the hallucinated
+    $1,000 catch-up figure correctly fires the heuristic while grounded
+    $6,500 and $7,000 figures do not.
     """
 
     def __init__(
         self,
-        confidence_threshold: float = 0.6,
+        llm_service,
+        retrieval_executor,
+        prompt_builder,
         max_retrieval_rounds: int = 3,
     ):
-        """
-        Args:
-            confidence_threshold: Retrieve more if generation confidence drops below this.
-                                  Lower = retrieve more often = better but slower
-            max_retrieval_rounds: Maximum retrieval rounds to prevent infinite loops
-        """
-        self.confidence_threshold = confidence_threshold
+        self._llm = llm_service
+        self._retrieval = retrieval_executor
+        self._prompt_builder = prompt_builder
         self.max_retrieval_rounds = max_retrieval_rounds
 
-    async def generate(
-        self,
-        query: str,
-        initial_chunks,
-        prompt_builder,
-        retrieval_executor,
-        llm_service,
-    ) -> dict:
-        """
-        Generate an answer with active retrieval when confidence drops.
+    @staticmethod
+    def _extract_dollar_tokens(text: str) -> set[str]:
+        tokens: set[str] = set()
+        # Standard comma-grouped form: $18,000 or $1,234.56 or $100
+        # Skip matches followed immediately by k/K (handled by abbrev path below)
+        for m in re.finditer(r'\$\d{1,3}(?:,\d{3})*(?:\.\d+)?', text):
+            if m.end() < len(text) and text[m.end()].lower() == 'k':
+                continue
+            tokens.add(m.group())
+        # Abbreviated thousands: $18k, $54K → normalized to canonical $18,000 / $54,000
+        # so chunk-side $18k and response-side $18,000 compare as equal
+        for m in re.finditer(r'\$(\d+)[kK]\b', text):
+            tokens.add(f"${int(m.group(1)) * 1000:,}")
+        return tokens
 
-        Returns:
-            Dict with 'answer', 'retrieval_rounds', 'total_tokens'
+    async def generate(self, query: str, initial_chunks) -> FLAREResult:
+        """
+        Generate an answer with iterative retrieval triggered by dollar-token novelty.
         """
         from utils.models import QueryType, RetrievalStrategy
+        from retrieval.router.query_router import RoutingDecision
 
         all_chunks = list(initial_chunks)
-        answer_parts = []
-        retrieval_count = 0
+        novel_per_round: list[list[str]] = []
         total_tokens = 0
+        answer = ""
 
-        # Generate the answer in multiple passes
-        # Each pass generates until we detect low confidence or finish
-        for round_num in range(self.max_retrieval_rounds + 1):
-            logger.info("FLARE round %d/%d", round_num + 1, self.max_retrieval_rounds + 1)
+        for round_idx in range(self.max_retrieval_rounds + 1):
+            logger.info("FLARE round %d/%d", round_idx + 1, self.max_retrieval_rounds + 1)
 
-            # Build prompt with all currently available chunks
-            prompt = prompt_builder.build(
+            prompt = self._prompt_builder.build(
                 query=query,
                 chunks=all_chunks,
                 query_type=QueryType.ANALYTICAL,
             )
-
-            # Add continuation instruction if we've already started the answer
-            if answer_parts:
-                previous = " ".join(answer_parts)
-                prompt.messages[-1]["content"] += (
-                    f"\n\nPartial answer so far (continue from here):\n{previous}"
-                    f"\n\nContinue the answer. Stop with [UNCERTAIN: topic] if you "
-                    f"need more information about a specific topic."
-                )
-
-            # Generate next part of the answer
-            result = await llm_service.generate(
+            result = await self._llm.generate(
                 query=query,
                 prompt=prompt,
                 query_type=QueryType.ANALYTICAL,
                 strategy_used=RetrievalStrategy.HYBRID,
             )
             total_tokens += result.total_tokens
+            answer = result.answer
 
-            generated_text = result.answer
-
-            # Check if the model flagged uncertainty
-            # Look for [UNCERTAIN: topic] pattern in the output
-            uncertainty_match = re.search(
-                r'\[UNCERTAIN:\s*([^\]]+)\]',
-                generated_text,
-                re.IGNORECASE
+            answer_dollars = self._extract_dollar_tokens(answer)
+            chunk_dollars = self._extract_dollar_tokens(
+                " ".join(c.chunk.content for c in all_chunks)
             )
+            novel = answer_dollars - chunk_dollars
+            novel_per_round.append(sorted(novel))
 
-            if uncertainty_match and retrieval_count < self.max_retrieval_rounds:
-                # Model is uncertain about something — retrieve more info
-                uncertain_topic = uncertainty_match.group(1).strip()
-                logger.info("FLARE: Model uncertain about '%s' — retrieving", uncertain_topic)
-
-                # Add the text before the uncertainty marker
-                before_uncertain = generated_text[:uncertainty_match.start()].strip()
-                if before_uncertain:
-                    answer_parts.append(before_uncertain)
-
-                # Retrieve targeted information about the uncertain topic
-                try:
-                    from retrieval.router.query_router import RoutingDecision
-
-                    decision = RoutingDecision(
-                        query_type=QueryType.FACTUAL,
-                        primary_strategy=RetrievalStrategy.HYBRID,
-                        fallback_strategy=RetrievalStrategy.SEMANTIC,
-                        expanded_queries=[uncertain_topic],
-                    )
-                    extra = await retrieval_executor.execute(decision, top_k=5)
-                    all_chunks.extend(extra.chunks)
-                    retrieval_count += 1
-
-                except Exception as e:
-                    logger.warning("FLARE retrieval failed: %s", e)
-                    # Continue without extra retrieval
-                    answer_parts.append(generated_text)
-                    break
-
-            else:
-                # No uncertainty detected — this is the final answer part
-                answer_parts.append(generated_text)
+            if not novel or round_idx == self.max_retrieval_rounds:
                 break
 
-        # Combine all answer parts into the final answer
-        final_answer = " ".join(answer_parts)
+            re_query = f"{query} {' '.join(sorted(novel))}"
+            logger.info("FLARE: novel dollar tokens %s — re-querying", sorted(novel))
 
-        # Clean up any remaining [UNCERTAIN:...] markers
-        final_answer = re.sub(r'\[UNCERTAIN:[^\]]*\]', '', final_answer).strip()
+            decision = RoutingDecision(
+                query_type=QueryType.FACTUAL,
+                primary_strategy=RetrievalStrategy.HYBRID,
+                fallback_strategy=RetrievalStrategy.SEMANTIC,
+                expanded_queries=[re_query],
+            )
+            extra = await self._retrieval.execute(decision, top_k=5)
 
-        return {
-            "answer": final_answer,
-            "retrieval_rounds": retrieval_count + 1,
-            "total_tokens": total_tokens,
-        }
+            existing_ids = {str(c.chunk.chunk_id) for c in all_chunks}
+            new_chunks = [
+                c for c in extra.chunks
+                if str(c.chunk.chunk_id) not in existing_ids
+            ]
+            if not new_chunks:
+                logger.info("FLARE: retriever exhausted — no new chunks, stopping")
+                break
+            all_chunks.extend(new_chunks)
+            logger.info("FLARE: added %d new chunks", len(new_chunks))
+
+        return FLAREResult(
+            answer=answer,
+            all_chunks=all_chunks,
+            retrieval_rounds=len(novel_per_round),
+            total_tokens=total_tokens,
+            novel_tokens_per_round=novel_per_round,
+        )
 
 
 # =============================================================================
