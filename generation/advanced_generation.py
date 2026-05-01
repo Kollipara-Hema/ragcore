@@ -153,7 +153,7 @@ Context:
 
         # ── STEP 2: Extract individual claims from the answer ─────────────────
         logger.info("Self-RAG Step 2: Extracting claims from answer")
-        claims = await self._extract_claims(original_answer)
+        claims = await self._extract_claims(original_answer, llm_service)
         logger.info("Extracted %d claims", len(claims))
 
         # ── STEP 3: Verify each claim against retrieved context ───────────────
@@ -165,7 +165,7 @@ Context:
         additional_retrievals = 0
 
         for claim in claims:
-            is_supported, evidence = await self._verify_claim(claim, context_text)
+            is_supported, evidence = await self._verify_claim(claim, context_text, llm_service)
 
             if is_supported:
                 verified_claims.append(claim)
@@ -256,24 +256,28 @@ Context:
             faithfulness_score=faithfulness,
         )
 
-    async def _extract_claims(self, answer: str) -> list[str]:
+    async def _extract_claims(self, answer: str, llm_service) -> list[str]:
         """Ask the LLM to break the answer into individual verifiable claims."""
         try:
-            from openai import AsyncOpenAI
-            from config.settings import settings
+            from generation.prompts.prompt_builder import ConstructedPrompt
+            from utils.models import QueryType, RetrievalStrategy
 
-            client = AsyncOpenAI(api_key=settings.openai_api_key)
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
+            prompt = ConstructedPrompt(
                 messages=[
                     {"role": "system", "content": self.CLAIM_EXTRACTION_PROMPT},
                     {"role": "user", "content": answer},
                 ],
-                temperature=0,
-                max_tokens=500,
-                response_format={"type": "json_object"},
+                citations=[],
+                chunks_used=0,
+                estimated_tokens=0,
             )
-            data = json.loads(response.choices[0].message.content)
+            result = await llm_service.generate(
+                query=answer,
+                prompt=prompt,
+                query_type=QueryType.FACTUAL,
+                strategy_used=RetrievalStrategy.HYBRID,
+            )
+            data = json.loads(result.answer)
             if isinstance(data, list):
                 claims = data
             elif isinstance(data, dict):
@@ -290,26 +294,30 @@ Context:
             return re.split(r'(?<=[.!?])\s+', answer)
 
     async def _verify_claim(
-        self, claim: str, context: str
+        self, claim: str, context: str, llm_service
     ) -> tuple[bool, str]:
         """Check if a claim is supported by the context."""
         try:
-            from openai import AsyncOpenAI
-            from config.settings import settings
+            from generation.prompts.prompt_builder import ConstructedPrompt
+            from utils.models import QueryType, RetrievalStrategy
 
-            client = AsyncOpenAI(api_key=settings.openai_api_key)
-            prompt = self.VERIFICATION_PROMPT.format(
+            prompt_text = self.VERIFICATION_PROMPT.format(
                 claim=claim,
                 context=context[:3000],   # Limit context to save tokens
             )
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                max_tokens=150,
-                response_format={"type": "json_object"},
+            prompt = ConstructedPrompt(
+                messages=[{"role": "user", "content": prompt_text}],
+                citations=[],
+                chunks_used=0,
+                estimated_tokens=0,
             )
-            data = json.loads(response.choices[0].message.content)
+            result = await llm_service.generate(
+                query=claim,
+                prompt=prompt,
+                query_type=QueryType.FACTUAL,
+                strategy_used=RetrievalStrategy.HYBRID,
+            )
+            data = json.loads(result.answer)
             if isinstance(data, dict):
                 supported = data.get("supported", False)
                 if isinstance(supported, str):
