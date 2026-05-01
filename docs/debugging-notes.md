@@ -639,6 +639,101 @@ difference as meaningful.
 
 ---
 
+## 2026-05-01 — Self-RAG verification provider-coupling removed; shell env vars override .env
+
+### Symptom
+
+`SelfRAGGenerator._extract_claims` and `_verify_claim` instantiated `AsyncOpenAI`
+directly with `settings.openai_api_key`, hardcoded `gpt-4o-mini`, and used OpenAI's
+native `response_format={"type": "json_object"}`. With `LLM_PROVIDER=groq`, the main
+answer generation correctly used Groq, but the verification step silently bypassed the
+configured provider and went to OpenAI. If `OPENAI_API_KEY` was unset, Self-RAG crashed
+at the verification step. Audit-flagged in three places (AUDIT.md known limitation #2,
+README Status, future_work.docx Tier 1.5).
+
+### Root cause
+
+The hardcoded client was an implementation accident, not an algorithmic requirement.
+Self-RAG's verification only needs an LLM capable of: (1) reading an answer and emitting
+a JSON list of claims, (2) reading a claim + context and emitting a JSON verdict. Any
+reasonably capable LLM can do both. The original implementation just wrote OpenAI first
+and never abstracted.
+
+### Fix
+
+Routed both methods through the orchestrator's existing `GenerationService` abstraction
+by accepting `llm_service` as a parameter and building a `ConstructedPrompt` for each
+verification call. The defensive JSON parsing from the 2026-04-18 fix already handles
+cross-provider response variation (Anthropic doesn't support native JSON mode; the same
+defensive parser handles its raw string output). 6 existing unit tests refactored to mock
+at the LLM service interface level. 2 new tests cover Anthropic and Groq paths explicitly.
+113 unit tests total.
+
+### Verification
+
+Local: curl with `OPENAI_API_KEY` unset, `LLM_PROVIDER=groq`,
+`LLM_MODEL=llama-3.3-70b-versatile`. Returned grounded answer with
+`model_used: llama-3.3-70b-versatile` and populated
+`self_rag_stats.verified_claims`. Verification ran on Groq.
+
+Production: Render auto-deployed the commit. Tested via curl to
+`ragcore-api.onrender.com/query` with `verify_claims: true`. Same result —
+Llama-on-Groq running the verification step. `OPENAI_API_KEY` is still set on
+Render at time of writing as a not-yet-decisive proof; deleting it from Render's
+environment and re-testing is the final step (queued separately).
+
+### Lesson — primary
+
+When a coupling is documented in three places (audit, README, future-work doc) but
+the actual code change is small (~60 lines), the social cost of the limitation has
+been higher than the technical cost of the fix. Removing it is also a reminder that
+abstractions documented as known limitations stay limitations until someone explicitly
+converts them. The audit served its purpose here as a forward predictor — it flagged
+the coupling on 2026-04-30 and the fix shipped 24 hours later.
+
+### Sub-finding 1: Shell env vars override `.env` files
+
+During local verification, the curl test returned `model_used: gpt-4o-mini` even
+though `.env` had been updated to `LLM_PROVIDER=groq`. Investigation:
+`env | grep -E "^LLM_"` revealed `LLM_PROVIDER=openai` and `LLM_MODEL=gpt-4o-mini`
+exported in the shell from a prior session. Pydantic-settings priority order: shell
+env beats `.env` file beats code defaults. The shell vars had been silently overriding
+`.env` for some unknown duration. Fix: `unset LLM_PROVIDER LLM_MODEL` in the active
+shell. They were not in any rc file, so a fresh terminal would have cleared them
+automatically.
+
+### Sub-finding 2: `LLM_MODEL` and `LLM_PROVIDER` are independently set
+
+While debugging the shell-var issue: `.env` was authored as a matched pair
+(`LLM_PROVIDER=openai` + `LLM_MODEL=gpt-4o-mini`). Mixing providers without changing
+the model name produces a runtime error from the new provider rejecting the unknown
+model name. There is no validation that the two settings are coherent. Not a
+fix-this-now issue; logged for a future commit that adds mutual-validation or
+smarter default-model-per-provider logic.
+
+### Lesson — sub-findings combined
+
+Configuration coherence has two failure modes worth checking during debugging:
+(1) shell environment leakage from prior sessions silently overriding declared config;
+(2) related config values that are individually valid but jointly incoherent. Standard
+debugging move when local behavior diverges from declared config: `env | grep` for the
+relevant prefix before assuming the config file is being read. Standard config-design
+move: validate related settings together, not just individually.
+
+### Cross-reference
+
+The 2026-04-18 Self-RAG verification entry fixed the prompt template (escaped braces)
+and the parser (positive whitelist for support, defensive bare-string handling). This
+entry removes the provider-coupling that the prompt and parser were running on. The two
+entries together cover the full Self-RAG verification path: prompt correctness, parser
+correctness, provider portability.
+
+### Commit
+
+`b03614d` — Make Self-RAG claim verification provider-agnostic
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
