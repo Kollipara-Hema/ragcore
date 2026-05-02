@@ -734,6 +734,67 @@ correctness, provider portability.
 
 ---
 
+## 2026-05-02 — Citation-rendering "regression" was per-call LLM stochasticity, not a regression
+
+### Symptom
+
+Reported: after the 2026-05-01 Self-RAG provider-agnostic commit, citation
+chips and inline highlights "disappeared" when the hallucination verifier
+was enabled — basic queries showed citations, Self-RAG queries didn't.
+
+### Initial hypothesis (wrong)
+
+Today's Self-RAG commit broke citation rendering. The toggle correlation
+(verifier ON → broken, verifier OFF → working) suggested a Self-RAG-path
+regression in `_extract_attributed_spans` or downstream rendering.
+
+### Tests that distinguished
+
+Three identical curl calls of the same query "How does tax impact mortgage
+payoff?" with the same toggle state and same backend produced
+`num_attributed_spans` of 2, 2, and 0. Same query, same configuration,
+different results across calls. The toggle correlation in the original
+report was a sampling accident — verifier-on queries happened to land on
+calls where Llama didn't emit `<cite source="N">` markers.
+
+### Actual finding
+
+Llama 3.3 70B emits citation markers stochastically per LLM call, not
+just per query shape. The 2026-04-30 attribution-spans entry documented
+that the model resists `<cite>...</cite>` wrapping; that entry framed
+the issue as a deterministic prior. Today's data adds a second dimension:
+even within the trailing-marker format Llama "accepts," emission is
+inconsistent across identical calls. The parser is correct per
+specification — it produces spans when markers are present, returns
+empty when not.
+
+### Fix
+
+None. No code change. The current behavior is correct given the model's
+output. A parser fallback that uses sentence-to-chunk overlap when
+markers are absent could close the visible inconsistency, but that's a
+feature decision, not a bug fix.
+
+### Lesson
+
+When a "regression" report shows correlation with a toggle or input
+change, test variability before treating the correlation as deterministic.
+Three identical runs cost ~30 seconds and would have caught this misdiagnosis
+yesterday. The correct first hypothesis when investigating a feature whose
+output is LLM-mediated is: "is the LLM behaving consistently across calls?"
+That diagnostic step belongs before code-reading.
+
+### Cross-reference
+
+The 2026-04-30 attribution-spans entry established that Llama's RLHF
+prior resists structural wrapping. This entry extends that finding: even
+the trailing-marker format the model "accepts" is emitted with per-call
+stochasticity. The two entries together describe the full envelope of
+Llama's citation-marker behavior — resistant to wrapping, inconsistent
+on emission.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -754,6 +815,6 @@ The 2026-04-30 attribution-spans investigation surfaced a separate pattern. Four
 
 When 3+ varied prompt rewrites produce the same non-target shape, stop iterating and adapt post-processing instead. The honest corollary: when adapting changes what's actually shipped, rename to match reality. `cited_spans` would have implied the LLM drew the span boundaries; `attributed_spans` accurately describes parser-derived clause attribution. The visual output was identical; the field name is where the honesty lives.
 
-The 2026-04-30 FLARE `[UNCERTAIN]` investigation is the second instance of the RLHF-prior pattern. Two rounds, two different failure modes — instruction absent in round 0, instruction ignored in round 1 — same output: complete confident answers with no self-interruption marker. The pivot to numeric-novelty was faster than the attribution-spans pivot because the prior entry had already established the threshold. Each recurrence narrows the generalization: it is not only `[Source N]` trailing citations that are entrenched; Llama's RLHF priors resist structural self-interruption markers of any shape. The downstream adaptation strategy now has two confirming cases.
+The 2026-04-30 FLARE `[UNCERTAIN]` investigation is the second instance of the RLHF-prior pattern. Two rounds, two different failure modes — instruction absent in round 0, instruction ignored in round 1 — same output: complete confident answers with no self-interruption marker. The pivot to numeric-novelty was faster than the attribution-spans pivot because the prior entry had already established the threshold. Each recurrence narrows the generalization: it is not only `[Source N]` trailing citations that are entrenched; Llama's RLHF priors resist structural self-interruption markers of any shape. The downstream adaptation strategy now has two confirming cases. The 2026-05-02 citation-rendering misdiagnosis adds a second dimension: even the trailing-marker format Llama accepts is emitted with per-call stochasticity — the prior produces unreliable compliance across identical calls, not only structural resistance to the target format.
 
 The 2026-04-30 regex-asymmetry bug introduces a pattern distinct from the PARTIAL-module and RLHF-prior themes: asymmetric set-difference in heuristics. The `$18k` vs `$18,000` case is the archetype — two sets extracted from text that passed through different formatting conventions, compared as if normalized to the same space. The heuristic fired every round not because it was wrong about what it was measuring, but because the measure was applied inconsistently across the two sides of the comparison. Before treating a set-difference as meaningful, verify that both sets were produced by extraction paths that normalize to the same format. When a heuristic fires without converging across multiple rounds with no change in the underlying data, asymmetric normalization is the first thing to check. Generalizes beyond regex: any time two collections pass through separate extraction or formatting paths before being compared, the difference may be measuring format divergence rather than semantic novelty.
