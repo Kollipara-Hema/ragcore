@@ -63,6 +63,8 @@ args = parser.parse_args()
 
 os.environ["GENERATION_STRATEGY"] = args.strategy
 
+from config.settings import settings
+
 logging.basicConfig(
     level=logging.WARNING,
     format="%(levelname)s %(name)s: %(message)s",
@@ -267,7 +269,7 @@ async def run(strategy: str) -> None:
     eval_path = REPO_ROOT / "evaluation" / "datasets" / "fiqa_eval.json"
     out_path = REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa_{RUN_DATE}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    meta_pkl = REPO_ROOT / "faiss_metadata.pkl"
+    meta_pkl = Path(settings.faiss_data_dir) / "faiss_metadata.pkl"
 
     with open(eval_path) as f:
         golden: list[dict] = json.load(f)

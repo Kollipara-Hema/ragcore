@@ -7,6 +7,7 @@ import os
 import pickle
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 from uuid import UUID
 
 import faiss
@@ -45,9 +46,11 @@ class BaseVectorStore(ABC):
 
 
 class FAISSVectorStore(BaseVectorStore):
-    def __init__(self, index_file: str = "faiss_index.idx", metadata_file: str = "faiss_metadata.pkl"):
-        self.index_file = index_file
-        self.metadata_file = metadata_file
+    def __init__(self, index_file: str = None, metadata_file: str = None):
+        data_dir = Path(settings.faiss_data_dir)
+        os.makedirs(data_dir, exist_ok=True)
+        self.index_file = index_file or str(data_dir / "faiss_index.idx")
+        self.metadata_file = metadata_file or str(data_dir / "faiss_metadata.pkl")
         self.index = None
         self.metadata: List[Dict[str, Any]] = []
         self._bm25: Optional[BM25Okapi] = None

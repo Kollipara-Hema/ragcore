@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     pinecone_index_name: str = "docintel"
     qdrant_url: str = "http://localhost:6333"
     chroma_persist_dir: str = "./chroma_db"
+    faiss_data_dir: str = "./faiss"
 
     # LLM
     llm_provider: LLMProvider = LLMProvider.GROQ
