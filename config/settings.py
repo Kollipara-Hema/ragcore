@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     pinecone_index_name: str = "docintel"
     qdrant_url: str = "http://localhost:6333"
     chroma_persist_dir: str = "./chroma_db"
+    chroma_collection_name: str = "ragcore"
     faiss_data_dir: str = "./faiss"
 
     # LLM
@@ -89,7 +90,7 @@ class Settings(BaseSettings):
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     enable_query_expansion: bool = False
     max_expanded_queries: int = 3
-    hybrid_alpha: float = 0.7  # Note: set strategy_override to semantic when using Chroma
+    hybrid_alpha: float = 0.7
 
     # Generation Strategy — Phase 5
     # basic    = standard RAG (fast, cheapest)                         ← start here

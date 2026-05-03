@@ -16,6 +16,7 @@ import numpy as np
 from config.settings import settings, VectorStoreProvider
 from utils.models import Chunk, RetrievedChunk, RetrievalStrategy
 from vectorstore.bm25_index import BM25Index
+from vectorstore.chroma_store import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +204,9 @@ def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
     provider = provider or settings.vector_store_provider
     if provider == VectorStoreProvider.WEAVIATE:
         logger.warning("Weaviate provider selected but not implemented; falling back to FAISS")
+    elif provider == VectorStoreProvider.CHROMA:
+        _vector_store_instance = ChromaVectorStore()
+        return _vector_store_instance
     _vector_store_instance = FAISSVectorStore()
     return _vector_store_instance
 

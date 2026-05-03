@@ -53,6 +53,9 @@ eval = [
     "rouge-score>=0.1",
     "bert-score>=0.3",
 ]
+chroma = [
+    "chromadb>=0.4.24,<0.5",
+]
 ui = [
     "streamlit>=1.31",
     "chainlit>=1.0",
