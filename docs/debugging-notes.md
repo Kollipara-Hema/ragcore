@@ -795,6 +795,38 @@ on emission.
 
 ---
 
+## 2026-05-03 — Stale Docker-baked FAISS files masked unpushed migration commit
+
+### Symptom
+
+After committing the `FAISS_DATA_DIR` migration, setting the env var on Render, and waiting for "Live" status, a smoke query returned 5 citations. The freshly-mounted persistent disk should have been empty — 0 citations was the expected result.
+
+### Diagnostic that caught it
+
+`grep -A 5 "def __init__" /app/vectorstore/vector_store.py` via Render Shell showed the old hardcoded-filename `__init__` signature. Locally, `git log origin/main..main --oneline` confirmed one unpushed commit.
+
+### Root cause
+
+Two layers. The migration commit was never pushed, so the redeploy triggered by the env-var save ran old code that hardcoded `faiss_index.idx` and `faiss_metadata.pkl` at the process working directory (`/app`). Those files had been tracked in git before this commit added `git rm --cached` and `.gitignore` entries; the previous Docker build had copied them into `/app/`, where the old code read them on startup. The 5 citations came from stale FiQA data baked into the image.
+
+### Fix
+
+`git push`. Render redeployed with the new code; `os.makedirs` created `/var/data/faiss/` on first boot. Smoke query returned 0 citations. Persistence test: ingest doc → restart → same doc_id returned.
+
+### Lesson
+
+Verifying response shape is insufficient for configuration changes. When a path or config migration deploys, the first-line checks are: `git log origin/main..main --oneline` (confirm the commit is pushed) and `ls -la` on the expected data directory via Render Shell (confirm files are where the new config says). Response shape is second-line.
+
+### Cross-reference
+
+Same family as 2026-05-02: a plausible-looking response masked the question "is the system running the code I think it is?" Both cases required three diagnostic lines that would have replaced an hour of wrong-direction debugging. The general pattern: when deploying a configuration change, verify deployment state before interpreting the response.
+
+### Commit
+
+`5ba20cf` — Make FAISS index path configurable via FAISS_DATA_DIR
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
