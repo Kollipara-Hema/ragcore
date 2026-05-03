@@ -25,6 +25,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 os.environ.setdefault("GENERATION_STRATEGY", "basic")
 
+from config.settings import settings
+
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
@@ -82,8 +84,8 @@ async def main() -> None:
     store = get_vector_store()
     index_total = store.index.ntotal if store.index is not None else 0
 
-    idx_file = REPO_ROOT / "faiss_index.idx"
-    meta_file = REPO_ROOT / "faiss_metadata.pkl"
+    idx_file = Path(settings.faiss_data_dir) / "faiss_index.idx"
+    meta_file = Path(settings.faiss_data_dir) / "faiss_metadata.pkl"
     idx_size = idx_file.stat().st_size / 1024 if idx_file.exists() else 0
     meta_size = meta_file.stat().st_size / 1024 if meta_file.exists() else 0
 

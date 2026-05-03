@@ -214,6 +214,9 @@ __marimo__/
 **/.chainlit/translations/
 **/.chainlit/translations/
 chroma_db/
+faiss/
+faiss_index.idx
+faiss_metadata.pkl
 ui_chainlit/.files/
 
 # Virtual environment

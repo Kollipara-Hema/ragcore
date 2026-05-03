@@ -19,6 +19,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 os.environ["GENERATION_STRATEGY"] = "basic"
 
+from config.settings import settings
+
 
 def _build_uuid_to_fiqa_id(metadata_pkl: Path) -> dict[str, str]:
     """
@@ -47,7 +49,7 @@ async def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # UUID → FiQA corpus ID mapping (citations carry UUIDs; qrels use FiQA IDs)
-    uuid_to_fiqa = _build_uuid_to_fiqa_id(REPO_ROOT / "faiss_metadata.pkl")
+    uuid_to_fiqa = _build_uuid_to_fiqa_id(Path(settings.faiss_data_dir) / "faiss_metadata.pkl")
 
     with open(eval_path) as f:
         golden: list[dict] = json.load(f)
