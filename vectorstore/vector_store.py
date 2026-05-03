@@ -12,10 +12,10 @@ from uuid import UUID
 
 import faiss
 import numpy as np
-from rank_bm25 import BM25Okapi
 
 from config.settings import settings, VectorStoreProvider
 from utils.models import Chunk, RetrievedChunk, RetrievalStrategy
+from vectorstore.bm25_index import BM25Index
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +53,7 @@ class FAISSVectorStore(BaseVectorStore):
         self.metadata_file = metadata_file or str(data_dir / "faiss_metadata.pkl")
         self.index = None
         self.metadata: List[Dict[str, Any]] = []
-        self._bm25: Optional[BM25Okapi] = None
-        self._bm25_corpus: List[str] = []
+        self._bm25_index: BM25Index = BM25Index()
         self.load()
 
     def load(self) -> None:
@@ -66,23 +65,13 @@ class FAISSVectorStore(BaseVectorStore):
         if os.path.exists(self.metadata_file):
             with open(self.metadata_file, "rb") as f:
                 self.metadata = pickle.load(f)
-            self._rebuild_bm25()
+            self._bm25_index.build([m.get("content", "") for m in self.metadata])
 
     def save(self) -> None:
         if self.index is not None:
             faiss.write_index(self.index, self.index_file)
         with open(self.metadata_file, "wb") as f:
             pickle.dump(self.metadata, f)
-
-    def _rebuild_bm25(self) -> None:
-        """Rebuild BM25 index from current metadata corpus."""
-        if not self.metadata:
-            self._bm25 = None
-            self._bm25_corpus = []
-            return
-        self._bm25_corpus = [m.get("content", "") for m in self.metadata]
-        tokenized = [doc.lower().split() for doc in self._bm25_corpus]
-        self._bm25 = BM25Okapi(tokenized)
 
     def _to_retrieved(self, idx: int, score: float, strategy: RetrievalStrategy = RetrievalStrategy.SEMANTIC) -> RetrievedChunk:
         meta = self.metadata[idx]
@@ -120,7 +109,7 @@ class FAISSVectorStore(BaseVectorStore):
 
         self.index.add(vectors)
         self.metadata.extend(meta)
-        self._rebuild_bm25()
+        self._bm25_index.build([m.get("content", "") for m in self.metadata])
         self.save()
 
         return len(vectors)
@@ -145,21 +134,21 @@ class FAISSVectorStore(BaseVectorStore):
 
     async def keyword_search(self, query: str, top_k: int = 20, metadata_filter: Optional[dict] = None) -> List[RetrievedChunk]:
         """BM25 sparse retrieval over the indexed corpus."""
-        if self._bm25 is None or not self.metadata:
+        if not self.metadata:
             return []
 
-        tokenized_query = query.lower().split()
-        scores = self._bm25.get_scores(tokenized_query)
+        assert len(self._bm25_index._corpus) == len(self.metadata), (
+            f"BM25 corpus length {len(self._bm25_index._corpus)} != metadata length {len(self.metadata)}"
+        )
+
+        raw_candidates = self._bm25_index.query(query, len(self.metadata))
 
         candidates = []
-        for idx, score in enumerate(scores):
-            if score <= 0:
-                continue
+        for idx, score in raw_candidates:
             if metadata_filter and not all(self.metadata[idx].get(k) == v for k, v in metadata_filter.items()):
                 continue
-            candidates.append((idx, float(score)))
+            candidates.append((idx, score))
 
-        candidates.sort(key=lambda x: x[1], reverse=True)
         return [self._to_retrieved(idx, score, RetrievalStrategy.KEYWORD) for idx, score in candidates[:top_k]]
 
     async def hybrid_search(self, query: str, query_embedding: List[float], top_k: int = 20, alpha: float = 0.7, metadata_filter: Optional[dict] = None) -> List[RetrievedChunk]:
@@ -202,7 +191,7 @@ class FAISSVectorStore(BaseVectorStore):
         self.metadata = [m for m in self.metadata if str(m.get("doc_id")) != str(doc_id)]
         if self.index is not None:
             self.index.reset()
-        self._rebuild_bm25()
+        self._bm25_index.build([m.get("content", "") for m in self.metadata])
         self.save()
         return original_count - len(self.metadata)
 

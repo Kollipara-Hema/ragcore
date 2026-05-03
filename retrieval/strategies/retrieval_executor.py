@@ -5,10 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import List, Dict, Any
+from typing import List
 
 import numpy as np
-from rank_bm25 import BM25Okapi
 
 from embeddings.embedder import get_embedder
 from retrieval.router.query_router import RoutingDecision
@@ -25,16 +24,6 @@ class RetrievalExecutor:
     def __init__(self):
         self._embedder = get_embedder()
         self._store = get_vector_store()
-        self.bm25 = None
-        self.corpus = []
-        self.metadata = []
-
-    def index_chunks(self, chunks: List[Dict[str, Any]]):
-        """Index chunks for BM25."""
-        self.corpus = [chunk["text"] for chunk in chunks]
-        self.metadata = chunks
-        tokenized_corpus = [doc.split() for doc in self.corpus]
-        self.bm25 = BM25Okapi(tokenized_corpus)
 
     async def execute(self, decision: RoutingDecision, top_k: int = 5) -> RetrievalResult:
         start = time.monotonic()
