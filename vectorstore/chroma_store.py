@@ -281,3 +281,9 @@ class ChromaVectorStore:
         self._rebuild_from_chroma()
         self._save_bm25_state()
         return removed
+
+    def ping(self) -> None:
+        try:
+            self._collection.count()
+        except Exception as exc:
+            raise RuntimeError(f"Chroma collection unreachable: {exc}") from exc

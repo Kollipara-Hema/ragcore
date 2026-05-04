@@ -45,6 +45,11 @@ class BaseVectorStore(ABC):
     async def delete_document(self, doc_id: UUID) -> int:
         raise NotImplementedError
 
+    @abstractmethod
+    def ping(self) -> None:
+        """Raise RuntimeError with a one-line reason if the store is unreachable."""
+        raise NotImplementedError
+
 
 class FAISSVectorStore(BaseVectorStore):
     def __init__(self, index_file: str = None, metadata_file: str = None):
@@ -195,6 +200,10 @@ class FAISSVectorStore(BaseVectorStore):
         self._bm25_index.build([m.get("content", "") for m in self.metadata])
         self.save()
         return original_count - len(self.metadata)
+
+    def ping(self) -> None:
+        if not Path(settings.faiss_data_dir).is_dir():
+            raise RuntimeError(f"FAISS data directory missing: {settings.faiss_data_dir}")
 
 
 def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
