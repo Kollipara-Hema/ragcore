@@ -25,9 +25,11 @@ threshold recalibration, visual rebuild.
 
 | Module | File | State | Notes |
 |--------|------|-------|-------|
-| FAISSVectorStore | vectorstore/vector_store.py | WORKING | IndexFlatIP + BM25 hybrid. Singleton confirmed via integration tests. |
+| FAISSVectorStore | vectorstore/vector_store.py | WORKING | IndexFlatIP + BM25 hybrid via BM25Index (f85b80a). Index and metadata path configurable via `FAISS_DATA_DIR` (default `./faiss`, commit 5ba20cf). Singleton confirmed via integration tests. |
 | get_vector_store() singleton | vectorstore/vector_store.py | WORKING | Module-level `_vector_store_instance`; `reset_vector_store()` for test isolation. |
-| Weaviate / Chroma / Pinecone | vectorstore/vector_store.py | DEFERRED | Config keys exist; `get_vector_store()` logs a warning and falls through to FAISS for any unrecognized provider. |
+| BM25Index | vectorstore/bm25_index.py | WORKING | Extracted from FAISSVectorStore (f85b80a). `build` / `upsert` / `query` / `reset` / `save` / `load`. Shared by both FAISSVectorStore and ChromaVectorStore via composition. |
+| ChromaVectorStore | vectorstore/chroma_store.py | WORKING | Full BaseVectorStore implementation: upsert, vector_search, keyword_search, hybrid_search, delete_document. BM25Index hybrid retrieval. 11 parity integration tests pass against FAISS (commit 857c007). Persistence verified on Render. Not the active production backend (VECTOR_STORE_PROVIDER=faiss); FiQA benchmark has only ever run on FAISS. chromadb 0.4.24 + NumPy 2.x shim required locally; Docker pins numpy 1.26.4. |
+| Weaviate / Pinecone / Qdrant | vectorstore/vector_store.py | DEFERRED | Config keys and connection settings exist; `get_vector_store()` now explicitly logs a warning for all three and falls through to FAISS (commit 0e6c172 extended coverage to PINECONE and QDRANT). Not documented options in README or `.env.example`. |
 
 ### Embeddings
 
@@ -129,8 +131,8 @@ threshold recalibration, visual rebuild.
 
 | Module | File | State | Notes |
 |--------|------|-------|-------|
-| Unit tests (103) | tests/unit/ | WORKING | No external services. `pytest --collect-only` returns 103. README claims 76 — stale (see README Claims Audit). |
-| Integration tests (30) | tests/integration/ | PARTIAL | `pytest --collect-only` returns 30. README claims 26/27 — stale. One test (`test_agent_graph_with_tracing`) fails on mock-target resolution in the test itself. |
+| Unit tests (113) | tests/unit/ | WORKING | No external services. `pytest --collect-only` returns 113. README was updated to 113 in commit 0e6c172 and now matches. |
+| Integration tests (41) | tests/integration/ | PARTIAL | `pytest --collect-only` returns 41. 11 new tests in `tests/integration/test_chroma_vector_store.py` (commit 857c007). README was updated to "40 of 41 passing" in commit 0e6c172 and now matches. One test (`test_agent_graph_with_tracing`) still fails on mock-target resolution in the test itself — unchanged. |
 
 ---
 
@@ -221,9 +223,14 @@ documents the methodology change and its rationale.
 → **OVERSTATED.** `_build_llm()` has no branch for ollama or demo. Both fall through
 to `OpenAILLM`, which will fail without `OPENAI_API_KEY`.
 
-**`VECTOR_STORE_PROVIDER=weaviate|chroma`**
-→ **OVERSTATED.** `get_vector_store()` falls through to FAISS for any unrecognized
-provider.
+**`VECTOR_STORE_PROVIDER=faiss|chroma`**
+→ **REAL.** Both `faiss` and `chroma` dispatch to verified implementations. `get_vector_store()` logs a warning and falls through to FAISS for `weaviate`, `pinecone`, and `qdrant` — those are not documented options in `.env.example` or the README as of commit 0e6c172. Enum members for all three are preserved to avoid breaking existing `.env` files.
+
+**`CHROMA_PERSIST_DIR=./chroma_db`**
+→ **REAL.** Setting is in `config/settings.py` (`chroma_persist_dir`) and the README Infrastructure table. `ChromaVectorStore.__init__` uses it as the root for the ChromaDB persistence directory and the `bm25_state.pkl` sidecar file (commit 857c007). Default matches.
+
+**`FAISS_DATA_DIR=./faiss`**
+→ **REAL.** Setting in `config/settings.py` (`faiss_data_dir`) and used by `FAISSVectorStore.__init__` to locate the index and metadata files. Motivation was Render's ephemeral filesystem — pointing `FAISS_DATA_DIR` at a mounted persistent-disk path preserves ingested data across redeploys. Documented in the README Infrastructure table.
 
 **`ENABLE_TRACING=true` (Langfuse)**
 → **PARTIAL.** `LangfuseTracer` is structurally correct and the singleton bug is
@@ -242,11 +249,16 @@ No corrections needed in this section.
 
 ### Testing Section
 
-**"76 unit tests passing, 26 of 27 integration tests passing"**
-→ **STALE.** `pytest --collect-only` on 2026-04-30 returns **103 unit tests** and
-**30 integration tests** — substantially higher than both figures. Tests were added
-for attributed spans, follow-up generation, orchestrator verify_claims, and the tracer
-singleton since the README was last updated. The README count needs updating.
+**"113 unit tests passing, 40 of 41 integration tests passing"**
+→ **REAL.** `pytest --collect-only` now returns **113 unit tests** and **41 integration
+tests** (11 new Chroma integration tests from commit 857c007 plus unit tests from
+adjacent Tier 1.4 work). README was updated in commit 0e6c172 and now accurately
+reflects the pass count. One integration test (`test_agent_graph_with_tracing`)
+continues to fail on mock-target resolution — documented in the Tests row above.
+
+> Note: the project-structure directory tree in the README still shows "75 tests" and
+> "25 tests" — a cosmetic inconsistency. That diagram was not updated by commit 0e6c172.
+> Not a factual claim about what passes; flagged here for completeness.
 
 ### Project Structure
 
@@ -261,8 +273,10 @@ agent API models. Accurate enough not to mislead; worth noting.
 
 ### Intentional limitations (deferred by design)
 
-1. **Single vector store end-to-end.** FAISS is the only verified path. Weaviate,
-   Chroma, and Pinecone configs exist but fall through to FAISS at runtime.
+1. **Three provider config values fall through to FAISS.** Weaviate, Pinecone,
+   and Qdrant config keys exist; `get_vector_store()` logs an explicit warning
+   and falls through to FAISS for all three (commit 0e6c172). FAISS and Chroma
+   are both verified end-to-end with parity integration tests.
 
 2. **Self-RAG claim verification is OpenAI-only.** `_extract_claims()` and
    `_verify_claim()` in `SelfRAGGenerator` hardcode `AsyncOpenAI`. Setting
@@ -283,13 +297,19 @@ agent API models. Accurate enough not to mislead; worth noting.
 6. **Celery async ingestion requires a running Redis and worker.** Not tested in CI.
    The synchronous ingest path works without it.
 
-7. **Follow-up prompt is domain-specific.** `FOLLOWUP_TEMPLATE` hardcodes
+7. **chromadb pinned to 0.4.24 with a NumPy 2.x compatibility shim.**
+   `vectorstore/chroma_store.py` patches five removed NumPy 2.0 attributes
+   at import time so chromadb 0.4.24 imports cleanly under NumPy ≥ 2.0.
+   No-op in production (Docker pins numpy 1.26.4). Upgrading chromadb to
+   0.5.x removes the shim but requires API migration.
+
+8. **Follow-up prompt is domain-specific.** `FOLLOWUP_TEMPLATE` hardcodes
    "personal-finance topics (IRAs, 401k, taxes, investing, mortgages, similar)."
    Would produce off-domain suggestions if the indexed corpus changes.
 
 ### Bugs discovered during this audit
 
-8. **`_extract_first_json_array` is dead code**
+9. **`_extract_first_json_array` is dead code**
    ([generation/llm_service.py:384](generation/llm_service.py#L384)).
    Defined as a JSON array extractor for follow-up parsing. `generate_followups`
    uses `_extract_followup_questions` directly; `_extract_first_json_array` is never
@@ -297,13 +317,13 @@ agent API models. Accurate enough not to mislead; worth noting.
    about which function is live. Either delete it or add a comment explaining the
    relationship.
 
-9. **Version marker still rendering in production**
+10. **Version marker still rendering in production**
    ([ui_streamlit/app.py:682](ui_streamlit/app.py#L682)).
    The sidebar renders `"UI build: 2026-04-29-followup-v1"` on every page load of
    the deployed demo. The inline comment says "remove after cloud deploy confirmed"
    — that condition has passed.
 
-10. **`verify_claims` toggle resets to `False` on page reload**
+11. **`verify_claims` toggle resets to `False` on page reload**
     ([ui_streamlit/app.py:620](ui_streamlit/app.py#L620)).
     Streamlit session state does not persist across page reloads. A user who enables
     the hallucination verifier and reloads will silently lose the setting. The verifier
@@ -335,7 +355,6 @@ agent API models. Accurate enough not to mislead; worth noting.
 - Fix `test_agent_graph_with_tracing` (mock-target resolution bug in the test).
 - Exercise `LangfuseTracer` end-to-end against a live Langfuse instance.
 - Test Celery async ingestion in CI with a Redis service container.
-- Update README test counts to 103 unit / 30 integration.
 - Make Self-RAG claim verification provider-agnostic.
 
 ### Extending what's working
@@ -369,8 +388,9 @@ preservation, and documented methodology change mean the disagreement is surface
 buried.
 
 Scaffolding remains where it was in April: FLARE and AgenticRAG still run basic generation
-when selected, three chunkers and three embedders are unreachable, and four provider config
-values still fall through to FAISS. None of this has gotten worse since the April 27 audit.
+when selected, three chunkers and three embedders are unreachable, and three provider config
+values (WEAVIATE, PINECONE, QDRANT) still fall through to FAISS — Chroma now dispatches
+to a verified implementation. None of this has gotten worse since the April 27 audit.
 
 Three latent bugs found in this audit: dead code in `llm_service.py`, a visible cosmetic
 artifact in the production demo, and a Streamlit session-state UX limitation on the verifier

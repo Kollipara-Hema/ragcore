@@ -302,6 +302,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for Celery + long-term memory |
 | `WEAVIATE_URL` | `http://localhost:8080` | Weaviate host |
 | `CHROMA_PERSIST_DIR` | `./chroma_db` | Local Chroma persistence directory |
+| `FAISS_DATA_DIR` | `./faiss` | Directory for FAISS index and metadata files. Set to a persistent-disk path on platforms with ephemeral filesystems (e.g., Render). |
 | `ENABLE_TRACING` | `false` | Send traces to Langfuse |
 | `LANGFUSE_PUBLIC_KEY` | — | Langfuse public key |
 | `LANGFUSE_SECRET_KEY` | — | Langfuse secret key |
