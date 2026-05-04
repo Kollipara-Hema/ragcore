@@ -25,6 +25,7 @@ finding.
 - [Architecture](#architecture)
 - [Retrieval Strategy Routing](#retrieval-strategy-routing)
 - [Quick Start](#quick-start)
+- [Monitoring](#monitoring)
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
@@ -208,6 +209,12 @@ cd ui_streamlit && streamlit run app.py
 # Chainlit — conversational chat
 cd ui_chainlit && chainlit run app.py
 ```
+
+---
+
+## Monitoring
+
+After `docker compose up`, Prometheus scrapes the API's `/metrics` endpoint every 15 seconds and is accessible at `http://localhost:9090`. The `ragcore_api` scrape target should show as **UP** within one scrape interval; verify at `http://localhost:9090/targets`.
 
 ---
 
