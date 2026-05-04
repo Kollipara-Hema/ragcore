@@ -49,7 +49,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir python-multipart==0.0.9 && \
     pip install --no-cache-dir httpx==0.27.0 && \
     pip install --no-cache-dir openai==1.14.0 && \
-    pip install --no-cache-dir "groq>=0.5"
+    pip install --no-cache-dir "groq>=0.5" && \
+    pip install --no-cache-dir prometheus-client==0.20.0 && \
+    pip install --no-cache-dir prometheus-fastapi-instrumentator==6.1.0 && \
+    pip install --no-cache-dir psutil==5.9.8
 
 # Pre-download ML models — eliminates HuggingFace Hub downloads at runtime
 RUN python -c "\
