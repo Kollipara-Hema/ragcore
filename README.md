@@ -216,6 +216,8 @@ cd ui_chainlit && chainlit run app.py
 
 After `docker compose up`, Prometheus scrapes the API's `/metrics` endpoint every 15 seconds and is accessible at `http://localhost:9090`. The `ragcore_api` scrape target should show as **UP** within one scrape interval; verify at `http://localhost:9090/targets`.
 
+Grafana is available at `http://localhost:3000` (default credentials: `admin` / `admin`). The **RAGCore Overview** dashboard is preloaded under Dashboards → RAGCore and displays request rate, p95 latency, stage durations, token usage, Self-RAG claim outcomes, process memory, and vector store disk usage.
+
 ---
 
 ## API Reference
