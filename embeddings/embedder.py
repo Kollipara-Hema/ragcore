@@ -192,16 +192,25 @@ class CachedEmbedder(BaseEmbedder):
         return (await self.embed_texts([query]))[0]
 
 
-def get_embedder(provider: Union[str, EmbeddingProvider, None] = None, cached: bool = True) -> BaseEmbedder:
-    if provider is None:
-        provider = settings.embedding_provider
+# Module-level singleton — all callers with default arguments share one instance.
+_embedder_instance: Optional[BaseEmbedder] = None
 
-    if isinstance(provider, str):
-        provider_key = provider.lower()
+
+def get_embedder(provider: Union[str, EmbeddingProvider, None] = None, cached: bool = True) -> BaseEmbedder:
+    global _embedder_instance
+
+    use_singleton = provider is None and cached
+    if use_singleton and _embedder_instance is not None:
+        return _embedder_instance
+
+    resolved = settings.embedding_provider if provider is None else provider
+
+    if isinstance(resolved, str):
+        provider_key = resolved.lower()
         if provider_key in ("minilm", "mini", "sentence-transformer", "sentence_transformer"):
-            provider = EmbeddingProvider.BGE
+            resolved = EmbeddingProvider.BGE
         else:
-            provider = EmbeddingProvider(provider_key)
+            resolved = EmbeddingProvider(provider_key)
 
     mapping = {
         EmbeddingProvider.OPENAI: OpenAIEmbedder,
@@ -209,11 +218,19 @@ def get_embedder(provider: Union[str, EmbeddingProvider, None] = None, cached: b
         EmbeddingProvider.COHERE: CohereEmbedder,
     }
 
-    embedder_cls = mapping.get(provider)
+    embedder_cls = mapping.get(resolved)
     if not embedder_cls:
-        raise ValueError(f"Unknown embedding provider: {provider}")
+        raise ValueError(f"Unknown embedding provider: {resolved}")
 
     embedder = embedder_cls()
-    if cached:
-        return CachedEmbedder(embedder)
-    return embedder
+    result: BaseEmbedder = CachedEmbedder(embedder) if cached else embedder
+
+    if use_singleton:
+        _embedder_instance = result
+    return result
+
+
+def reset_embedder() -> None:
+    """Reset the singleton to None. For tests and future 'clear embedder' operations only."""
+    global _embedder_instance
+    _embedder_instance = None

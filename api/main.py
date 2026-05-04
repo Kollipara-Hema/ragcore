@@ -48,11 +48,11 @@ from fastapi.middleware.cors import CORSMiddleware
 # Allows browsers on other domains to call this API
 # e.g. your React frontend at localhost:3000 calling this API at localhost:8000
 
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 # StreamingResponse = streams data token by token (for chat-like UX)
 
 # --- Internal modules ---
-from config.settings import settings    # App configuration from .env
+from config.settings import settings, LLMProvider    # App configuration from .env
 
 # Data models for request/response shapes
 from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest, AgentQueryRequest, AgentQueryResponse, QueryTrace
@@ -67,8 +67,11 @@ from agent.state import initial_state
 # The document ingestion pipeline (loading, chunking, embedding, indexing)
 from ingestion.pipeline import IngestionPipeline, ingest_file_task
 
-# Vector store (for document deletion)
+# Vector store (for document deletion and health checks)
 from vectorstore.vector_store import get_vector_store
+
+# Embedder (for health checks)
+from embeddings.embedder import get_embedder
 
 # Rate limiting middleware (prevents abuse)
 from api.middleware.rate_limit import RateLimitMiddleware
@@ -180,6 +183,72 @@ async def health():
         "version": "1.0.0",
         "environment": settings.environment,  # "development" or "production"
     }
+
+
+# Map each LLM provider to its settings field carrying the API key.
+# TOGETHER is defined in LLMProvider but has no key field in Settings — handled explicitly.
+_LLM_KEY_MAP: dict[LLMProvider, str] = {
+    LLMProvider.OPENAI: "openai_api_key",
+    LLMProvider.ANTHROPIC: "anthropic_api_key",
+    LLMProvider.GROQ: "groq_api_key",
+}
+
+
+def _check_llm_config() -> None:
+    """Raise RuntimeError with a one-line reason if the active LLM provider has no API key."""
+    provider = settings.llm_provider
+    field = _LLM_KEY_MAP.get(provider)
+    if field is None:
+        raise RuntimeError(f"{provider.value} provider is not fully configured")
+    key = getattr(settings, field, None)
+    if not key:
+        raise RuntimeError(f"{field.upper()} is not set")
+
+
+@app.get("/health/live", tags=["system"])
+async def health_live():
+    """Process-alive check. Returns 200 immediately with no dependency checks."""
+    return {"status": "alive"}
+
+
+@app.get("/health/ready", tags=["system"])
+async def health_ready():
+    """
+    Readiness check. Verifies vector store reachability, embedder responsiveness,
+    and LLM API key presence. Returns 200 if all pass, 503 if any fail.
+    Response body includes per-check results and a reason string for any failure.
+    """
+    checks: dict = {}
+    all_ok = True
+
+    # Check 1: vector store reachable
+    try:
+        get_vector_store().ping()
+        checks["vector_store"] = {"ok": True}
+    except Exception as exc:
+        checks["vector_store"] = {"ok": False, "reason": str(exc)}
+        all_ok = False
+
+    # Check 2: embedder loaded and responsive
+    try:
+        embedding = await get_embedder().embed_query("a")
+        if not embedding:
+            raise RuntimeError("embed_query returned empty result")
+        checks["embedder"] = {"ok": True}
+    except Exception as exc:
+        checks["embedder"] = {"ok": False, "reason": str(exc)}
+        all_ok = False
+
+    # Check 3: LLM API key present (no live call)
+    try:
+        _check_llm_config()
+        checks["llm_config"] = {"ok": True}
+    except Exception as exc:
+        checks["llm_config"] = {"ok": False, "reason": str(exc)}
+        all_ok = False
+
+    body = {"status": "ready" if all_ok else "not_ready", "checks": checks}
+    return JSONResponse(content=body, status_code=200 if all_ok else 503)
 
 
 # =============================================================================
