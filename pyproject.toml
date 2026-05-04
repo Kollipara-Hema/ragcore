@@ -11,6 +11,10 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.27",
     "python-multipart>=0.0.9",
+    # Metrics
+    "prometheus-client>=0.20",
+    "prometheus-fastapi-instrumentator>=6.1",
+    "psutil>=5.9",
     # Data validation & settings
     "pydantic>=2.6",
     "pydantic-settings>=2.2",

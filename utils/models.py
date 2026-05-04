@@ -150,6 +150,8 @@ class GenerationResult:
     latency_ms: float
     cached: bool = False
     fallback_used: bool = False
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
