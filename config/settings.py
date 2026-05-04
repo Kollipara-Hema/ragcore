@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     embedding_batch_size: int = 64
 
     # Vector Store
-    vector_store_provider: VectorStoreProvider = VectorStoreProvider.WEAVIATE
+    vector_store_provider: VectorStoreProvider = VectorStoreProvider.FAISS
     weaviate_url: str = "http://localhost:8080"
     weaviate_api_key: Optional[str] = None
     pinecone_api_key: Optional[str] = None

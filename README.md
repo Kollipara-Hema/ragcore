@@ -181,9 +181,9 @@ uvicorn api.main:app --reload --port 8000
 # Docs: http://localhost:8000/docs
 ```
 
-Weaviate and Chroma configuration keys exist in `config/settings.py` but are
-not verified end-to-end. FAISS is the only vector store tested against the
-full pipeline.
+Both FAISS and Chroma are verified end-to-end. Weaviate, Pinecone, and Qdrant
+configuration keys exist but are not implemented; selecting them logs a warning
+and falls back to FAISS.
 
 ### Full Stack with Docker Compose
 
@@ -265,7 +265,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 
 | Setting | Default | Options / Effect |
 |---------|---------|-----------------|
-| `VECTOR_STORE_PROVIDER` | `faiss` | `weaviate` · `faiss` · `chroma` |
+| `VECTOR_STORE_PROVIDER` | `faiss` | `faiss` · `chroma` |
 | `CHUNKING_STRATEGY` | `semantic` | `fixed` · `semantic` · `hierarchical` · `sentence` |
 | `HYBRID_ALPHA` | `0.7` | `0` = keyword only · `1` = vector only |
 | `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
@@ -387,7 +387,7 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 113 unit tests passing, 29 of 30 integration tests passing. One
+Current: 113 unit tests passing, 40 of 41 integration tests passing. One
 integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
 mock-target resolution bug in the test itself, unrelated to current work.
 
@@ -422,8 +422,10 @@ mock-target resolution bug in the test itself, unrelated to current work.
 - Monitoring: `NoOpTracer` methods are all `pass`; Langfuse tracing is off by
   default; Prometheus/Grafana appear in `docker-compose.yml` but the
   application emits no metrics
-- Multi-vector-store: Weaviate/Chroma/Pinecone configs exist; only FAISS is
-  verified end-to-end
+- Multi-vector-store: FAISS and Chroma are both verified end-to-end with hybrid
+  retrieval via the shared BM25Index helper, and both pass the same parity test
+  surface. Weaviate, Pinecone, and Qdrant remain config-only fall-throughs with
+  an explicit warning log; they are not documented options.
 - Agentic RAG: code is in `generation/advanced_generation.py` but not wired to the orchestrator; `GENERATION_STRATEGY=agentic` falls through to basic generation
 - RAGAS evaluation runs end-to-end and produces the LLM-judged faithfulness
   numbers in the headline table. Word-overlap retained alongside RAGAS as the
