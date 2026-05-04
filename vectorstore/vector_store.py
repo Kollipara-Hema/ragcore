@@ -202,8 +202,8 @@ def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
     if _vector_store_instance is not None:
         return _vector_store_instance
     provider = provider or settings.vector_store_provider
-    if provider == VectorStoreProvider.WEAVIATE:
-        logger.warning("Weaviate provider selected but not implemented; falling back to FAISS")
+    if provider in (VectorStoreProvider.WEAVIATE, VectorStoreProvider.PINECONE, VectorStoreProvider.QDRANT):
+        logger.warning("%s provider selected but not implemented; falling back to FAISS", provider.value)
     elif provider == VectorStoreProvider.CHROMA:
         _vector_store_instance = ChromaVectorStore()
         return _vector_store_instance
