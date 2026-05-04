@@ -403,6 +403,25 @@ class RAGOrchestrator:
             "total_ms": (t_generate - t0) * 1000,
         }
 
+        try:
+            from monitoring.metrics import stage_duration, generation_tokens, self_rag_claims as _src
+            _strat = decision.primary_strategy.value
+            for _k, _ms in stage_timings.items():
+                if _k != "total_ms":
+                    stage_duration.labels(stage=_k[:-3], strategy=_strat).observe(_ms / 1000.0)
+            _prov = settings.llm_provider.value
+            # Use per-direction split when available (standard path only); fall back to total.
+            if effective_strategy not in ("self_rag", "flare") and result.input_tokens:
+                generation_tokens.labels(direction="input", provider=_prov).inc(result.input_tokens)
+                generation_tokens.labels(direction="output", provider=_prov).inc(result.output_tokens)
+            else:
+                generation_tokens.labels(direction="total", provider=_prov).inc(gen_tokens)
+            if _self_rag_stats:
+                _src.labels(outcome="verified").inc(len(_self_rag_stats["verified_claims"]))
+                _src.labels(outcome="unsupported").inc(len(_self_rag_stats["unsupported_claims"]))
+        except Exception as _e:
+            logger.debug("Metrics recording skipped: %s", _e)
+
         # Build pre-rerank candidate list; mark which chunks survived to citations
         cited_chunk_ids = {c.chunk_id for c in gen_citations}
         retrieval_candidates = [

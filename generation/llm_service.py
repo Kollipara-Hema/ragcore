@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class BaseLLM:
     """Minimal base class for LLM wrappers."""
 
-    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
+    async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int, int, int]:
         raise NotImplementedError
 
     async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
@@ -272,8 +272,11 @@ class OpenAILLM(BaseLLM):
         )
 
         answer = response.choices[0].message.content or ""
-        total_tokens = response.usage.total_tokens if response.usage else 0
-        return answer, total_tokens
+        usage = response.usage
+        total_tokens = usage.total_tokens if usage else 0
+        input_tokens = usage.prompt_tokens if usage else 0
+        output_tokens = usage.completion_tokens if usage else 0
+        return answer, total_tokens, input_tokens, output_tokens
 
     async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
         import os
@@ -320,8 +323,9 @@ class AnthropicLLM(BaseLLM):
             temperature=settings.llm_temperature,
         )
         answer = response.content[0].text
-        total_tokens = response.usage.input_tokens + response.usage.output_tokens
-        return answer, total_tokens
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+        return answer, input_tokens + output_tokens, input_tokens, output_tokens
 
     async def stream(self, prompt: ConstructedPrompt) -> AsyncIterator[str]:
         import anthropic
@@ -359,8 +363,11 @@ class GroqLLM(BaseLLM):
             max_tokens=settings.llm_max_tokens,
         )
         answer = response.choices[0].message.content or ""
-        total_tokens = response.usage.total_tokens if response.usage else 0
-        return answer, total_tokens
+        usage = response.usage
+        total_tokens = usage.total_tokens if usage else 0
+        input_tokens = usage.prompt_tokens if usage else 0
+        output_tokens = usage.completion_tokens if usage else 0
+        return answer, total_tokens, input_tokens, output_tokens
 
     async def stream(self, prompt: ConstructedPrompt):
         try:
@@ -491,7 +498,7 @@ class GenerationService:
             logger.debug("Cache read failed: %s", e)
 
         # Generate
-        answer, total_tokens = await self._llm.generate(prompt)
+        answer, total_tokens, input_tokens, output_tokens = await self._llm.generate(prompt)
 
         latency_ms = (time.monotonic() - start) * 1000
 
@@ -515,6 +522,8 @@ class GenerationService:
             total_tokens=total_tokens,
             latency_ms=latency_ms,
             cached=False,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     async def stream(
@@ -542,7 +551,7 @@ class GenerationService:
         )
 
         try:
-            raw, _ = await self._llm.generate(prompt)
+            raw, *_ = await self._llm.generate(prompt)
             text = raw.strip()
             # Strip markdown code fences if present
             if text.startswith("```"):

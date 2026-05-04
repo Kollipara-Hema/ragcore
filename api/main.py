@@ -76,6 +76,10 @@ from api.middleware.rate_limit import RateLimitMiddleware
 # Monitoring tracer
 from monitoring.tracer import get_tracer
 
+# Prometheus instrumentation — importing metrics registers the ResourceCollector
+from prometheus_fastapi_instrumentator import Instrumentator
+import monitoring.metrics  # noqa: F401
+
 # Logger for this module
 logger = logging.getLogger(__name__)
 
@@ -135,6 +139,8 @@ app = FastAPI(
     lifespan=lifespan,  # Use our startup/shutdown function above
 )
 
+Instrumentator().instrument(app).expose(app)
+
 # =============================================================================
 # MIDDLEWARE — Code that runs on EVERY request before and after the handler
 # =============================================================================
@@ -174,17 +180,6 @@ async def health():
         "version": "1.0.0",
         "environment": settings.environment,  # "development" or "production"
     }
-
-
-@app.get("/metrics", tags=["system"])
-async def metrics():
-    """
-    Metrics endpoint for monitoring.
-    In production, integrate prometheus_client library for real metrics.
-
-    Example: curl http://localhost:8000/metrics
-    """
-    return {"message": "Integrate prometheus_client for production metrics."}
 
 
 # =============================================================================
