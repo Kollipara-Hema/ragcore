@@ -39,9 +39,16 @@ services:
     image: prom/prometheus:v2.50.0
     ports:
       - "9090:9090"
+    depends_on:
+      - api
     volumes:
-      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   # ── Grafana ───────────────────────────────────────────────────────────────
