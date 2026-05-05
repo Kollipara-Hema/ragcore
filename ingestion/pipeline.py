@@ -12,6 +12,8 @@ import asyncio
 import logging
 import re
 import unicodedata
+
+import structlog
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -22,7 +24,7 @@ from ingestion.chunkers.chunkers import get_chunker
 from embeddings.embedder import get_embedder
 from vectorstore.vector_store import get_vector_store
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -140,7 +142,7 @@ class IngestionPipeline:
             # Step 5: Index
             indexed = await self.store.upsert(chunks_to_embed)
             total_chunks += indexed
-            logger.info("Indexed %d chunks for doc %s", indexed, doc_id)
+            logger.info("doc_indexed", num_chunks=indexed, doc_id=str(doc_id))
 
         return doc_id or str(uuid4()), total_chunks
 

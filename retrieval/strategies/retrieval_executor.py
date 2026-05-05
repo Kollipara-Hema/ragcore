@@ -7,6 +7,8 @@ import logging
 import time
 from typing import List
 
+import structlog
+
 import numpy as np
 
 from embeddings.embedder import get_embedder
@@ -15,7 +17,7 @@ from utils.models import RetrievalRequest, RetrievalResult, RetrievedChunk, Retr
 from config.settings import settings
 from vectorstore.vector_store import get_vector_store
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RetrievalExecutor:
@@ -31,7 +33,13 @@ class RetrievalExecutor:
             chunks = await self._dispatch(decision, top_k)
             fallback_used = False
         except Exception as e:
-            logger.error("Primary retrieval failed (%s): %s — trying fallback", decision.primary_strategy, e)
+            logger.error(
+                "retrieval_failed",
+                strategy=str(decision.primary_strategy),
+                error=str(e),
+                error_type=type(e).__name__,
+                fallback=True,
+            )
             try:
                 fallback_decision = RoutingDecision(
                     query_type=decision.query_type,

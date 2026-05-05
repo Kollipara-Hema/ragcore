@@ -15,6 +15,8 @@ dependencies = [
     "prometheus-client>=0.20",
     "prometheus-fastapi-instrumentator>=6.1",
     "psutil>=5.9",
+    # Structured logging
+    "structlog>=24.4",
     # Data validation & settings
     "pydantic>=2.6",
     "pydantic-settings>=2.2",

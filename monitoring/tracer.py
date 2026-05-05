@@ -18,12 +18,14 @@ import json
 import logging
 import time
 import uuid
+
+import structlog
 from typing import Optional
 
 from config.settings import settings
 from utils.models import QueryTrace, TraceEvent
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class NoOpTracer:
@@ -163,14 +165,11 @@ class LangfuseTracer:
         trace.total_duration_ms = latency_ms
         trace.status = "completed"
 
-        # Emit structured log
         logger.info(
-            "RAG query completed",
-            extra={
-                "trace_id": trace_id,
-                "total_latency_ms": round(latency_ms, 2),
-                "events": [e.dict() for e in trace.events],
-            }
+            "rag_query_complete",
+            trace_id=trace_id,
+            total_latency_ms=round(latency_ms, 2),
+            event_count=len(trace.events),
         )
 
         try:
