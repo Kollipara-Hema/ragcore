@@ -28,6 +28,8 @@ import re                             # For cite-tag parsing
 import time                           # For measuring how long things take
 from typing import AsyncIterator, Optional  # Type hints
 
+import structlog
+
 # --- Internal modules ---
 from config.settings import settings   # All configuration from .env file
 
@@ -48,7 +50,7 @@ from generation.llm_service import GenerationService, get_generation_service  # 
 from monitoring.tracer import get_tracer                       # Observability
 
 # Set up logger for this file — messages appear in console as "orchestrator: ..."
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 _TRAILING_MARKER_RE = re.compile(r'<cite source="([^"]*)">')
 # Matches inline [Source N] notation (with surrounding whitespace) emitted by
@@ -337,9 +339,9 @@ class RAGOrchestrator:
                     initial_chunks=reranked,
                 )
                 logger.info(
-                    "FLARE: %d retrieval round(s), novel tokens per round: %s",
-                    flare_result.retrieval_rounds,
-                    flare_result.novel_tokens_per_round,
+                    "flare_complete",
+                    retrieval_rounds=flare_result.retrieval_rounds,
+                    novel_tokens_per_round=flare_result.novel_tokens_per_round,
                 )
                 # Build citations from the full merged chunk pool
                 flare_prompt = self._prompt_builder.build(

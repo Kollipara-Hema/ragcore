@@ -31,6 +31,8 @@ import os          # For file path operations and environment
 import tempfile    # For saving uploaded files temporarily
 import uuid        # For generating unique IDs
 
+import structlog
+
 # contextlib.asynccontextmanager — used for startup/shutdown lifecycle
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
@@ -76,6 +78,10 @@ from embeddings.embedder import get_embedder
 # Rate limiting middleware (prevents abuse)
 from api.middleware.rate_limit import RateLimitMiddleware
 
+# Structured logging setup and request-ID middleware
+from monitoring.logging_config import configure_logging
+from api.middleware.request_id import RequestIdMiddleware
+
 # Monitoring tracer
 from monitoring.tracer import get_tracer
 
@@ -84,7 +90,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 import monitoring.metrics  # noqa: F401
 
 # Logger for this module
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # =============================================================================
 # Global instances — created once at startup, reused for all requests
@@ -114,6 +120,7 @@ async def lifespan(app: FastAPI):
     """
     global orchestrator, ingestion_pipeline
 
+    configure_logging()
     logger.info("Starting RAG system...")
 
     # Create the main RAG orchestrator — this loads ML models into memory
@@ -163,6 +170,11 @@ app.add_middleware(
 # Defined in api/middleware/rate_limit.py
 # Default: 60 requests per minute per IP address
 app.add_middleware(RateLimitMiddleware)
+
+# Request-ID Middleware — registered last so it executes first (outermost).
+# All downstream log calls run inside its bound_contextvars context and
+# therefore automatically carry request_id in their JSON output.
+app.add_middleware(RequestIdMiddleware)
 
 
 # =============================================================================
@@ -490,7 +502,7 @@ async def query(request: QueryRequest):
         result = await orchestrator.query(request)
         return result
     except Exception as e:
-        logger.error("Query failed: %s", e, exc_info=True)
+        logger.error("query_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Query processing failed: {str(e)}"
