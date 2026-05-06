@@ -45,6 +45,15 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 
+def _strip_markdown_fences(text: str) -> str:
+    """Remove ```json ... ``` or ``` ... ``` wrappers that LLMs add around JSON output."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped)
+        stripped = re.sub(r"\s*```$", "", stripped).strip()
+    return stripped
+
+
 # =============================================================================
 # PHASE 5A: Self-RAG
 # =============================================================================
@@ -277,7 +286,7 @@ Context:
                 query_type=QueryType.FACTUAL,
                 strategy_used=RetrievalStrategy.HYBRID,
             )
-            data = json.loads(result.answer)
+            data = json.loads(_strip_markdown_fences(result.answer))
             if isinstance(data, list):
                 claims = data
             elif isinstance(data, dict):
@@ -317,7 +326,7 @@ Context:
                 query_type=QueryType.FACTUAL,
                 strategy_used=RetrievalStrategy.HYBRID,
             )
-            data = json.loads(result.answer)
+            data = json.loads(_strip_markdown_fences(result.answer))
             if isinstance(data, dict):
                 supported = data.get("supported", False)
                 if isinstance(supported, str):

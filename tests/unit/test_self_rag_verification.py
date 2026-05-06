@@ -111,6 +111,25 @@ class TestVerifyClaimEmptyAndUnparseable:
         assert result == (False, "")
 
 
+class TestMarkdownFenceStripping:
+
+    def test_verify_claim_strips_markdown_fences(self):
+        """```json\\n{...}\\n``` — gpt-4o-mini's real-world output shape with FiQA contexts."""
+        result = _run_verify('```json\n{"supported": true, "evidence": "test"}\n```')
+        assert result == (True, "test")
+
+    def test_verify_claim_strips_plain_fence_no_lang(self):
+        """``` (no json tag) is also stripped before parsing."""
+        result = _run_verify('```\n{"supported": true, "evidence": "test"}\n```')
+        assert result == (True, "test")
+
+    def test_extract_claims_strips_markdown_fences(self):
+        """_extract_claims handles fenced JSON array from the LLM."""
+        content = '```json\n["claim one long enough", "claim two long enough"]\n```'
+        claims = _run_extract(content)
+        assert claims == ["claim one long enough", "claim two long enough"]
+
+
 class TestSelfRAGVerificationCrossProvider:
 
     def test_self_rag_verification_with_anthropic_provider(self):
