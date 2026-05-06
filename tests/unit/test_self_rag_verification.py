@@ -78,6 +78,39 @@ class TestExtractClaimsParser:
         assert any("self-attention" in c for c in claims)
 
 
+class TestVerifyClaimEmptyAndUnparseable:
+
+    def test_empty_string_response_fails_closed(self):
+        """Empty string from LLM → json.loads("") raises JSONDecodeError → (False, "").
+
+        This is the exact path that escaped the 2026-04-18 fix: the exception handler
+        previously returned (True, "") instead of (False, ""), so every empty response
+        promoted the claim to verified_claims rather than unsupported_claims.
+        """
+        result = _run_verify("")
+        assert result == (False, "")
+
+    def test_whitespace_only_response_fails_closed(self):
+        """Whitespace-only string → same JSONDecodeError path → (False, "")."""
+        result = _run_verify("   \n  ")
+        assert result == (False, "")
+
+    def test_none_answer_fails_closed(self):
+        """None as the answer field → json.loads(None) raises TypeError → (False, "")."""
+        from generation.advanced_generation import SelfRAGGenerator
+        import asyncio
+
+        gen = SelfRAGGenerator()
+        mock_result = __import__("unittest.mock", fromlist=["MagicMock"]).MagicMock()
+        mock_result.answer = None
+        mock_service = __import__("unittest.mock", fromlist=["AsyncMock"]).AsyncMock()
+        mock_service.generate = __import__("unittest.mock", fromlist=["AsyncMock"]).AsyncMock(
+            return_value=mock_result
+        )
+        result = asyncio.run(gen._verify_claim("some claim", "some context", mock_service))
+        assert result == (False, "")
+
+
 class TestSelfRAGVerificationCrossProvider:
 
     def test_self_rag_verification_with_anthropic_provider(self):

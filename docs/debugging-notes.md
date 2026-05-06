@@ -827,6 +827,110 @@ Same family as 2026-05-02: a plausible-looking response masked the question "is 
 
 ---
 
+## 2026-05-05 — Self-RAG verifier fail-open: exception handler returned (True, "") on empty LLM response
+
+### Symptom
+
+Benchmark run with `LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini --strategy self_rag` across
+50 queries produced JSON output where every query had all extracted claims in
+`verified_claims` and `0` in `unsupported_claims`. Approximately 150 log lines:
+
+```
+WARNING generation.advanced_generation: Claim verification failed: Expecting value: line 1 column 1 (char 0)
+```
+
+`Expecting value: line 1 column 1 (char 0)` is the `JSONDecodeError` message for
+`json.loads("")` — gpt-4o-mini was returning empty strings for a significant fraction (~38%)
+of verification calls. Despite those failures being logged, every claim was marked as
+verified.
+
+### Root cause
+
+`SelfRAGGenerator._verify_claim()` in `generation/advanced_generation.py` had a broad
+`except Exception` handler that caught the `JSONDecodeError` from the empty response and
+returned `(True, "")` — fail-**open**, not fail-closed:
+
+```python
+except Exception as e:
+    logger.warning("Claim verification failed: %s", e)
+    return True, ""   # Assume supported if verification fails
+```
+
+`generate()` routes on the first element: `if is_supported: verified_claims.append(claim)`.
+Every empty-response claim therefore went into `verified_claims`, never into
+`unsupported_claims`. The log warning was emitted, but the code path immediately after it
+silently promoted the claim to verified.
+
+The 2026-04-18 fix was intended to make the parser fail closed. It did — for the non-dict
+parser branch (bare string gibberish). It missed the exception path entirely because the
+return value in the exception handler was not updated.
+
+### Why the 2026-04-18 regression tests didn't catch it
+
+`test_bare_string_gibberish_fails_closed` passed `'"xyz_gibberish_unknown"'` — a valid JSON
+string. `json.loads('"xyz_gibberish_unknown"')` succeeds and returns a Python `str`. The
+non-dict branch on lines 327–328 then checks whether the string is in the positive
+whitelist; it is not, so the test correctly got `(False, "")`.
+
+The empty-string case takes an entirely different code path: `json.loads("")` raises
+`JSONDecodeError` before reaching the non-dict branch. The exception handler is a separate
+code path from the parser branch. The 2026-04-18 test suite covered the parser branch for
+gibberish JSON but did not cover the exception handler path at all. No test called
+`_run_verify("")`.
+
+**The lesson:** a test that verifies "gibberish JSON fails closed" is not the same as a
+test that verifies "unparseable input fails closed." They exercise different lines of code.
+
+### Fix
+
+One-line change to the exception handler (`generation/advanced_generation.py:332`):
+
+```python
+# Before
+return True, ""   # Assume supported if verification fails
+
+# After
+return False, ""  # Fail closed: unparseable response → unsupported
+```
+
+Also updated the log message to include `type(e).__name__` per the 2026-05-01 lesson:
+
+```python
+logger.warning("Claim verification failed: %s — type=%s", e, type(e).__name__)
+```
+
+This makes `JSONDecodeError` (empty response) distinguishable from `KeyError` (prompt
+rendering failure) and `TypeError` (None response) without reading the source.
+
+### Regression tests added
+
+`tests/unit/test_self_rag_verification.py` — `TestVerifyClaimEmptyAndUnparseable`:
+
+- `test_empty_string_response_fails_closed` — `_run_verify("")` → `(False, "")`. Pins the
+  exact path that caused the benchmark result.
+- `test_whitespace_only_response_fails_closed` — `_run_verify("   \n  ")` → `(False, "")`.
+  Whitespace also raises `JSONDecodeError` via the same path.
+- `test_none_answer_fails_closed` — `answer = None` → `json.loads(None)` raises `TypeError`
+  → `(False, "")`. Ensures the handler catches non-string responses too.
+
+### Cross-reference
+
+- **2026-04-18** — This is the fix that introduced the fail-closed intent for the
+  verification parser. The exception handler was overlooked. The regression tests from that
+  entry covered the parser branch but not the exception handler branch.
+- **2026-04-18** (second entry, same date) — The original `VERIFICATION_PROMPT` brace-escape
+  fix. That bug also produced `Claim verification failed` log lines, from `KeyError` not
+  `JSONDecodeError`. Had the handler logged `type(e).__name__` at that time, the two bugs
+  would have been distinguishable at a glance.
+- **2026-05-01** — Established the lesson "broad except handlers should log exception type
+  alongside message." This fix applies it.
+
+### Commit
+
+_(pending — fix not yet committed)_
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
