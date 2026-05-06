@@ -328,8 +328,8 @@ Context:
             return raw in ("true", "yes", "supported", "1"), ""
 
         except Exception as e:
-            logger.warning("Claim verification failed: %s", e)
-            return True, ""   # Assume supported if verification fails
+            logger.warning("Claim verification failed: %s — type=%s", e, type(e).__name__)
+            return False, ""  # Fail closed: unparseable response → unsupported
 
 
 # =============================================================================
