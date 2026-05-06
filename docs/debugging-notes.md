@@ -931,6 +931,120 @@ _(pending — fix not yet committed)_
 
 ---
 
+## 2026-05-05 — Self-RAG verifier: gpt-4o-mini wraps JSON in markdown fences with complex contexts
+
+### Symptom
+
+After the fail-closed fix (see 2026-05-05 entry above), a benchmark re-run with
+`LLM_PROVIDER=openai LLM_MODEL=gpt-4o-mini --strategy self_rag` across 50 FiQA queries
+produced 0 verified claims and 176 unsupported claims — every extracted claim landing in
+`unsupported_claims`. Hundreds of log lines:
+
+```
+WARNING generation.advanced_generation: Claim verification failed: Expecting value: line 1 column 1 (char 0) — type=JSONDecodeError
+```
+
+Isolated `_verify_claim` tests with hand-crafted claims and contexts worked correctly.
+
+### Initial hypothesis (wrong)
+
+The earlier fail-closed entry documented this error as `json.loads("")` — interpreting
+`Expecting value: line 1 column 1 (char 0)` as evidence of an empty LLM response. The
+OpenAI dashboard showed no API errors, so the explanation offered was content-filter or
+rate-limit transients causing silent empty responses.
+
+That interpretation was wrong.
+
+### Actual root cause: the error message is not specific to empty strings
+
+`JSONDecodeError("Expecting value: line 1 column 1 (char 0)")` is Python's generic "the
+first character is not a valid JSON start character" error. It is raised for:
+
+```python
+json.loads("")                              # → same error
+json.loads("hello world")                  # → same error
+json.loads('```json\n{"supported": true}') # → same error  ← actual case
+```
+
+The diagnostic that resolved the ambiguity: log `repr(result.answer)` before calling
+`json.loads`. The raw response was:
+
+```
+'```json\n{"supported": true, "evidence": "Start as early as possible..."}\n```'
+```
+
+gpt-4o-mini was returning a correct, non-empty, correctly formatted JSON verdict — but
+wrapped in a markdown code fence. The VERIFICATION_PROMPT says `"Answer ONLY with JSON"`
+but does not enforce `response_format={"type": "json_object"}`, so the model was free to
+add fences. It did so consistently with complex FiQA forum-post contexts but not with the
+short hand-crafted contexts used in isolated tests.
+
+### Why isolated tests passed but benchmark failed
+
+Hand-crafted test contexts (one or two sentences) produce bare JSON from gpt-4o-mini.
+Real FiQA retrieval contexts (multi-paragraph financial forum posts) nudge the model toward
+markdown formatting. Same prompt, different context length/style, different output shape.
+This is the same class of problem as the 2026-04-29 Llama multi-array JSON shape: LLM
+output format is not deterministic across input styles, even with the same model and prompt.
+
+### Fix
+
+Extracted `_strip_markdown_fences(text: str) -> str` as a module-level helper in
+`generation/advanced_generation.py`. Applied at both unguarded `json.loads` call sites:
+
+- `_extract_claims` — was `json.loads(result.answer)`
+- `_verify_claim` — was `json.loads(result.answer)`
+
+Both now call `json.loads(_strip_markdown_fences(result.answer))`. The stripping regex
+(`^```(?:json)?\\s*` / `\\s*```$`) is the same pattern already used in
+`GenerationService.generate_followups` at `llm_service.py:556-560`.
+
+### Regression tests added
+
+`tests/unit/test_self_rag_verification.py` — `TestMarkdownFenceStripping`:
+
+- `test_verify_claim_strips_markdown_fences` — passes `` ```json\n{...}\n``` ``, asserts `(True, "test")`.
+  Pins gpt-4o-mini's real-world output shape with FiQA contexts.
+- `test_verify_claim_strips_plain_fence_no_lang` — passes `` ```\n{...}\n``` `` (no `json` tag),
+  asserts `(True, "test")`. Covers the variant without a language specifier.
+- `test_extract_claims_strips_markdown_fences` — passes a fenced JSON array to `_extract_claims`,
+  asserts correct claim list returned.
+
+### Lesson
+
+`JSONDecodeError("Expecting value: line 1 column 1 (char 0)")` is a generic parse-start
+error, not an empty-string indicator. Any input that does not start with a valid JSON
+character (`{`, `[`, `"`, `t`, `f`, `n`, digit, `-`) produces this exact message. Logging
+`repr(text)` on parse failures — not just `str(e)` — is the diagnostic step that
+distinguishes:
+
+- Empty response (`""`)
+- Markdown-fenced response (`` ```json\n{...}\n``` ``)
+- Plain-text preamble (`"Based on the context, the claim is..."`)
+
+All three produce identical exception messages. Only `repr` preserves the shape.
+
+Generalizes: any time a parser reports "expected X at position 0" and the assumption is
+that the input was empty, verify with `repr` before drawing that conclusion.
+
+### Cross-reference
+
+- **2026-05-05 fail-closed entry** (`_verify_claim` exception handler returned `True`
+  instead of `False`): that fix corrected the routing but didn't expose the root cause —
+  the responses were not empty. The `type=JSONDecodeError` log addition from that fix
+  correctly narrowed the exception class but did not surface the content because `str(e)`
+  doesn't include the actual input text.
+- **2026-04-29 Llama multi-array JSON** (`generate_followups` parser): same pattern —
+  parser assumed one output shape, model emitted another. Fix was adapting the parser
+  downstream. This entry is the same pattern applied to `_verify_claim` and
+  `_extract_claims`.
+
+### Commit
+
+_(pending — fix not yet committed)_
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
