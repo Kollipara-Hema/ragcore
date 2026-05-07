@@ -31,7 +31,7 @@ import sys
 import time
 from pathlib import Path
 from statistics import mean, stdev
-from datetime import date
+from datetime import date, datetime
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -58,6 +58,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--strategy", choices=["basic", "self_rag"], required=True,
     help="Generation strategy to benchmark",
+)
+parser.add_argument(
+    "--output", type=Path, default=None,
+    help="Output path override. Default: evaluation/results/{strategy}_fiqa_{date}.json",
 )
 args = parser.parse_args()
 
@@ -267,7 +271,9 @@ async def run(strategy: str) -> None:
         ragas_llm = _llm_factory("gpt-4o-mini", client=_ragas_client, max_tokens=8192)
 
     eval_path = REPO_ROOT / "evaluation" / "datasets" / "fiqa_eval.json"
-    out_path = REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa_{RUN_DATE}.json"
+    out_path = args.output or (
+        REPO_ROOT / "evaluation" / "results" / f"{strategy}_fiqa_{RUN_DATE}.json"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     meta_pkl = Path(settings.faiss_data_dir) / "faiss_metadata.pkl"
 
@@ -308,8 +314,10 @@ async def run(strategy: str) -> None:
                 "query_id": qid,
                 "query": query,
                 "generated_answer": response.answer,
+                "model_used": response.model_used,
                 "relevant_doc_ids": relevant_ids,
                 "cited_doc_ids": cited_fiqa,
+                "retrieved_contexts": contexts,
                 "latency_ms": round(latency_ms, 1),
                 "total_tokens": response.total_tokens,
                 "faithfulness": round(faith, 4),
@@ -339,8 +347,20 @@ async def run(strategy: str) -> None:
 
     total_sec = time.monotonic() - wall_start
 
+    metadata = {
+        "run_timestamp_utc": datetime.utcnow().isoformat() + "Z",
+        "llm_provider": settings.llm_provider.value,
+        "llm_model": settings.llm_model,
+        "vector_store_provider": settings.vector_store_provider.value,
+        "embedding_provider": settings.embedding_provider.value,
+        "eval_strategy": settings.eval_strategy,
+        "generation_strategy": strategy,
+        "ragas_judge": "gpt-4o-mini",
+        "dataset": "fiqa_eval",
+        "dataset_size": len(results),
+    }
     with open(out_path, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump({"metadata": metadata, "results": results}, f, indent=2)
 
     print_summary(results, strategy, total_sec)
     print(f"\nSaved: {out_path}")
