@@ -53,32 +53,49 @@ Benchmarked on 50 FiQA-2018 financial Q&A queries. Retrieval metrics are
 identical between strategies by construction (same retrieval path); the
 meaningful comparison is faithfulness, where the two metrics disagree.
 
-| Metric | Baseline | Self-RAG | Delta | 95% CI | p |
+| Metric | Baseline | Self-RAG | Delta | Run range | p |
 |---|---|---|---|---|---|
 | hit@5 | 0.92 | 0.92 | — | — | — |
 | MRR | 0.86 | 0.86 | — | — | — |
 | NDCG@5 | 0.75 | 0.75 | — | — | — |
 | faithfulness (word-overlap) | 0.36 | 0.42 | +0.054 | [0.032, 0.083] | 0.0002 |
-| faithfulness (RAGAS, gpt-4o-mini) | 0.56 | 0.45 | −0.109 | [−0.197, −0.019] | 0.0296 |
+| faithfulness (RAGAS, gpt-4o-mini) | 0.55 | 0.46 | −0.085 | [−0.115, −0.065] | 0.007–0.069 |
 | mean latency | 5.9s | 10.6s | +79% | — | — |
 
 The two faithfulness metrics give opposite verdicts. Word-overlap says
 Self-RAG is more faithful (+15% relative). RAGAS says Self-RAG is less
-faithful (−19% relative). Both effects are statistically significant
-(Wilcoxon signed-rank, paired bootstrap CIs over 1000 resamples,
-seed=42). On baseline answers, the two metrics negatively correlate
-(Spearman ρ = −0.385, p=0.006) — they are not measuring the same
-thing.
+faithful, with a mean delta of −0.085 across three judge-controlled
+re-runs (range −0.115 to −0.065; Wilcoxon p straddles α=0.05 across
+runs at 0.007, 0.049, 0.069). On baseline answers, the two metrics
+negatively correlate (Spearman ρ = −0.385, p=0.006) — they are not
+measuring the same thing.
+
+The April analysis reported a single-run RAGAS delta of −0.109, within
+the range observed across reruns above. The single point estimate
+overstates the precision of the underlying instrument: RAGAS at n=50
+has a per-query noise floor of ~0.07–0.09 mean absolute difference
+between re-runs of identical data, comparable in magnitude to the
+effect sizes being measured. The per-claim analysis (linked below)
+characterizes this non-determinism and the structural disagreement
+between Self-RAG's internal verifier and the RAGAS judge.
 
 A plausible mechanism: Self-RAG decomposes answers into atomic claims,
 which raises token overlap with contexts (helping word-overlap) but
 creates more opportunities for any single claim to be flagged as
-unsupported (hurting RAGAS). Whether the RAGAS regression reflects
-worse answers or just more falsifiable claims requires per-claim
-analysis to resolve. See
-[evaluation/results/ragas_analysis_2026-04-26.md](evaluation/results/ragas_analysis_2026-04-26.md)
-for the full statistical breakdown, mechanism hypothesis, and
-limitations.
+unsupported (hurting RAGAS). The per-claim analysis confirms a
+structural finding: Pearson r between Self-RAG's internal verifier
+and the RAGAS judge across paired queries is near zero (-0.12 to
+-0.16, p > 0.3), and 34% of queries show internal-accept/RAGAS-reject
+disagreement against only 3% in the reverse direction. The two
+verifiers do not share a meaningful ranking signal even when they use
+the same underlying model.
+
+For the full statistical breakdown of the April run (paired bootstrap
+CIs, Wilcoxon, Spearman cross-correlation), see
+[evaluation/results/ragas_analysis_2026-04-26.md](evaluation/results/ragas_analysis_2026-04-26.md).
+For the per-claim mechanism investigation, including the verifier-disagreement
+finding and characterization of run-to-run instrument variance, see
+[evaluation/results/per_claim_analysis_2026-05-05.md](evaluation/results/per_claim_analysis_2026-05-05.md).
 
 The pre-registered analysis plan, written before the RAGAS run, is at
 [docs/ragas_run_plan_2026-04-26.md](docs/ragas_run_plan_2026-04-26.md).
@@ -112,6 +129,13 @@ flowchart TD
         I --> J[Reranker<br/>Cross-Encoder]
         J --> K[LLM Generator<br/>+ Citations]
         K --> L([Answer])
+    end
+
+    subgraph Monitoring
+        K --> M1[Prometheus<br/>5 custom metrics + RED]
+        I --> M1
+        M1 --> M2[Grafana<br/>overview dashboard]
+        K --> M3[Structured logs<br/>JSON + request_id]
     end
 
     E --> E1
@@ -397,7 +421,7 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 113 unit tests passing, 40 of 41 integration tests passing. One
+Current: 144 unit tests passing, 44 of 45 integration tests passing. One
 integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
 mock-target resolution bug in the test itself, unrelated to current work.
 
@@ -426,12 +450,33 @@ mock-target resolution bug in the test itself, unrelated to current work.
 - Hallucination verifier toggle (per-query Self-RAG opt-in, ~3x slower)
 - Per-query pipeline section in sidebar (router, retrieve, rerank, generate, 
   latency, tokens, confidence with recalibrated thresholds)
+- Real Prometheus metrics: 5 custom `ragcore_*` metrics (stage duration
+  histogram, generation tokens, Self-RAG claims, process memory, vector
+  store disk bytes) plus RED metrics on every endpoint via
+  `prometheus-fastapi-instrumentator`. Scraped by Prometheus at 15s
+  intervals; Grafana dashboard with overview panels preloaded via
+  provisioning.
+- Deep health checks: `/health/live` (process alive) and
+  `/health/ready` (vector store ping, embedder smoke test, LLM API key
+  validation). Returns 200 all-pass or 503 with structured per-check
+  failures. Original `/health` retained for Render's default monitor.
+- Structured JSON logging via structlog with request-ID correlation.
+  `RequestIdMiddleware` honors inbound `X-Request-Id` header or
+  generates UUID4; binds into context so every log line during request
+  handling carries the field. Echoed in response header.
+- Self-RAG verifier robustness: two latent bugs found and fixed during
+  benchmark runs. Exception handler in `_verify_claim` was fail-open
+  (silently promoting unparseable responses to verified) — now fail-closed.
+  `_extract_claims` and `_verify_claim` did not strip markdown code
+  fences before `json.loads`, causing all benchmark-shape responses
+  from gpt-4o-mini to land in the exception handler. Both fixes
+  covered by 6 regression tests.
 
 ### Deferred or scaffolded
 
-- Monitoring: `NoOpTracer` methods are all `pass`; Langfuse tracing is off by
-  default; Prometheus/Grafana appear in `docker-compose.yml` but the
-  application emits no metrics
+- Monitoring: `NoOpTracer` methods are all `pass`; Langfuse tracing is
+  off by default and never exercised end-to-end against a live
+  instance. Prometheus and Grafana now wired and verified locally.
 - Multi-vector-store: FAISS and Chroma are both verified end-to-end with hybrid
   retrieval via the shared BM25Index helper, and both pass the same parity test
   surface. Weaviate, Pinecone, and Qdrant remain config-only fall-throughs with
@@ -454,6 +499,16 @@ mock-target resolution bug in the test itself, unrelated to current work.
   bootstrap CIs, Wilcoxon signed-rank tests, cross-metric Spearman correlation,
   top-outlier query analysis, mechanism hypothesis, and limitations. Documents
   the metric disagreement that motivates the README headline.
+- [evaluation/results/per_claim_analysis_2026-05-05.md](evaluation/results/per_claim_analysis_2026-05-05.md) —
+  Per-claim faithfulness analysis under controlled conditions
+  (gpt-4o-mini as generator, Self-RAG verifier, and RAGAS judge).
+  Documents the structural disagreement between the two verifiers
+  (Pearson r near zero across paired queries, 34% internal-accept/
+  RAGAS-reject vs 3% reverse) and characterizes RAGAS instrument
+  non-determinism (per-query noise floor 0.05-0.09; Wilcoxon p
+  straddles α=0.05 across reruns of identical data). Self-updating
+  writeup with f-string substitutions; numbers regenerate on each
+  notebook run.
 - [docs/ragas_run_plan_2026-04-26.md](docs/ragas_run_plan_2026-04-26.md) —
   Pre-registered analysis plan, written before the RAGAS benchmark ran. Decision
   rules committed in advance for three result scenarios; the RAGAS regression
@@ -475,10 +530,12 @@ mock-target resolution bug in the test itself, unrelated to current work.
 
 - Wire Agentic RAG into the generation strategy dispatch (code exists in
   `advanced_generation.py`, not yet called by orchestrator)
-- Investigate per-claim support rates to test the metric-disagreement
-  hypothesis: are Self-RAG's "unsupported" claims actually unsupported, or
-  supported by retrieved contexts not surfaced in citations?
-- Emit real Prometheus metrics from retrieval and generation steps
-- Fix the two scaffolded tracer integration tests
+- Manual claim-level annotation on the 13 internal-accept/RAGAS-reject
+  queries to determine whether they reflect real grounding errors or
+  overzealous RAGAS rejection (per-claim analysis investigated the
+  mechanism but did not adjudicate individual claims).
 - Expand to the full FiQA test split (~648 queries) to tighten confidence
   intervals on both faithfulness deltas
+- Cross-model judge comparison (gpt-4o vs gpt-4o-mini) to test whether
+  the verifier disagreement and noise floor findings hold under a
+  stronger judge.
