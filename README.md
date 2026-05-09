@@ -32,6 +32,7 @@ finding.
 - [Testing](#testing)
 - [Status](#status)
 - [Project Artifacts](#project-artifacts)
+- [Recent Updates](#recent-updates)
 - [What's next](#whats-next)
 
 ---
@@ -241,6 +242,8 @@ cd ui_chainlit && chainlit run app.py
 After `docker compose up`, Prometheus scrapes the API's `/metrics` endpoint every 15 seconds and is accessible at `http://localhost:9090`. The `ragcore_api` scrape target should show as **UP** within one scrape interval; verify at `http://localhost:9090/targets`.
 
 Grafana is available at `http://localhost:3000` (default credentials: `admin` / `admin`). The **RAGCore Overview** dashboard is preloaded under Dashboards → RAGCore and displays request rate, p95 latency, stage durations, token usage, Self-RAG claim outcomes, process memory, and vector store disk usage.
+
+![RAGCore Grafana Overview](docs/assets/grafana_overview.png)
 
 ---
 
@@ -525,7 +528,23 @@ mock-target resolution bug in the test itself, unrelated to current work.
   `python evaluation/scripts/run_benchmark.py --strategy basic`
 
 ---
+## Recent Updates
 
+| Date | What changed |
+|---|---|
+| 2026-05-08 | Grafana dashboard screenshot and Recent Updates section added |
+| 2026-05-07 | AUDIT and README refreshed to reflect the past week's batch |
+| 2026-05-06 | Per-claim faithfulness analysis: characterized RAGAS judge non-determinism (0.05-0.09 noise floor at n=50) and structural verifier disagreement (Pearson r ≈ -0.14 between Self-RAG verifier and RAGAS judge using the same model) |
+| 2026-05-06 | Self-RAG verifier robustness: fixed fail-open exception handler and markdown fence parsing; both bugs were silently corrupting benchmark runs |
+| 2026-05-04 | Structured JSON logging with request-ID correlation via middleware |
+| 2026-05-03 | Grafana dashboard with overview panels (request rate, latency, stage durations, token rate, Self-RAG claims, memory, disk) |
+| 2026-05-03 | Prometheus scraping the API every 15s; full docker-compose stack runnable locally |
+| 2026-04-30 | Real Prometheus metrics on /metrics: 5 custom metrics + RED metrics on every endpoint |
+| 2026-04-30 | Deep health checks: /health/live and /health/ready with vector store, embedder, and LLM config validation |
+
+For full commit history: `git log --oneline -30`
+
+---
 ## What's next
 
 - Wire Agentic RAG into the generation strategy dispatch (code exists in

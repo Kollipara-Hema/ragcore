@@ -622,49 +622,56 @@ with st.sidebar:
 
     st.divider()
 
-    # S4. Pipeline (only when an active response exists)
-    latest = _latest_result()
-    if latest:
-        stage_timings_s   = latest.get("stage_timings")
-        latency_ms_s      = latest.get("latency_ms") or 0
-        total_tokens_s    = latest.get("total_tokens") or 0
-        ret_cands_s       = latest.get("retrieval_candidates")
+    # S4. Pipeline
+    latest          = _latest_result()
+    stage_timings_s = latest.get("stage_timings")        if latest else None
+    latency_ms_s    = latest.get("latency_ms")           if latest else None
+    total_tokens_s  = latest.get("total_tokens")         if latest else None
+    ret_cands_s     = latest.get("retrieval_candidates") if latest else None
 
-        st.markdown('<span class="sec-label">Pipeline</span>', unsafe_allow_html=True)
+    total_val    = f'{stage_timings_s["total_ms"]:.0f}ms'          if stage_timings_s else "—"
+    router_val   = f'{stage_timings_s.get("router_ms",   0):.0f}ms' if stage_timings_s else "—"
+    retrieve_val = f'{stage_timings_s.get("retrieve_ms", 0):.0f}ms' if stage_timings_s else "—"
+    rerank_val   = f'{stage_timings_s.get("rerank_ms",   0):.0f}ms' if stage_timings_s else "—"
+    generate_val = f'{stage_timings_s.get("generate_ms", 0):.0f}ms' if stage_timings_s else "—"
+    latency_val  = f"{latency_ms_s:.0f}ms" if latency_ms_s   is not None else "—"
+    tokens_val   = str(total_tokens_s)      if total_tokens_s is not None else "—"
 
-        if stage_timings_s:
-            total_ms_s = stage_timings_s.get("total_ms", latency_ms_s)
-            st.markdown(
-                f'<div class="pipeline-total">Total: {total_ms_s:.0f}ms</div>',
-                unsafe_allow_html=True,
-            )
+    st.markdown('<span class="sec-label">Pipeline</span>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="pipeline-total">Total: {total_val}</div>',
+        unsafe_allow_html=True,
+    )
 
-        rows_html = ""
-        if stage_timings_s:
-            rows_html += _pipeline_row(CORAL,  "Router",   f'{stage_timings_s.get("router_ms",   0):.0f}ms')
-            rows_html += _pipeline_row(ACCENT, "Retrieve", f'{stage_timings_s.get("retrieve_ms", 0):.0f}ms')
-            rows_html += _pipeline_row(TEAL,   "Rerank",   f'{stage_timings_s.get("rerank_ms",   0):.0f}ms')
-            rows_html += _pipeline_row(AMBER,  "Generate", f'{stage_timings_s.get("generate_ms", 0):.0f}ms')
+    rows_html  = _pipeline_row(CORAL,  "Router",   router_val)
+    rows_html += _pipeline_row(ACCENT, "Retrieve", retrieve_val)
+    rows_html += _pipeline_row(TEAL,   "Rerank",   rerank_val)
+    rows_html += _pipeline_row(AMBER,  "Generate", generate_val)
+    rows_html += _pipeline_row(ACCENT, "Latency",  latency_val)
+    rows_html += _pipeline_row(TEAL,   "Tokens",   tokens_val)
 
-        rows_html += _pipeline_row(ACCENT, "Latency", f"{latency_ms_s:.0f}ms")
-        rows_html += _pipeline_row(TEAL,   "Tokens",  str(total_tokens_s))
+    level = compute_confidence(ret_cands_s) if ret_cands_s else "unknown"
+    if level != "unknown":
+        dot_color = SUCCESS_DARK if level == "high" else (ERROR_DARK if level == "low" else AMBER)
+        badge = _confidence_badge_html(level)
+        rows_html += (
+            f'<div class="pipeline-row">'
+            f'<span class="pipeline-dot" style="background:{dot_color}"></span>'
+            f'<span class="pipeline-label">Confidence</span>'
+            f'{badge}'
+            f'</div>'
+        )
+    else:
+        rows_html += _pipeline_row(ACCENT, "Confidence", "—")
 
-        # Row 7: Confidence (only when retrieval_candidates available)
-        if ret_cands_s:
-            level = compute_confidence(ret_cands_s)
-            if level != "unknown":
-                dot_color = SUCCESS_DARK if level == "high" else (ERROR_DARK if level == "low" else AMBER)
-                badge = _confidence_badge_html(level)
-                rows_html += (
-                    f'<div class="pipeline-row">'
-                    f'<span class="pipeline-dot" style="background:{dot_color}"></span>'
-                    f'<span class="pipeline-label">Confidence</span>'
-                    f'{badge}'
-                    f'</div>'
-                )
-
-        st.markdown(rows_html, unsafe_allow_html=True)
-        st.divider()
+    st.markdown(rows_html, unsafe_allow_html=True)
+    if latest is None:
+        st.markdown(
+            f'<p style="font-size:11px;color:{TEXT_MUTED};font-style:italic;margin-top:8px">'
+            f'Ask a question to see live metrics.</p>',
+            unsafe_allow_html=True,
+        )
+    st.divider()
 
     # S5. Doc upload note
     st.markdown(
