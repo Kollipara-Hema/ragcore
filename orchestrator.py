@@ -253,6 +253,13 @@ class RAGOrchestrator:
 
             # Handle case where no relevant chunks were found
             if not retrieval_result.chunks:
+                logger.warning(
+                    "retrieval_empty",
+                    query=request.query,
+                    query_type=decision.query_type.value,
+                    strategy=decision.primary_strategy.value,
+                    top_k=top_k,
+                )
                 # Return a graceful "I couldn't find anything" response
                 return self._empty_response(request.query, start)
 
