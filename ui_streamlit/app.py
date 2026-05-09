@@ -69,12 +69,28 @@ st.markdown(f"""
     background-color: {BG_SIDEBAR};
     border-right: 1px solid {BORDER};
 }}
+/* Tighten sidebar spacing */
+[data-testid="stSidebar"] .element-container {{
+    margin-bottom: 0.25rem !important;
+}}
+
+[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {{
+    gap: 0.25rem !important;
+}}
 #MainMenu {{visibility: hidden;}}
 footer    {{visibility: hidden;}}
-
+[data-testid="stSidebar"] > div:first-child {{
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+}}
+[data-testid="stSidebar"] .stCaption {{
+    margin-bottom: 0rem !important;
+}}
 /* ── Status pill ── */
 .status-pill {{
-    display: inline-block; padding: 8px 12px; border-radius: 8px;
+    display: inline-block; padding: 5px 12px; border-radius: 8px;
     font-size: 13px; font-weight: 500; width: 100%; box-sizing: border-box; margin: 4px 0;
 }}
 .status-ok  {{ background: {SUCCESS_BG}; color: {SUCCESS_DARK}; }}
@@ -99,7 +115,7 @@ footer    {{visibility: hidden;}}
 /* ── Pipeline rows ── */
 .pipeline-total {{ font-size: 12px; color: {TEXT_PRIMARY}; margin-bottom: 4px; font-weight: 700; }}
 .pipeline-row {{
-    display: flex; align-items: center; padding: 4px 0;
+    display: flex; align-items: center; padding: 1px 0;
     font-size: 13px; color: {TEXT_SECONDARY};
 }}
 .pipeline-dot {{
