@@ -260,6 +260,11 @@ class RAGOrchestrator:
                     strategy=decision.primary_strategy.value,
                     top_k=top_k,
                 )
+                try:
+                    from monitoring.metrics import retrieval_empty as _re
+                    _re.labels(strategy=decision.primary_strategy.value).inc()
+                except Exception as _e:
+                    logger.debug("Metrics recording skipped: %s", _e)
                 # Return a graceful "I couldn't find anything" response
                 return self._empty_response(request.query, decision, start)
 
