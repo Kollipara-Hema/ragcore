@@ -308,9 +308,11 @@ agent API models. Accurate enough not to mislead; worth noting.
 
 14. **Stale `weaviate_url` and `weaviate_api_key` remain in `config/settings.py`.** The Weaviate service was dropped from `docker-compose.yml` in commit `5eeb5ac`. The two settings keys remain in the codebase as dead config with no runtime impact when `VECTOR_STORE_PROVIDER=faiss`. Flagged for future cleanup.
 
+15. **In-process singleton means Celery-ingested documents require an API restart to become queryable.** `get_vector_store()` returns a module-level singleton (`_vector_store_instance`, `vectorstore/vector_store.py:24`). FAISS loads its index from disk once in `FAISSVectorStore.__init__` and holds it in memory for the process lifetime. Celery workers run in separate OS processes; each `ingest_file_task` constructs a fresh `IngestionPipeline()` (`ingestion/pipeline.py:209`), acquires the worker-process singleton, and persists upserted chunks to disk via `.save()` inside `upsert()`. The API process's singleton is independent — populated at startup and never refreshed — so Celery-written chunks are invisible to queries until the API restarts and `FAISSVectorStore.__init__` reloads from disk. Workaround: restart the API after Celery ingest. Same-process variant fixed 2026-04-17 (`docs/debugging-notes.md`).
+
 ### Bugs discovered during this audit
 
-15. **`verify_claims` toggle resets to `False` on page reload**
+16. **`verify_claims` toggle resets to `False` on page reload**
     ([ui_streamlit/app.py:620](ui_streamlit/app.py#L620)).
     Streamlit session state does not persist across page reloads. A user who enables
     the hallucination verifier and reloads will silently lose the setting. The verifier
