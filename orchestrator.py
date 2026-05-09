@@ -42,7 +42,7 @@ from utils.models import (
 )
 
 # The five pipeline modules (one per step)
-from retrieval.router.query_router import QueryRouter          # Step 1
+from retrieval.router.query_router import QueryRouter, RoutingDecision  # Step 1
 from retrieval.strategies.retrieval_executor import RetrievalExecutor  # Step 2
 from reranking.reranker import get_reranker                    # Step 3
 from generation.prompts.prompt_builder import PromptBuilder    # Step 4
@@ -261,7 +261,7 @@ class RAGOrchestrator:
                     top_k=top_k,
                 )
                 # Return a graceful "I couldn't find anything" response
-                return self._empty_response(request.query, start)
+                return self._empty_response(request.query, decision, start)
 
             # Snapshot pre-rerank candidates before reranking mutates order/scores
             pre_rerank_chunks = list(retrieval_result.chunks)
@@ -525,7 +525,7 @@ class RAGOrchestrator:
         async for token in self._generation.stream(request.query, prompt):
             yield token  # Caller sends each token to the client via SSE
 
-    def _empty_response(self, query: str, start: float) -> QueryResponse:
+    def _empty_response(self, query: str, decision: RoutingDecision, start: float) -> QueryResponse:
         """
         Returns a friendly 'nothing found' response when retrieval finds nothing.
 
@@ -541,8 +541,8 @@ class RAGOrchestrator:
                 "and try rephrasing your query."
             ),
             citations=[],                               # No sources to cite
-            query_type=QueryType.SEMANTIC.value,        # Default type
-            strategy_used=RetrievalStrategy.HYBRID.value,  # Default strategy
+            query_type=decision.query_type.value,
+            strategy_used=decision.primary_strategy.value,
             model_used=settings.llm_model,             # LLM was not actually called
             total_tokens=0,                             # No tokens used
             latency_ms=round((time.monotonic() - start) * 1000, 2),
