@@ -45,3 +45,15 @@ def test_disk_bytes_existing_path(tmp_path, monkeypatch):
     (tmp_path / "index.faiss").write_bytes(b"x" * 1024)
     monkeypatch.setattr(settings, "faiss_data_dir", str(tmp_path))
     assert m._disk_bytes("faiss") == 1024.0
+
+
+def test_retrieval_empty_label_names():
+    from monitoring.metrics import retrieval_empty
+    assert retrieval_empty._labelnames == ("strategy",)
+
+
+def test_retrieval_empty_increments():
+    from monitoring.metrics import retrieval_empty
+    before = retrieval_empty.labels(strategy="hybrid")._value.get()
+    retrieval_empty.labels(strategy="hybrid").inc()
+    assert retrieval_empty.labels(strategy="hybrid")._value.get() == before + 1

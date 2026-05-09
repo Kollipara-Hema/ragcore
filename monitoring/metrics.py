@@ -28,6 +28,12 @@ self_rag_claims = Counter(
     ["outcome"],
 )
 
+retrieval_empty = Counter(
+    "ragcore_retrieval_empty_total",
+    "Queries that returned no chunks from retrieval",
+    ["strategy"],
+)
+
 
 class _ResourceCollector:
     def collect(self):
