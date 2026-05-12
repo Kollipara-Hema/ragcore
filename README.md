@@ -343,6 +343,12 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 | `LANGFUSE_PUBLIC_KEY` | — | Langfuse public key |
 | `LANGFUSE_SECRET_KEY` | — | Langfuse secret key |
 
+### CORS
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `CORS_ORIGINS` | `http://localhost:8501` | Comma-separated allowed origins for cross-origin requests. Set to your frontend's URL in production. |
+
 ---
 
 ## Project Structure
