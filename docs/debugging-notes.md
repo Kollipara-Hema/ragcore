@@ -1045,6 +1045,68 @@ _(pending — fix not yet committed)_
 
 ---
 
+## 2026-05-12 — production FiQA corpus never re-ingested after May 3 disk migration; surfaced May 12 by the security pass
+
+### Symptom
+
+Live demo at ragcore.streamlit.app returning either the canned empty-retrieval fallback or grounded-but-useless answers citing only two ad-hoc test chunks. Direct curl to production `/query` confirmed the same — sub-millisecond retrieval latency, near-zero citations from FiQA, every query routed to either the empty-retrieval fallback message or the low-confidence abstention path.
+
+### Investigation path
+
+Each hypothesis below was tested in order. Each was ruled out by a single diagnostic before moving to the next.
+
+**CORS broken** — ruled out by OPTIONS preflight returning the correct `Access-Control-Allow-Origin` header. The Streamlit frontend could reach the backend; the problem was in what the backend returned, not whether it responded.
+
+**Multi-worker singleton bug** — `VectorStore` and `BM25Index` are module-level singletons; if multiple uvicorn workers had started, each worker would have its own in-process state and requests could land on differently-initialized workers. Ruled out by `/proc/1/cmdline` showing `--workers 1`. Only one worker process was running.
+
+**FAISS index empty** — `GET /health/ready` reports index size. Ruled out by `ntotal=2`. The index was not empty; it contained exactly two vectors.
+
+**Metadata key mismatch** — the pipeline stores text under a configurable content key; a mismatch would produce vectors with no retrievable text. Ruled out by inspecting the stored metadata: the content key was populated correctly on both chunks.
+
+**BM25 not rebuilt on load** — `BM25Index` rebuilds its `_bm25` attribute from `_corpus` on startup; if the pickle had been corrupted or the rebuild skipped, hybrid retrieval would fail silently. Ruled out by confirming `_corpus` held 2 strings and `_bm25` was a `BM25Okapi` instance. BM25 had been rebuilt correctly on load; whether IDF weights were numerically degenerate on a 2-document corpus was a separate open question.
+
+**BM25Okapi IDF degenerate math on tiny corpus** — with only 2 documents, IDF weights are extreme; `query()` returned empty results, which initially appeared to confirm this. Falsified when Streamlit returned a qualitatively different abstention message than the curl path. The two query paths were hitting different failure modes, which meant the corpus size was not the cause — the cause was something that affected all query paths equally regardless of BM25 behavior. That realization redirected attention to disk state rather than index math.
+
+### Root cause
+
+The FiQA corpus was on production before April 28, when Render free-tier OOM events triggered a series of crashes. The crashes motivated the `FAISS_DATA_DIR` persistent-disk migration on May 3 (commit `5ba20cf`). The migration created an empty persistent disk at `/var/data/faiss/` and was validated with a single test chunk (the "RAGCore was tested for persistence on May 3 2026 by Hema" entry, still visible on disk tonight) that survived a Render restart. The full 245-document FiQA corpus was never re-ingested to the new persistent disk. Production has been returning empty-corpus responses for every FiQA query since the May 3 migration.
+
+The two chunks visible on disk tonight are diagnostic artifacts: one from the May 3 persistence validation, one from a May 12 debugging session ingest. Git history confirms no re-ingest occurred — only one commit touched `evaluation/` between May 3 and May 12 (`c2e70a1`, per-claim faithfulness analysis), which analyzes existing benchmark results rather than ingesting data.
+
+### Why it stayed hidden for 9 days
+
+Between May 3 and May 12, every commit passed CI, every Render deploy reached "Live", `/health/ready` returned 200, `/metrics` emitted data, and `AUDIT.md` said WORKING for retrieval. The production system was returning empty answers for every query the entire time.
+
+Nothing detected it because: unit tests use mocked vector stores; integration tests use in-process FAISS with test data; all development between May 3 and May 12 ran against local Chroma (May 4 directory timestamp confirms a local-dev environment switch) or against mocked data; and the live demo was never exercised in CI.
+
+The May 12 security-pass CORS deploy required verifying that ragcore.streamlit.app could still reach the backend — the first time the live `/query` path was exercised end-to-end since the May 3 migration. The broken state became visible immediately.
+
+### Fix
+
+Re-ingest the FiQA corpus to Render via HTTP. The existing `evaluation/scripts/ingest_fiqa_corpus.py` uses `IngestionPipeline` directly and cannot target a remote API. A new `ingest_fiqa_corpus_http.py` POSTs each of the 245 documents to `/ingest/text` with a 1.1-second sleep between requests to stay safely under the 60/min rate limit. No code change to production; pure data-state restoration.
+
+### Lesson — primary
+
+"Deploy succeeded" plus green health checks is compatible with "every query returns empty." None of the standard observability signals exercise the actual data path. `/health` and `/health/ready` confirm the service is running and dependencies are reachable, not that the corpus is populated. `/metrics` emits scrape data on whatever queries happen to fire, but does not distinguish between "answered with citations" and "fell through to empty-retrieval fallback."
+
+After any change to a deployment target — env var, disk path, Dockerfile, start command, or a forced redeploy from any cause — run one curl against the production `/query` endpoint with a known-good query and verify a real answer with citations. Ten seconds. Catches the entire class of "deploy succeeded but retrieval is empty."
+
+### Lesson — secondary
+
+False hypotheses during systematic debugging are still data, but pattern-matching to "what changed recently" can mislead. Five hypotheses were ruled out before the real cause was found, and one (BM25Okapi IDF degenerate math) was wrongly considered confirmed before being falsified by Streamlit returning a qualitatively different abstention message than the curl path. Each diagnostic ruled out or refined a class of cause; none were wasted. The 2026-04-17 vectorstore-singleton entry's "hypothesis → distinguishing test → next hypothesis" pattern held up across all of them.
+
+The trap to flag for future-me: when a bug surfaces after a deploy, "what changed recently" feels like the obvious starting frame, but the cause can predate the deploy by weeks. The right question is "what state would produce this symptom independent of when it became visible." In this case the symptom became visible on May 12, but the cause was a missing re-ingest step on May 3.
+
+### Lesson — tertiary
+
+Portfolio demos need an automated end-to-end production health check. The reason this took 9 days to surface is that the only person who ever queried production was me, and I only did so tonight because the security pass forced it. A reviewer or interviewer hitting the live demo at any point in those 9 days would have seen the broken state and drawn the wrong conclusion about the project. A 30-second cron job that hits `/query` with a known-good question and alerts on empty-citation responses would have caught this within an hour. Worth adding as a follow-up; out of scope for tonight's fix.
+
+### Commit
+
+N/A — diagnosis-only entry. Subsequent re-ingest is data state, not committed code. If `evaluation/scripts/ingest_fiqa_corpus_http.py` is kept as a permanent utility, its commit hash can be added to this entry later.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
