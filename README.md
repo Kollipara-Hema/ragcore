@@ -28,6 +28,7 @@ finding.
 - [Monitoring](#monitoring)
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
+- [Security](#security)
 - [Project Structure](#project-structure)
 - [Testing](#testing)
 - [Status](#status)
@@ -242,7 +243,7 @@ cd ui_chainlit && chainlit run app.py
 
 After `docker compose up`, Prometheus scrapes the API's `/metrics` endpoint every 15 seconds and is accessible at `http://localhost:9090`. The `ragcore_api` scrape target should show as **UP** within one scrape interval; verify at `http://localhost:9090/targets`.
 
-Grafana is available at `http://localhost:3000` (default credentials: `admin` / `admin`). The **RAGCore Overview** dashboard is preloaded under Dashboards → RAGCore and displays request rate, p95 latency, stage durations, token usage, Self-RAG claim outcomes, process memory, and vector store disk usage.
+Grafana is available at `http://localhost:3000`; log in with the `GF_ADMIN_PASSWORD` you set in `.env` (defaults to `CHANGE_ME_IN_PROD` if unset — see [Security](#security)). The **RAGCore Overview** dashboard is preloaded under Dashboards → RAGCore and displays request rate, p95 latency, stage durations, token usage, Self-RAG claim outcomes, process memory, and vector store disk usage.
 
 ![RAGCore Grafana Overview](docs/assets/grafana_overview.png)
 
@@ -361,6 +362,22 @@ API key auth is **off by default** so the Streamlit demo at [ragcore.streamlit.a
 
 ---
 
+## Security
+
+RAGCore is a portfolio demo; its security posture is off by default to keep the live demo reachable without configuration. Four mechanisms are opt-in for production deploys: a CORS allowlist, optional API key authentication, a per-IP rate limiter, and docker-compose credential hardening.
+
+**CORS allowlist.** `CORSMiddleware` rejects preflight requests from origins not in the `CORS_ORIGINS` list (default `http://localhost:8501` for the Streamlit dev port). In production set `CORS_ORIGINS` to your frontend's URL. See the [Configuration](#configuration) table.
+
+**API key authentication.** Disabled by default (`RAGCORE_AUTH_ENABLED=false`). When enabled, every non-exempt endpoint requires an `X-API-Key` header matched using constant-time comparison. Exempt paths — `/health`, `/health/live`, `/health/ready`, `/metrics` — remain reachable for monitoring tools without a key. Set `RAGCORE_API_KEY` to a long random value before enabling. See the [Configuration](#configuration) table.
+
+**Rate limiter.** Enforces a per-IP sliding window (default 60 requests / 60-second window), configurable via `RAGCORE_RATE_LIMIT_MAX_REQUESTS` and `RAGCORE_RATE_LIMIT_WINDOW_SECONDS`. Rejected requests receive a `429` with a `Retry-After` header. By default the limiter reads `request.client.host`; set `RAGCORE_TRUST_PROXY_HEADERS=true` only when running behind a trusted reverse proxy. State is process-local — see AUDIT.md for the multi-worker caveat.
+
+**Docker-compose credentials.** The compose stack defaults Redis and Grafana credentials to `CHANGE_ME_IN_PROD` if `REDIS_PASSWORD` and `GF_ADMIN_PASSWORD` are unset — a visible placeholder, not a silent default. Set both in `.env` before running `docker compose up`.
+
+Five security limitations are documented and tracked in [AUDIT.md](AUDIT.md): the in-memory trace store has no eviction and will exhaust memory on long-running deploys; the trace retrieval endpoints (`/agent/trace/{id}`, `/trace/{id}`) require no authentication; several endpoints surface raw exception messages to callers; the Celery failure path returns the serialized exception object verbatim; and `RequestIdMiddleware` accepts any client-supplied `X-Request-Id` value without format validation.
+
+---
+
 ## Project Structure
 
 <details>
@@ -440,7 +457,7 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 144 unit tests passing, 44 of 45 integration tests passing. One
+Current: 166 unit tests passing, 44 of 45 integration tests passing. One
 integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
 mock-target resolution bug in the test itself, unrelated to current work.
 

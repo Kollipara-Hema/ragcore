@@ -2,6 +2,7 @@
 
 **Date:** 2026-04-30
 **Updated:** 2026-05-06 to reflect the 9-commit batch (be22906..c2e70a1).
+**Updated:** 2026-05-12 to reflect the 5-commit security pass (6416224..this commit): CORS allowlist, API key auth, rate-limit hardening, docker-compose secrets, and docs.
 **Auditor:** Hema Kollipara
 **Scope:** Post-citation-spans state — attributed_spans backend parser, attributed_spans
 frontend rendering, follow-up question generation, hallucination verifier toggle, confidence
@@ -92,6 +93,8 @@ threshold recalibration, visual rebuild.
 | `/metrics` endpoint | api/main.py, monitoring/metrics.py | WORKING | Real Prometheus instrumentation as of commit `441133d`. Five custom metrics in `monitoring/metrics.py`: `ragcore_stage_duration_seconds` (histogram, stage/strategy labels), `ragcore_generation_tokens_total` (counter, direction/provider), `ragcore_self_rag_claims_total` (counter, outcome), `ragcore_process_memory_bytes` (gauge via psutil), `ragcore_vector_store_disk_bytes` (gauge, backend label). RED metrics on every endpoint via `prometheus-fastapi-instrumentator`. 7 unit tests + 4 integration tests. Known gap: custom `ragcore_*` metrics fire only on queries that complete the full pipeline; early-return paths (e.g., empty-index guard) emit only RED metrics. |
 | Celery async ingestion | api/main.py | PARTIAL | Code correct; requires running Redis + Celery worker. Not tested in CI. |
 | RequestIdMiddleware | api/middleware/request_id.py | WORKING | Added in commit `d25ae0b`. Honors inbound `X-Request-Id` header; generates UUID4 otherwise. Binds `request_id` into structlog context so every log line emitted during request handling carries the field. Echoes `X-Request-Id` in the response header. Registered last in middleware stack (runs first/outermost). 3 unit tests. |
+| RateLimitMiddleware | api/middleware/rate_limit.py | WORKING | Sliding-window rate limiter. Configurable via `RAGCORE_RATE_LIMIT_MAX_REQUESTS` (default 60) and `RAGCORE_RATE_LIMIT_WINDOW_SECONDS` (default 60). Hardened in commit `4d176a1`: Retry-After header on 429 (RFC 7231 §7.1.3), optional proxy-header trust (`RAGCORE_TRUST_PROXY_HEADERS`, default false), `/health/live` and `/health/ready` exemptions added alongside `/health` and `/metrics`, `ragcore_rate_limit_rejected_total` Prometheus counter labeled by path. State is process-local; under N workers an attacker can sustain N × max_requests per window — documented in module docstring, Redis fix deferred. 10 unit tests. |
+| APIKeyAuthMiddleware | api/middleware/auth.py | WORKING | Optional X-API-Key authentication on non-exempt endpoints. Activated when `RAGCORE_AUTH_ENABLED=true` (default false); disabled so the Streamlit demo remains accessible without configuration. Exempt paths: `/health`, `/health/live`, `/health/ready`, `/metrics`. Uses `secrets.compare_digest` for constant-time comparison. Returns 401 with `WWW-Authenticate: ApiKey` on failure. Commit `612da29`. 6 unit tests. |
 
 ### Agent
 
@@ -135,7 +138,7 @@ threshold recalibration, visual rebuild.
 
 | Module | File | State | Notes |
 |--------|------|-------|-------|
-| Unit tests (144) | tests/unit/ | WORKING | `grep -r "def test_" tests/unit/` returns 144. +31 since `be22906`: 3 fail-closed Self-RAG (`679315e`), 3 fence-stripping (`6af0589`), 15 health checks (`2f8c9c2`), 3 logging (`d25ae0b`), 7 metrics (`441133d`). |
+| Unit tests (166) | tests/unit/ | WORKING | `pytest tests/unit/ --collect-only -q` returns 166. +31 since `be22906` (3 fail-closed Self-RAG, 3 fence-stripping, 15 health checks, 3 logging, 7 metrics); +22 from 5-commit security pass (`6416224`..`this`): 4 CORS, 6 auth (`612da29`), 10 rate-limit (`4d176a1`), 0 docker-secrets, 2 metrics label (`4d176a1`). |
 | Integration tests (45) | tests/integration/ | PARTIAL | 45 total, 44 passing. +4 from `test_metrics_endpoint.py` (commit `441133d`). One test (`test_agent_graph_with_tracing`) still fails on mock-target resolution in the test itself — unchanged since April. |
 
 ---
@@ -242,7 +245,7 @@ fixed. It has never been exercised end-to-end against a live Langfuse instance.
 
 ### Status Section
 
-The README's Status section was accurate as of 2026-04-30 but had three claims rendered false by the 9-commit batch: (1) "Prometheus/Grafana appear in `docker-compose.yml` but the application emits no metrics" — now false; 5 custom metrics + RED metrics fire. (2) "fix the two scaffolded tracer integration tests" in What's Next — actually fixed in commit `f424495` (pre-`be22906`); the tests pass. (3) Test counts 113/40-of-41 — now 144/44-of-45.
+The README's Status section was accurate as of 2026-04-30 but had three claims rendered false by the 9-commit batch: (1) "Prometheus/Grafana appear in `docker-compose.yml` but the application emits no metrics" — now false; 5 custom metrics + RED metrics fire. (2) "fix the two scaffolded tracer integration tests" in What's Next — actually fixed in commit `f424495` (pre-`be22906`); the tests pass. (3) Test counts 113/40-of-41 — now 166/44-of-45 (144 at the 2026-05-06 update, +22 unit tests from the security pass).
 
 The accompanying README pass updates all three: adds four new "Working end-to-end" bullets (Prometheus, deep health checks, structured logging, Self-RAG verifier robustness), trims the Monitoring deferred bullet to remove the false claim, removes the stale tracer-integration-tests bullet from What's Next, and updates the test counts in the Testing section.
 
@@ -250,8 +253,8 @@ Self-RAG hardcoded to gpt-4o-mini was already noted; that limitation is unchange
 
 ### Testing Section
 
-**"144 unit tests passing, 44 of 45 integration tests passing"**
-→ **REAL.** `grep -r "def test_"` returns 144 unit tests and 45 integration tests. The single failing integration test (`test_agent_graph_with_tracing`) is a mock-target resolution bug in the test itself, unchanged since April. The post-`be22906` test additions (+31 unit, +4 integration) are accounted for in the Tests table above.
+**"166 unit tests passing, 44 of 45 integration tests passing"** *(was 144 at prior audit)*
+→ **REAL.** `pytest tests/unit/ --collect-only -q` returns 166 unit tests; `pytest tests/integration/ --collect-only -q` returns 45. The single failing integration test (`test_agent_graph_with_tracing`) is a mock-target resolution bug in the test itself, unchanged since April. The post-`be22906` additions (+31 unit, +4 integration) plus the security-pass additions (+22 unit, 0 integration) are accounted for in the Tests table above.
 
 > Note: the `tests/unit/` and `tests/integration/` directory tree comments in the README still show "75 tests" and "25 tests" — both were already stale in the April audit and remain so. Cosmetic; not on the critical path.
 
@@ -318,6 +321,18 @@ agent API models. Accurate enough not to mislead; worth noting.
     the hallucination verifier and reloads will silently lose the setting. The verifier
     is the only stateful sidebar control; no UI text communicates the reset behavior.
 
+### Security limitations (documented; fix-cost exceeds portfolio-demo scope)
+
+17. **Unbounded in-memory trace store.** `/agent/query` with `trace_enabled: true` appends entries to `_trace_store`, a process-local dict in `api/main.py` (around line 589), with no TTL, eviction policy, or size cap. On a long-running deploy each traced query permanently consumes memory; the store grows without bound until OOM. Impact: memory exhaustion. Proposed fix: TTL-based eviction keyed on request timestamp, or an LRU cap with a configurable max-entry count.
+
+18. **Unauthenticated trace endpoints.** `/agent/trace/{trace_id}` and `/trace/{trace_id}` return full request and response payloads for any valid-looking UUID without requiring authentication (`api/main.py`). A caller who learns or guesses a trace UUID can read another user's query and answer. Impact: information disclosure. Proposed fix: bind traces to the requesting client and require a matching identity header, or require `X-API-Key` on these endpoints specifically when `RAGCORE_AUTH_ENABLED=true`.
+
+19. **Raw exception messages in HTTP response bodies.** Multiple endpoints pass `str(e)` directly into `HTTPException(detail=...)`: `/ingest/file` (~line 384), `/ingest/text` (~line 424), `/ingest/status/{job_id}` (~line 463), `/documents/{doc_id}` (~line 487), `/query` (~line 524). Python exception messages routinely contain file paths, class names, variable values, and internal state. Impact: information disclosure on errors. Proposed fix: return a generic `"Internal server error"` to the client and log the full exception server-side with `exc_info=True`.
+
+20. **Celery failure object returned verbatim by `/ingest/status/{job_id}`.** Distinct from item 19: when a Celery task fails asynchronously, the endpoint serializes `result.result` (the exception object) and returns it as the job status body. Item 19 covers synchronous error paths; this covers the async result path. Impact: same as #19 — internal state leakage on the async ingest path. Proposed fix: check `result.state == "FAILURE"` and replace `result.result` with a sanitized error string before returning.
+
+21. **Unvalidated `X-Request-Id` header.** `api/middleware/request_id.py` accepts any `X-Request-Id` value from the client without length, character-set, or format validation, then binds it into structlog context for the request lifetime. A caller can inject arbitrarily long strings or structured content into every log line for that request. Impact: log injection and log-storage abuse. Proposed fix: validate length (e.g. ≤128 chars) and character set (alphanumerics + hyphens) to block injection while preserving upstream correlation IDs from load balancers and APM agents; generate a fresh UUID4 if validation fails.
+
 ---
 
 ## Next Steps if Continued
@@ -360,3 +375,5 @@ Two latent Self-RAG verifier bugs were found and fixed during 2026-05-06 benchma
 The generation and agent scaffolding perimeter is unchanged since April. AgenticRAG still runs basic generation when selected (planned, not yet wired). FLARE was wired in commit `6affffb` and now runs the dollar-token novelty heuristic with iterative re-retrieval. Three advanced chunkers (Propositional, TableAware, DocumentStructure) are registered in `get_chunker()` but untested end-to-end. Three advanced embedders (Matryoshka, ColBERT, FineTuner) remain unregistered in `get_embedder()` and unreachable from any pipeline path. The lone failing integration test (`test_agent_graph_with_tracing`) is unchanged.
 
 The honest summary: the observability surface has gone from zero to functional, the benchmark analysis has a substantive methodological finding about LLM-as-judge instability at n=50, and the headline framing in the README now reports a multi-run summary that respects the instrument's actual precision. The generation and agent perimeter is unchanged.
+
+The 2026-05-12 security pass (commits 6416224..948a895) closed four previously-undocumented infrastructure gaps: CORS was narrowed from `*` to an explicit allowlist; optional API key auth was added behind a feature flag; the rate limiter was hardened with configurable limits, a `Retry-After` header, and a Prometheus counter; and docker-compose Redis and Grafana credentials were replaced with obvious placeholders instead of known defaults. Five residual security limitations are now formally documented as items 17–21. Unit test count increased from 144 to 166 with the new middleware test suites.
