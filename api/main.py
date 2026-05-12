@@ -160,10 +160,10 @@ Instrumentator().instrument(app).expose(app)
 # e.g. allow_origins=["https://your-app.com"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # Allow all origins (fine for demos)
-    allow_credentials=True,     # Allow cookies and auth headers
-    allow_methods=["*"],        # Allow GET, POST, DELETE, etc.
-    allow_headers=["*"],        # Allow all request headers
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "X-Request-Id"],  # X-API-Key added in commit 2
 )
 
 # Rate Limiting Middleware — prevents a single user from spamming the API

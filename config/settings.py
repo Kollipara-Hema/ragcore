@@ -13,7 +13,8 @@ New settings added for Phases 1-5:
 
 from enum import Enum
 from typing import Literal, Optional
-from pydantic_settings import BaseSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings, EnvSettingsSource, DotEnvSettingsSource
 
 
 class EmbeddingProvider(str, Enum):
@@ -37,6 +38,26 @@ class LLMProvider(str, Enum):
     GROQ = "groq"
 
 
+# pydantic-settings v2 treats list[str] as "complex" and tries to JSON-parse env
+# var values before field validators run, making field_validator ineffective.
+# These source subclasses intercept decode_complex_value for cors_origins so that
+# comma-separated strings (e.g. "https://a.com,https://b.com") work alongside
+# the JSON format (e.g. '["https://a.com"]') that pydantic-settings natively supports.
+class _CorsAwareMixin:
+    def decode_complex_value(self, field_name, field_info, value):
+        if field_name == "cors_origins" and isinstance(value, str):
+            return [o.strip() for o in value.split(",") if o.strip()]
+        return super().decode_complex_value(field_name, field_info, value)
+
+
+class _CorsEnvSource(_CorsAwareMixin, EnvSettingsSource):
+    pass
+
+
+class _CorsDotEnvSource(_CorsAwareMixin, DotEnvSettingsSource):
+    pass
+
+
 class Settings(BaseSettings):
 
     # App
@@ -44,6 +65,12 @@ class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
     log_level: str = "INFO"
     debug: bool = False
+
+    # Security
+    cors_origins: list[str] = Field(
+        default=["http://localhost:8501"],
+        description="Allowed CORS origins. Comma-separated in env var.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE
@@ -129,6 +156,15 @@ class Settings(BaseSettings):
     enable_evaluation: bool = False
     eval_strategy: str = "heuristic"  # heuristic | ragas
     ragas_enabled: bool = False
+
+    @classmethod
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
+        return (
+            init_settings,
+            _CorsEnvSource(settings_cls),
+            _CorsDotEnvSource(settings_cls),
+            file_secret_settings,
+        )
 
     class Config:
         env_file = ".env"
