@@ -79,6 +79,18 @@ class Settings(BaseSettings):
         default=None,
         description="Shared API key. Required when ragcore_auth_enabled=True.",
     )
+    ragcore_rate_limit_max_requests: int = Field(
+        default=60,
+        description="Max requests per IP per window. Env: RAGCORE_RATE_LIMIT_MAX_REQUESTS.",
+    )
+    ragcore_rate_limit_window_seconds: int = Field(
+        default=60,
+        description="Rate limit sliding window in seconds. Env: RAGCORE_RATE_LIMIT_WINDOW_SECONDS.",
+    )
+    ragcore_trust_proxy_headers: bool = Field(
+        default=False,
+        description="Trust X-Forwarded-For for client IP. Only enable behind a trusted reverse proxy.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE

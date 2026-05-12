@@ -34,6 +34,12 @@ retrieval_empty = Counter(
     ["strategy"],
 )
 
+rate_limit_rejected = Counter(
+    "ragcore_rate_limit_rejected_total",
+    "Requests rejected by the rate limiter",
+    ["path"],
+)
+
 
 class _ResourceCollector:
     def collect(self):
