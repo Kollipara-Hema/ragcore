@@ -186,8 +186,13 @@ else:
 
 # Rate Limiting Middleware — prevents a single user from spamming the API
 # Defined in api/middleware/rate_limit.py
-# Default: 60 requests per minute per IP address
-app.add_middleware(RateLimitMiddleware)
+# Configurable via RAGCORE_RATE_LIMIT_MAX_REQUESTS / RAGCORE_RATE_LIMIT_WINDOW_SECONDS
+app.add_middleware(
+    RateLimitMiddleware,
+    max_requests=settings.ragcore_rate_limit_max_requests,
+    window_seconds=settings.ragcore_rate_limit_window_seconds,
+    trust_proxy_headers=settings.ragcore_trust_proxy_headers,
+)
 
 # Request-ID Middleware — registered last so it executes first (outermost).
 # All downstream log calls run inside its bound_contextvars context and
