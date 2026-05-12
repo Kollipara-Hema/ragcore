@@ -349,6 +349,15 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 |---------|---------|--------|
 | `CORS_ORIGINS` | `http://localhost:8501` | Comma-separated allowed origins for cross-origin requests. Set to your frontend's URL in production. |
 
+### API Key Authentication
+
+API key auth is **off by default** so the Streamlit demo at [ragcore.streamlit.app](https://ragcore.streamlit.app) remains accessible to reviewers without configuration. When enabled, every non-exempt endpoint requires the `X-API-Key` request header. Exempt paths (always reachable without a key): `/health`, `/health/live`, `/health/ready`, `/metrics`. The Streamlit UI reads `RAGCORE_API_KEY` from its own environment and forwards it automatically if set.
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `RAGCORE_AUTH_ENABLED` | `false` | When `true`, all non-exempt endpoints require `X-API-Key` header. |
+| `RAGCORE_API_KEY` | — | Required when `RAGCORE_AUTH_ENABLED=true`. Use a long random string (e.g. `python -c 'import secrets; print(secrets.token_urlsafe(32))'`). |
+
 ---
 
 ## Project Structure
