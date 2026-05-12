@@ -218,6 +218,7 @@ API, Celery workers, and Redis in one command.
 ```bash
 cp .env.example .env
 # Edit .env with your LLM API key and VECTOR_STORE_PROVIDER=faiss
+# Also set REDIS_PASSWORD and GF_ADMIN_PASSWORD before running — the stack will start without them but defaults to placeholder credentials
 
 docker-compose up --build
 # API:    http://localhost:8000
