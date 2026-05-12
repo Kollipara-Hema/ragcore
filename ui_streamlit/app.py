@@ -231,6 +231,12 @@ footer    {{visibility: hidden;}}
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 BACKEND_URL = os.getenv("RAGCORE_BACKEND_URL", "http://localhost:8000")
+API_KEY = os.getenv("RAGCORE_API_KEY", "").strip()
+
+
+def _auth_headers() -> dict[str, str]:
+    """Return X-API-Key header if RAGCORE_API_KEY is set, else empty dict."""
+    return {"X-API-Key": API_KEY} if API_KEY else {}
 
 PROMPT_CARDS = [
     ("MORTGAGES",     CORAL,  "Should I pay off my mortgage early or invest the extra cash?"),
@@ -254,7 +260,7 @@ if "verify_claims" not in st.session_state:
 @st.cache_data(ttl=30)
 def _check_backend_cached(url: str) -> bool:
     try:
-        r = requests.get(f"{url}/health", timeout=5)
+        r = requests.get(f"{url}/health", headers=_auth_headers(), timeout=5)
         return r.status_code == 200
     except Exception:
         return False
@@ -270,7 +276,7 @@ def ask_question(query: str, strategy: str, verify_claims: bool = False) -> dict
         r = requests.post(
             f"{BACKEND_URL}/query",
             json=payload,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", **_auth_headers()},
             timeout=90,
         )
         return r.json()
@@ -281,7 +287,7 @@ def ask_question(query: str, strategy: str, verify_claims: bool = False) -> dict
 def upload_document(file) -> dict:
     try:
         files = {"file": (file.name, file.getvalue(), file.type or "application/octet-stream")}
-        r = requests.post(f"{BACKEND_URL}/ingest/file", files=files, timeout=120)
+        r = requests.post(f"{BACKEND_URL}/ingest/file", files=files, headers=_auth_headers(), timeout=120)
         return r.json()
     except Exception as e:
         return {"error": str(e)}

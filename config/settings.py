@@ -71,6 +71,14 @@ class Settings(BaseSettings):
         default=["http://localhost:8501"],
         description="Allowed CORS origins. Comma-separated in env var.",
     )
+    ragcore_auth_enabled: bool = Field(
+        default=False,
+        description="Require X-API-Key header on protected endpoints.",
+    )
+    ragcore_api_key: Optional[str] = Field(
+        default=None,
+        description="Shared API key. Required when ragcore_auth_enabled=True.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE

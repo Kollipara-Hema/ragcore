@@ -78,6 +78,9 @@ from embeddings.embedder import get_embedder
 # Rate limiting middleware (prevents abuse)
 from api.middleware.rate_limit import RateLimitMiddleware
 
+# API key authentication middleware (optional, gated by settings.auth_enabled)
+from api.middleware.auth import APIKeyAuthMiddleware
+
 # Structured logging setup and request-ID middleware
 from monitoring.logging_config import configure_logging
 from api.middleware.request_id import RequestIdMiddleware
@@ -163,8 +166,23 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-Request-Id"],  # X-API-Key added in commit 2
+    allow_headers=["Content-Type", "X-Request-Id", "X-API-Key"],
 )
+
+# API Key Authentication Middleware — only registered when auth is enabled.
+# Placed between CORS and RateLimit: execution order is
+# RequestId → RateLimit → Auth → CORS → handler, so rate-limiting applies
+# before key validation and bad-key floods are still throttled.
+if settings.ragcore_auth_enabled:
+    if not settings.ragcore_api_key:
+        raise RuntimeError(
+            "RAGCORE_AUTH_ENABLED=true but RAGCORE_API_KEY is unset or empty. "
+            "Set a non-empty API key or disable auth."
+        )
+    app.add_middleware(APIKeyAuthMiddleware, api_key=settings.ragcore_api_key)
+    logger.info("API key authentication enabled")
+else:
+    logger.info("API key authentication disabled (RAGCORE_AUTH_ENABLED=false)")
 
 # Rate Limiting Middleware — prevents a single user from spamming the API
 # Defined in api/middleware/rate_limit.py
