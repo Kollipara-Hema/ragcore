@@ -1,0 +1,28 @@
+name: Production Health Check
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    env:
+      TARGET_URL: https://ragcore-api.onrender.com
+      API_KEY: ${{ secrets.RAGCORE_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run production health check
+        run: python evaluation/scripts/production_health_check.py
