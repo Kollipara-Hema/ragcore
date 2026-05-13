@@ -3,6 +3,7 @@
 **Date:** 2026-04-30
 **Updated:** 2026-05-06 to reflect the 9-commit batch (be22906..c2e70a1).
 **Updated:** 2026-05-12 to reflect the 5-commit security pass (6416224..this commit): CORS allowlist, API key auth, rate-limit hardening, docker-compose secrets, and docs.
+**Updated:** 2026-05-13 to reflect delete_document FAISS index fix (`cddc032`) and production health check cron (`579592e`).
 **Auditor:** Hema Kollipara
 **Scope:** Post-citation-spans state — attributed_spans backend parser, attributed_spans
 frontend rendering, follow-up question generation, hallucination verifier toggle, confidence
@@ -27,7 +28,7 @@ threshold recalibration, visual rebuild.
 
 | Module | File | State | Notes |
 |--------|------|-------|-------|
-| FAISSVectorStore | vectorstore/vector_store.py | WORKING | IndexFlatIP + BM25 hybrid via BM25Index (f85b80a). Index and metadata path configurable via `FAISS_DATA_DIR` (default `./faiss`, commit 5ba20cf). Singleton confirmed via integration tests. |
+| FAISSVectorStore | vectorstore/vector_store.py | WORKING | IndexFlatIP + BM25 hybrid via BM25Index (f85b80a). Index and metadata path configurable via `FAISS_DATA_DIR` (default `./faiss`, commit 5ba20cf). Singleton confirmed via integration tests. `delete_document` index-wipe bug fixed in commit `cddc032` (Path 1: embeddings stored in metadata pickle; index rebuilt from surviving entries on delete; one-time migration for legacy pickles via `index.reconstruct(i)`). |
 | get_vector_store() singleton | vectorstore/vector_store.py | WORKING | Module-level `_vector_store_instance`; `reset_vector_store()` for test isolation. |
 | BM25Index | vectorstore/bm25_index.py | WORKING | Extracted from FAISSVectorStore (f85b80a). `build` / `upsert` / `query` / `reset` / `save` / `load`. Shared by both FAISSVectorStore and ChromaVectorStore via composition. |
 | ChromaVectorStore | vectorstore/chroma_store.py | WORKING | Full BaseVectorStore implementation: upsert, vector_search, keyword_search, hybrid_search, delete_document. BM25Index hybrid retrieval. 11 parity integration tests pass against FAISS (commit 857c007). Persistence verified on Render. Not the active production backend (VECTOR_STORE_PROVIDER=faiss); FiQA benchmark has only ever run on FAISS. chromadb 0.4.24 + NumPy 2.x shim required locally; Docker pins numpy 1.26.4. |
@@ -139,7 +140,7 @@ threshold recalibration, visual rebuild.
 | Module | File | State | Notes |
 |--------|------|-------|-------|
 | Unit tests (166) | tests/unit/ | WORKING | `pytest tests/unit/ --collect-only -q` returns 166. +31 since `be22906` (3 fail-closed Self-RAG, 3 fence-stripping, 15 health checks, 3 logging, 7 metrics); +22 from 5-commit security pass (`6416224`..`this`): 4 CORS, 6 auth (`612da29`), 10 rate-limit (`4d176a1`), 0 docker-secrets, 2 metrics label (`4d176a1`). |
-| Integration tests (45) | tests/integration/ | PARTIAL | 45 total, 44 passing. +4 from `test_metrics_endpoint.py` (commit `441133d`). One test (`test_agent_graph_with_tracing`) still fails on mock-target resolution in the test itself — unchanged since April. |
+| Integration tests (50) | tests/integration/ | PARTIAL | 50 total, 49 passing. +5 from `test_faiss_delete_document.py` (commit `cddc032`). One test (`test_agent_graph_with_tracing`) still fails on mock-target resolution in the test itself — unchanged since April. |
 
 ---
 
@@ -333,7 +334,7 @@ agent API models. Accurate enough not to mislead; worth noting.
 
 21. **Unvalidated `X-Request-Id` header.** `api/middleware/request_id.py` accepts any `X-Request-Id` value from the client without length, character-set, or format validation, then binds it into structlog context for the request lifetime. A caller can inject arbitrarily long strings or structured content into every log line for that request. Impact: log injection and log-storage abuse. Proposed fix: validate length (e.g. ≤128 chars) and character set (alphanumerics + hyphens) to block injection while preserving upstream correlation IDs from load balancers and APM agents; generate a fresh UUID4 if validation fails.
 
-22. **`delete_document()` wipes entire FAISS index on any deletion.** `vectorstore/vector_store.py:195-202`. `self.index.reset()` — called unconditionally inside `delete_document()` — clears every vector from the `IndexFlatIP` FAISS index, not only the deleted document's entries. The metadata list is correctly filtered; the surviving documents' embeddings are not. `self.save()` then persists the empty index to disk, making the destruction permanent. Impact: any call to `DELETE /documents/{doc_id}` on production would leave vector and hybrid retrieval returning zero results for all queries until a full re-ingest (~25 minutes for 245 FiQA docs); BM25 keyword retrieval would still function. The endpoint is HTTP-accessible and appears in the OpenAPI schema; auth is currently off in the demo deployment, so any caller can reach it. Gate: do not call `DELETE /documents/{doc_id}` on production until the fix lands. Proposed fix: store embeddings in the metadata pickle so `delete_document` can rebuild the FAISS index from surviving entries without re-embedding (Path 1 in the 2026-05-13 debugging-notes entry). Planned fix window: separate commit.
+22. ~~**`delete_document()` wipes entire FAISS index on any deletion.**~~ **RESOLVED** (commit `cddc032`). Path 1 fix: `upsert` now stores each chunk's embedding in the metadata pickle alongside its other fields; `delete_document` filters metadata as before, then rebuilds the FAISS index by collecting surviving embeddings, running `faiss.normalize_L2`, and calling `index.add` on a fresh `IndexFlatIP` — no re-embedding required. One-time migration on load: if the first metadata entry lacks `"embedding"`, all entries are backfilled via `index.reconstruct(i)`, the pickle is rewritten, and an INFO log is emitted. 5 integration tests in `tests/integration/test_faiss_delete_document.py` cover `ntotal` after delete, vector search exclusion, keyword search exclusion, surviving-chunk searchability, and legacy-pickle migration.
 
 ---
 
