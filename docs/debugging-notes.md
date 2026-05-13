@@ -1149,6 +1149,66 @@ N/A — not yet fixed.
 
 ---
 
+## 2026-05-13 — delete_document() wipes entire FAISS index instead of single document
+
+### Symptom
+
+Latent; not yet observed in production. No call to `DELETE /documents/{doc_id}` has been made against the live Render deployment. The bug was found by code-reading during the cleanup-duplicates investigation. If called, vector search and hybrid retrieval would return zero results for every subsequent query until a full re-ingest completes (~25 minutes for 245 docs). BM25-only keyword retrieval would still work because the BM25 index is rebuilt correctly.
+
+### The bug
+
+`delete_document()` at `vectorstore/vector_store.py:195-202`:
+
+```python
+async def delete_document(self, doc_id: UUID) -> int:
+    original_count = len(self.metadata)
+    self.metadata = [m for m in self.metadata if str(m.get("doc_id")) != str(doc_id)]
+    if self.index is not None:
+        self.index.reset()          # ← destroys all vectors
+    self._bm25_index.build([m.get("content", "") for m in self.metadata])
+    self.save()
+    return original_count - len(self.metadata)
+```
+
+`self.index.reset()` calls `IndexFlatIP.reset()`, which empties the FAISS index entirely — it is FAISS's "clear all vectors" operation, not a per-vector delete. `IndexFlatIP` does not expose a row-level remove operation at all. After `reset()`, the metadata list has been correctly filtered to exclude the deleted document's entries, but the embeddings for every surviving document are gone. `self.save()` then writes the now-empty FAISS index to disk, making the destruction permanent. On next load, `self.metadata` has all surviving chunks and `self.index.ntotal` is 0.
+
+### Why it stayed hidden
+
+No code path in production calls `DELETE /documents/{doc_id}`. The endpoint exists, is HTTP-accessible, and appears in the OpenAPI schema, but it has never been exercised against a populated index. Unit tests for `delete_document` use a fresh test store with one or two test documents. They check post-delete metadata length but do not assert `index.ntotal == original_ntotal - chunks_deleted` — a check that would have failed from the first test run. If a test had asserted FAISS vector count after deletion, the bug would have been visible on day one.
+
+### How it was found
+
+Investigation into removing 3 duplicate Roth IRA chunks from production — the first 3 FiQA docs were double-ingested during the May 12 corpus restoration (once in the `--limit 3` smoke test, once in the full 245-doc run). Reading `delete_document()` to understand whether the endpoint deletes by internal UUID or by source `doc_id`. The `self.index.reset()` call was immediately flagged: `reset()` is FAISS's "remove all" operation, not a targeted delete. Confirmed by reading `IndexFlatIP.reset()` in the FAISS docs. The decision not to call the endpoint followed directly.
+
+### Severity
+
+High. The endpoint is reachable from production at any time. Any deletion attempt — manual debugging curl, an admin script, an exploratory API call — would destroy vector and hybrid retrieval for all surviving documents until a full re-ingest. Re-ingest for 245 FiQA docs takes approximately 25 minutes over HTTP on the Render free tier. The API key middleware (commit `6416224`, `RAGCORE_AUTH_ENABLED`) gates the endpoint behind auth when auth is enabled, but auth is currently off in the demo deployment.
+
+### Proposed fix
+
+FAISS `IndexFlatIP` does not support per-vector deletion. Four plausible paths:
+
+1. **Store embeddings in metadata pickle.** On `delete_document`, filter metadata, then rebuild the FAISS index by re-adding the surviving embeddings directly from the pickle — no embedder calls needed. Storage cost ~4 KB per chunk × 245 chunks ≈ 1 MB. Requires a one-time format migration of the existing metadata pickle. This is the planned approach.
+2. **Re-embed retained docs after deletion.** Call the embedder for each surviving chunk on every delete. Compute cost scales linearly with corpus size; impractical at scale.
+3. **Switch to `IndexIDMap`.** Wrap an inner FAISS index in `IndexIDMap` or `IndexIDMap2`, which expose `remove_ids()`. Medium refactor; changes the on-disk index format.
+4. **Switch to Chroma.** The codebase already includes `ChromaVectorStore`; Chroma supports per-vector delete natively. Flipping the default provider would close the bug with minimal new code.
+
+Path 1 is the right call: store embeddings in the metadata pickle and rebuild the index from surviving entries after deletion — no new dependencies, no provider change. Planned for a separate commit later today.
+
+### Gate until fixed
+
+Documented in AUDIT.md as known limitation #22. Do not call `DELETE /documents/{doc_id}` on production until the fix lands. The endpoint could return 501 Not Implemented as an interim guard, but that requires a code change beyond the scope of this documentation commit.
+
+### Cross-reference
+
+The 2026-05-12 corpus-restoration entry describes the impact of a fully-empty production FAISS index: every query returns the empty-retrieval fallback in sub-millisecond latency with no grounded answer. Calling `DELETE /documents/{doc_id}` on production would reproduce that exact failure mode through a different mechanism.
+
+### Commit
+
+Single commit covering this entry and AUDIT.md limitation #22. Code fix follows in a separate commit later today.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
