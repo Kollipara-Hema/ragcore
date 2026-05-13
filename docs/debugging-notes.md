@@ -1069,7 +1069,7 @@ Each hypothesis below was tested in order. Each was ruled out by a single diagno
 
 ### Root cause
 
-The FiQA corpus was on production before April 28, when Render free-tier OOM events triggered a series of crashes. The crashes motivated the `FAISS_DATA_DIR` persistent-disk migration on May 3 (commit `5ba20cf`). The migration created an empty persistent disk at `/var/data/faiss/` and was validated with a single test chunk (the "RAGCore was tested for persistence on May 3 2026 by Hema" entry, still visible on disk tonight) that survived a Render restart. The full 245-document FiQA corpus was never re-ingested to the new persistent disk. Production has been returning empty-corpus responses for every FiQA query since the May 3 migration.
+The FiQA corpus may have been ingested to production briefly between the April 28 first-deploy and the May 3 disk migration, but no verifiable chat-history evidence confirms a successful grounded production query in that window. In any case, the corpus was definitely absent from production for at least 9 days between May 3 and May 12, when the security-pass CORS deploy forced the first end-to-end `/query` check since the migration. Render free-tier OOM events around late April motivated the `FAISS_DATA_DIR` persistent-disk migration on May 3 (commit `5ba20cf`). The migration created an empty persistent disk at `/var/data/faiss/` and was validated with a single test chunk (the "RAGCore was tested for persistence on May 3 2026 by Hema" entry, still visible on disk tonight) that survived a Render restart. The full 245-document FiQA corpus was never re-ingested to the new persistent disk. Production has been returning empty-corpus responses for every FiQA query since the May 3 migration.
 
 The two chunks visible on disk tonight are diagnostic artifacts: one from the May 3 persistence validation, one from a May 12 debugging session ingest. Git history confirms no re-ingest occurred — only one commit touched `evaluation/` between May 3 and May 12 (`c2e70a1`, per-claim faithfulness analysis), which analyzes existing benchmark results rather than ingesting data.
 
@@ -1084,6 +1084,14 @@ The May 12 security-pass CORS deploy required verifying that ragcore.streamlit.a
 ### Fix
 
 Re-ingest the FiQA corpus to Render via HTTP. The existing `evaluation/scripts/ingest_fiqa_corpus.py` uses `IngestionPipeline` directly and cannot target a remote API. A new `ingest_fiqa_corpus_http.py` POSTs each of the 245 documents to `/ingest/text` with a 1.1-second sleep between requests to stay safely under the 60/min rate limit. No code change to production; pure data-state restoration.
+
+Executed in two passes. First pass: 150/245 documents ingested successfully; 95 failures, all HTTP 502, clustered in the first ~10 minutes of the run. Progress-line analysis showed the failure count plateaued at 95 by document position ~110 and never incremented again across the final 135 documents — a single Render free-tier pod-restart window triggered by cold-start embedding load, not persistent instability.
+
+502 retry logic was added to the script (one-shot, 5-second backoff) before the retry pass. Retry pass against the 95 failed doc_ids only: 95/95 successful, zero failures, ~10 minutes total. Confirmed the first-pass failures were a single pod-restart event.
+
+Final disk state: 245 FiQA documents + 2 stale test chunks from May 3 and May 12 + 3 duplicate chunks from the smoke-test pass against the first 3 corpus documents. Duplicates are cosmetic and do not affect retrieval quality; cleanup deferred.
+
+Phase 4 verification: 4 production queries across mortgages, 401k, capital gains tax, and backdoor Roth IRA. Two (mortgages, 401k) returned grounded answers with multiple FiQA citations and 4–9s latency. Two (capital gains tax, backdoor Roth IRA) returned honest abstentions because those specific topics are not directly covered in the 245-doc sample. The abstention behavior is correct — the explicit-abstention path is by design — not a retrieval failure.
 
 ### Lesson — primary
 
@@ -1103,7 +1111,9 @@ Portfolio demos need an automated end-to-end production health check. The reason
 
 ### Commit
 
-N/A — diagnosis-only entry. Subsequent re-ingest is data state, not committed code. If `evaluation/scripts/ingest_fiqa_corpus_http.py` is kept as a permanent utility, its commit hash can be added to this entry later.
+`57ad6c3` — Add HTTP-based FiQA corpus ingest script for production restoration
+
+The script being a permanent utility flips the "data state, not code" framing from the original version of this entry. The data restoration produced a reusable code artifact.
 
 ---
 
