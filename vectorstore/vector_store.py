@@ -71,7 +71,20 @@ class FAISSVectorStore(BaseVectorStore):
         if os.path.exists(self.metadata_file):
             with open(self.metadata_file, "rb") as f:
                 self.metadata = pickle.load(f)
+            self._migrate_legacy_pickle()
             self._bm25_index.build([m.get("content", "") for m in self.metadata])
+
+    def _migrate_legacy_pickle(self) -> None:
+        """One-time migration: backfill 'embedding' into pre-fix metadata entries."""
+        if not self.metadata or "embedding" in self.metadata[0]:
+            return
+        if self.index is None:
+            logger.warning("Cannot migrate legacy pickle: FAISS index not loaded")
+            return
+        for i, m in enumerate(self.metadata):
+            m["embedding"] = self.index.reconstruct(i).tolist()
+        self.save()
+        logger.info("Migrated %d metadata entries to include embeddings (one-time)", len(self.metadata))
 
     def save(self) -> None:
         if self.index is not None:
@@ -98,6 +111,7 @@ class FAISSVectorStore(BaseVectorStore):
                 "doc_id": chunk.doc_id,
                 "chunk_id": chunk.chunk_id,
                 "chunk_index": chunk.chunk_index,
+                "embedding": list(chunk.embedding),
                 **chunk.metadata,
             }
             for chunk in chunks
@@ -196,7 +210,15 @@ class FAISSVectorStore(BaseVectorStore):
         original_count = len(self.metadata)
         self.metadata = [m for m in self.metadata if str(m.get("doc_id")) != str(doc_id)]
         if self.index is not None:
-            self.index.reset()
+            dim = self.index.d
+            if self.metadata:
+                survivors = np.array([m["embedding"] for m in self.metadata], dtype=np.float32)
+                faiss.normalize_L2(survivors)
+                new_index = faiss.IndexFlatIP(dim)
+                new_index.add(survivors)
+                self.index = new_index
+            else:
+                self.index = faiss.IndexFlatIP(dim)
         self._bm25_index.build([m.get("content", "") for m in self.metadata])
         self.save()
         return original_count - len(self.metadata)
