@@ -1117,6 +1117,38 @@ The script being a permanent utility flips the "data state, not code" framing fr
 
 ---
 
+## 2026-05-13 — attributed_spans HTML leaks into rendered answer on dollar-amount-heavy outputs
+
+### Symptom
+
+A Phase 4 verification query ("How does a 401k employer match work and how should I maximize it?") returned an answer with raw HTML markup visible in the rendered Streamlit response. Fragments including `</mark>`, `<sup style="background:#6d4aab; color:white; padding:1px 5px; border-radius:3px; margin-left:2px; font-size:11px; font-weight:600;">2</sup>`, and `</div><div class="src-chunk">chunk 71d13a7f…</div></div>` appeared inline in the prose mid-sentence. The underlying text content was correct — the answer was grounded in retrieved FiQA documents. The mortgage and Roth IRA queries in the same verification batch rendered cleanly.
+
+### Trigger pattern (suspected)
+
+The query answer contained dollar amounts with commas (`$54,000`, `$18,000`). The `_render_answer_with_spans()` function in the Streamlit UI processes LLM output containing `<cite source="N">` trailing markers by substituting each span with `<mark>` highlight tags and `<sup>` citation links. The suspected failure mode: the regex that consumes each `<cite source="N">` token fails to match cleanly when the marker is adjacent to a numeral or comma, leaving an unclosed HTML span in the output that Streamlit's markdown renderer passes through as raw HTML. A secondary candidate: the markdown-unsafe-HTML pass closes spans in the wrong order when a sentence ends with a number followed immediately by a cite marker.
+
+### Impact
+
+Cosmetic but damaging for a portfolio demo. Raw HTML in an LLM answer is the kind of artifact that signals a broken product to a reviewer, regardless of whether the underlying information is correct. Observed on one of four production queries during the May 12 Phase 4 verification batch (the 401k query). The other three rendered cleanly. The trigger rate at scale is unknown.
+
+### Status
+
+Not yet fixed. The bug was observed during verification and documented here; no code changes have been made.
+
+### Proposed fix
+
+Two layers. First: tighten the regex in `_render_answer_with_spans()` so it anchors correctly when a `<cite source="N">` marker is adjacent to a digit, comma, or period. Second: replace the current approach of trusting LLM-output HTML passthrough with a "render plain markdown first, then post-hoc inject highlights" strategy — strip `<cite>` tags from LLM output, render as clean markdown, then apply citation highlights as a post-processing pass over the rendered HTML. This separates markdown rendering and citation highlighting into independent concerns and removes the dependency on the LLM emitting well-formed HTML-adjacent syntax.
+
+### Cross-reference
+
+The 2026-04-30 entry covers the attributed-spans parser design — how trailing `<cite source="N">` markers get attributed to the preceding clause, and why Llama's RLHF prior resists wrapping cited content directly in XML tags. The 2026-04-30 entry resolved the parser layer (trailing-marker attribution instead of LLM-bounded wrapping). This bug surfaces in the renderer layer that consumes those attributed spans — the next step in the same pipeline.
+
+### Commit
+
+N/A — not yet fixed.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
