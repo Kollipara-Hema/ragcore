@@ -11,11 +11,44 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/1
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/2
+      # Redirect Python's tempfile to the shared uploads volume so that paths
+      # created by the API are reachable by the worker container.  Workaround
+      # for api↔worker /tmp coupling; proper fix is to pass file bytes through
+      # the broker instead of a filesystem path — deferred as future work.
+      - TMPDIR=/var/data/uploads
     depends_on:
       redis:
         condition: service_healthy
     volumes:
-      - ./uploads:/tmp/uploads
+      - uploads_data:/var/data/uploads
+      - faiss_data:/var/data/faiss
+    restart: unless-stopped
+
+  # ── Celery worker (async ingestion) ──────────────────────────────────────
+  worker:
+    build: .
+    command: >
+      celery -A ingestion.pipeline:celery_app worker
+      --loglevel=info --concurrency=2
+    env_file: .env
+    environment:
+      - VECTOR_STORE_PROVIDER=faiss
+      - FAISS_DATA_DIR=/var/data/faiss
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-CHANGE_ME_IN_PROD}@redis:6379/2
+      - TMPDIR=/var/data/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Worker shares the FAISS persistent volume with the api service so that
+    # chunks written by ingest_file_task are persisted to the same disk layer
+    # that the api process reads from on restart.  Two processes writing to the
+    # same FAISS pickle is acceptable for this project's usage pattern (rare
+    # async ingest writes, dominant sync reads) but is NOT safe for concurrent
+    # multi-process ingest — that would require a write-lock or coordinator.
+    volumes:
+      - uploads_data:/var/data/uploads
       - faiss_data:/var/data/faiss
     restart: unless-stopped
 
@@ -71,3 +104,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  uploads_data:

@@ -53,7 +53,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir prometheus-client==0.20.0 && \
     pip install --no-cache-dir prometheus-fastapi-instrumentator==6.1.0 && \
     pip install --no-cache-dir psutil==5.9.8 && \
-    pip install --no-cache-dir structlog==24.4.0
+    pip install --no-cache-dir structlog==24.4.0 && \
+    # TODO(AUDIT #11): pinned manually because the Dockerfile does not read from
+    # pyproject.toml; remove this line when that structural fix is made.
+    pip install --no-cache-dir "celery[redis]>=5.3"
 
 # Pre-download ML models — eliminates HuggingFace Hub downloads at runtime
 RUN python -c "\

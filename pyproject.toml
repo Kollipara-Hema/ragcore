@@ -62,6 +62,9 @@ eval = [
 chroma = [
     "chromadb>=0.4.24,<0.5",
 ]
+async = [
+    "celery[redis]>=5.3",
+]
 ui = [
     "streamlit>=1.31",
     "chainlit>=1.0",
