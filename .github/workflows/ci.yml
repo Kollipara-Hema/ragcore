@@ -73,3 +73,67 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t ragcore:ci .
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      CELERY_RESULT_BACKEND: redis://localhost:6379/2
+      PYTHONPATH: .
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test,async]"
+
+      - name: Start Celery worker
+        run: |
+          celery -A ingestion.pipeline:celery_app worker \
+            --loglevel=info --concurrency=2 \
+            > /tmp/celery_worker.log 2>&1 &
+          echo $! > /tmp/celery_worker.pid
+
+      - name: Wait for Celery worker to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if celery -A ingestion.pipeline:celery_app inspect ping -t 2 \
+                2>&1 | grep -q "pong"; then
+              echo "Celery worker is ready."
+              exit 0
+            fi
+            echo "Waiting for worker... (attempt $i/30)"
+            sleep 2
+          done
+          echo "ERROR: Celery worker did not become ready within 60 seconds."
+          cat /tmp/celery_worker.log || true
+          exit 1
+
+      - name: Run async ingestion integration test
+        run: python -m pytest tests/integration/test_async_ingestion.py -v --tb=short
+
+      - name: Kill Celery worker
+        if: always()
+        run: |
+          if [ -f /tmp/celery_worker.pid ]; then
+            kill "$(cat /tmp/celery_worker.pid)" 2>/dev/null || true
+          fi
