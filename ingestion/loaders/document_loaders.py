@@ -4,6 +4,7 @@ Each loader returns a list of Document objects with extracted text + metadata.
 """
 from __future__ import annotations
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -42,9 +43,34 @@ class BaseLoader(ABC):
 # PDF loader
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Browser-print chrome that appears once per page in SEC 10-K PDFs printed
+# from EDGAR's HTML viewer. Each pattern matches a full line in isolation;
+# pymupdf4llm emits these tokens on separate lines, surrounded by blanks.
+_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    # Browser-print timestamp, e.g. "15/05/2026, 02:23"
+    re.compile(r"^\d{1,2}/\d{1,2}/\d{4},\s+\d{1,2}:\d{2}\s*$"),
+    # Apple SEC filing identifier, e.g. "aapl-20250927"
+    re.compile(r"^aapl-\d+\s*$"),
+    # SEC EDGAR URL on its own line
+    re.compile(r"^https?://www\.sec\.gov/Archives/edgar/\S+\s*$"),
+    # Page indicator on its own line, e.g. "1/108"
+    re.compile(r"^\d+/\d+\s*$"),
+)
+
+
+def _strip_pdf_chrome(text: str) -> str:
+    """Drop lines matching any _NOISE_PATTERNS. Preserves all other content."""
+    return "\n".join(
+        line for line in text.split("\n")
+        if not any(p.match(line) for p in _NOISE_PATTERNS)
+    )
+
+
 class PDFLoader(BaseLoader):
     """
     Loads PDFs using pymupdf4llm; emits markdown with table structure preserved.
+    Strips per-page browser-print chrome (timestamps, SEC EDGAR URLs, page
+    indicators) before returning.
     """
 
     def supports(self, source: str | Path) -> bool:
@@ -54,7 +80,8 @@ class PDFLoader(BaseLoader):
         start_time = time.time()
         filename = str(source) if isinstance(source, Path) else source
 
-        text = pymupdf4llm.to_markdown(filename, show_progress=False)
+        raw = pymupdf4llm.to_markdown(filename, show_progress=False)
+        text = _strip_pdf_chrome(raw)
         with pymupdf.open(filename) as doc:
             page_count = doc.page_count
 
