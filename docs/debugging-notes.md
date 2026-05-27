@@ -1209,6 +1209,81 @@ Single commit covering this entry and AUDIT.md limitation #22. Code fix follows 
 
 ---
 
+## 2026-05-27 — XBRL period-span variation: Q2/Q3 quarterly values inflated by ~2x/3x
+
+### Symptom
+
+Apple FY2024 Q2 revenue extracted from SEC companyfacts JSON came out
+as $210B in the generated quarterly CSV. Apple's actual Q2 FY2024
+revenue is ~$91B. Spot-checking the CSV against publicly reported
+figures revealed every Q2 row reading ~2x high and every Q3 row
+reading ~3x high. Q1 rows looked correct. Annual (FY) rows looked
+correct.
+
+### Initial audit (incomplete)
+
+The pre-implementation audit sampled the first Q1 entry from the JSON
+to confirm field shape (start, end, val, form, fp). All fields present,
+end - start span = 90 days, single-quarter value. The audit declared
+the shape correct and the dedup-by-(end, fp) rule sufficient.
+
+### Actual root cause
+
+XBRL companyfacts files each quarterly monetary metric in two distinct
+shapes within the same 10-Q filing, under the same accession number,
+sharing the same (end, fp) key:
+
+- Single-quarter: start..end span ~90 days (or 97 days in Apple's
+  53-week fiscal years FY2018, FY2024)
+- Year-to-date:   start..end span ~181 days at Q2, ~272 days at Q3
+
+The dedup-by-(end, fp) rule with earliest-filed wins picked whichever
+entry happened to sort first by filed date — in practice this was the
+YTD entry for almost every Q2/Q3 period. The CSV emitted YTD values
+labeled as single-quarter.
+
+Q1 was unaffected because Q1's single-quarter span and YTD span are
+identical by definition (Q1 is itself the first quarter of the year).
+Sampling Q1 to validate field shape was structurally blind to the
+multi-shape issue.
+
+### Fix
+
+Added a span filter applied before deduplication: for Q1/Q2/Q3 entries,
+accept only those with `end - start <= 100 days`. The 100-day ceiling
+catches the 90-day standard quarters and the 97-day 53-week-fiscal-year
+quarters, and excludes the 181/272-day YTD entries. FY entries are not
+span-filtered (annual entries are ~365 days by definition).
+
+After the fix: Q2 FY2024 revenue is $90,753M — matches Apple's reported
+figure. All 25 quarterly rows spot-check against external sources.
+
+### Lesson
+
+When auditing time-series data that may contain cumulative variants
+(YTD alongside single-period), the first-period sample is structurally
+inadequate. Cumulative and single-period values are mathematically
+identical at the first boundary; the divergence only appears at later
+boundaries. Sample at least one entry from each period boundary, not
+the first one only.
+
+### Cross-reference
+
+- 2026-04-29 Llama multi-array JSON: parser assumed one output shape,
+  model emitted another. Same family — single-example audit missed
+  the shape variation.
+- 2026-04-30 attribution-spans: four varied prompt rewrites produced
+  the same trailing-marker shape. Same family — variation a single
+  sample didn't surface.
+
+### Commit
+
+_(Pending — fix applied in the JSON-to-CSV extraction script. Script
+lives outside the repo during corpus assembly; moves into the repo
+when the corpus is integrated.)_
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
