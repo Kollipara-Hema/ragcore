@@ -591,3 +591,10 @@ For full commit history: `git log --oneline -30`
 - Cross-model judge comparison (gpt-4o vs gpt-4o-mini) to test whether
   the verifier disagreement and noise floor findings hold under a
   stronger judge.
+
+---
+## Licensing notes
+
+RAGCore itself is MIT-licensed. One dependency carries a copyleft license:
+
+- PDF parsing uses pymupdf4llm (AGPL-3.0; see [LICENSE-pymupdf4llm.md](LICENSE-pymupdf4llm.md))
