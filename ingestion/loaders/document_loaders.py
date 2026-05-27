@@ -11,6 +11,8 @@ from typing import Optional
 
 import pandas as pd
 import pdfplumber
+import pymupdf
+import pymupdf4llm
 from docx import Document as DocxDocument
 
 from utils.models import Document, DocumentMetadata
@@ -42,7 +44,7 @@ class BaseLoader(ABC):
 
 class PDFLoader(BaseLoader):
     """
-    Loads PDFs using pdfplumber for digital PDFs.
+    Loads PDFs using pymupdf4llm; emits markdown with table structure preserved.
     """
 
     def supports(self, source: str | Path) -> bool:
@@ -52,25 +54,21 @@ class PDFLoader(BaseLoader):
         start_time = time.time()
         filename = str(source) if isinstance(source, Path) else source
 
-        with pdfplumber.open(source) as pdf:
-            text = ""
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+        text = pymupdf4llm.to_markdown(filename, show_progress=False)
+        with pymupdf.open(filename) as doc:
+            page_count = doc.page_count
 
-            page_count = len(pdf.pages)
-            word_count = len(text.split())
-            load_time = time.time() - start_time
+        word_count = len(text.split())
+        load_time = time.time() - start_time
 
-            metadata = DocumentMetadata(
-                source=filename,
-                doc_type="pdf",
-                page_count=page_count,
-                custom={"word_count": word_count, "load_time": load_time}
-            )
+        metadata = DocumentMetadata(
+            source=filename,
+            doc_type="pdf",
+            page_count=page_count,
+            custom={"word_count": word_count, "load_time": load_time},
+        )
 
-            return [Document(content=text.strip(), metadata=metadata)]
+        return [Document(content=text.strip(), metadata=metadata)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
