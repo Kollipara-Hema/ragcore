@@ -20,8 +20,13 @@ from vectorstore.chroma_store import ChromaVectorStore
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton — all callers in the same process share one instance.
-_vector_store_instance: Optional[BaseVectorStore] = None
+# Module-level corpus registry — replaces the previous singleton. Each corpus
+# name maps to its own BaseVectorStore instance, allowing multiple backends
+# (FAISS, Chroma) and multiple Chroma collections to coexist in one process.
+# The "default" key preserves the singleton contract for callers that haven't
+# been corpus-aware'd yet — they go through get_vector_store() which lazy-
+# constructs and registers "default" on first call.
+_corpus_registry: dict[str, "BaseVectorStore"] = {}
 
 
 class BaseVectorStore(ABC):
@@ -228,21 +233,55 @@ class FAISSVectorStore(BaseVectorStore):
             raise RuntimeError(f"FAISS data directory missing: {settings.faiss_data_dir}")
 
 
+def register_corpus(name: str, store: BaseVectorStore) -> None:
+    """Register a vector store under a corpus name. Overwrites any prior entry."""
+    _corpus_registry[name] = store
+
+
+def get_corpus(name: str) -> BaseVectorStore:
+    """Look up a registered store by corpus name. Raises KeyError on unknown.
+
+    Use get_vector_store() instead if you want the lazy-constructed "default"
+    corpus that preserves pre-registry behavior.
+    """
+    if name not in _corpus_registry:
+        raise KeyError(
+            f"Unknown corpus: {name!r}. Registered: {sorted(_corpus_registry)}"
+        )
+    return _corpus_registry[name]
+
+
+def list_corpora() -> list[str]:
+    """Return the names of all registered corpora."""
+    return list(_corpus_registry)
+
+
+def reset_corpus_registry() -> None:
+    """Clear all registered corpora. For tests only."""
+    _corpus_registry.clear()
+
+
 def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
-    global _vector_store_instance
-    if _vector_store_instance is not None:
-        return _vector_store_instance
+    """Return the "default" corpus. Lazy-constructs it on first call from
+    settings.vector_store_provider so two calls return the same instance —
+    the singleton contract the pre-registry implementation provided.
+    """
+    if "default" in _corpus_registry:
+        return _corpus_registry["default"]
     provider = provider or settings.vector_store_provider
     if provider in (VectorStoreProvider.WEAVIATE, VectorStoreProvider.PINECONE, VectorStoreProvider.QDRANT):
         logger.warning("%s provider selected but not implemented; falling back to FAISS", provider.value)
+        store: BaseVectorStore = FAISSVectorStore()
     elif provider == VectorStoreProvider.CHROMA:
-        _vector_store_instance = ChromaVectorStore()
-        return _vector_store_instance
-    _vector_store_instance = FAISSVectorStore()
-    return _vector_store_instance
+        store = ChromaVectorStore()
+    else:
+        store = FAISSVectorStore()
+    _corpus_registry["default"] = store
+    return store
 
 
 def reset_vector_store() -> None:
-    """Reset the singleton to None. For tests and future 'clear store' operations only."""
-    global _vector_store_instance
-    _vector_store_instance = None
+    """Remove the "default" corpus from the registry. For tests and future
+    'clear store' operations only. Other corpora are unaffected — use
+    reset_corpus_registry() to wipe everything."""
+    _corpus_registry.pop("default", None)
