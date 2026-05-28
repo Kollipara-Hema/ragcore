@@ -1284,6 +1284,69 @@ when the corpus is integrated.)_
 
 ---
 
+## 2026-05-27 — SemanticChunker memory blow-up on 10-K-scale documents; replaced as DocumentStructureChunker overflow
+
+### Symptom
+Running SemanticChunker.chunk(doc) on Apple's FY2025 10-K (108 pages, 219K
+chars) consumed 65.2 GB of physical memory after 43 minutes of CPU. The
+system was swapping heavily; the process was producing no output and had
+to be killed. The same chunker produced normal output on FiQA documents
+(~300 chars each) in well under a second per call.
+
+DocumentStructureChunker's overflow path delegated to SemanticChunker for
+sections larger than max_section_chars=2000. On the 10-K, 28 of 222
+sections exceeded that threshold — small enough that an individual section
+might not have blown up alone, but the no-headings fallback path called
+SemanticChunker on the entire document.
+
+### Suspected cause (not fully root-caused)
+Not fully root-caused. Hypothesis: sentence-transformers' .encode() on
+several thousand sentences in a single call holds transformer
+intermediates in a way that scales much worse than the documented O(N)
+memory profile suggests. The model itself is ~80 MB, the embedding matrix
+for ~3K sentences at 384 dims is ~5 MB — neither alone explains 65 GB,
+so the cost is in intermediates or in some N²-shaped allocation downstream
+of .encode(). Pathological inputs may also include very long "sentences"
+produced by the regex split on 10-K text where period-then-space is rare
+inside dense table regions.
+
+Did not investigate further. The chunker is not the right tool at this
+scale regardless of the precise cause.
+
+### Fix
+DocumentStructureChunker.__init__ now uses FixedSizeChunker as its overflow
+path. SemanticChunker is still mapped in the factory and remains the right
+choice for short documents — its class docstring is updated to warn that
+it should not be used on documents above ~50K chars.
+
+Both DocumentStructureChunker overflow call sites are covered by the same
+attribute: the oversized-section split path and the no-headings fallback
+path. A heading-less PDF (scanned report, etc.) would have hit the same
+OOM via the fallback path; the substitution closes that exposure too.
+
+### Lesson
+"WORKING in the existing test corpus" does not generalize to documents an
+order of magnitude larger or shaped differently. SemanticChunker had
+pre-existing tests on FiQA-sized inputs; none would have caught the 10-K
+memory profile. Before promoting a chunker into the production path of a
+new corpus, run it once standalone against a representative document from
+that corpus with a memory ceiling and a wall-clock budget.
+
+### Cross-reference
+- 2026-05-27 XBRL period-span variation: same audit-was-incomplete family.
+  A single sample of an "easy" input shape masked a failure mode that
+  only appeared on the harder inputs the new feature would actually see.
+- The "Patterns I've noticed" section at the end of this file documents
+  the recurring shape: modules flagged WORKING in static audits surface
+  silent failures when first exercised against a new workload. AUDIT.md
+  marked SemanticChunker WORKING; the classification was accurate against
+  FiQA and false against the 10-K.
+
+### Commit
+_(Pending — substitution commit in this same Day 3 batch.)_
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
