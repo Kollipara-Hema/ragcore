@@ -15,22 +15,38 @@ from embeddings.embedder import get_embedder
 from retrieval.router.query_router import RoutingDecision
 from utils.models import RetrievalRequest, RetrievalResult, RetrievedChunk, RetrievalStrategy
 from config.settings import settings
-from vectorstore.vector_store import get_vector_store
+from vectorstore.vector_store import BaseVectorStore, get_corpus, get_vector_store
 
 logger = structlog.get_logger(__name__)
 
 
 class RetrievalExecutor:
-    """Executes retrieval strategies."""
+    """Executes retrieval strategies.
+
+    Stateless w.r.t. the vector store — the store is looked up per-request via
+    the corpus parameter on execute(). A single RetrievalExecutor instance can
+    safely serve concurrent requests targeting different corpora; the store
+    reference is threaded through dispatch as a parameter rather than mutated
+    on the instance, so no cross-request contamination is possible.
+    """
 
     def __init__(self):
         self._embedder = get_embedder()
-        self._store = get_vector_store()
 
-    async def execute(self, decision: RoutingDecision, top_k: int = 5) -> RetrievalResult:
+    async def execute(
+        self,
+        decision: RoutingDecision,
+        top_k: int = 5,
+        corpus: str = "default",
+    ) -> RetrievalResult:
+        # Resolve the store BEFORE the try/except so an unknown corpus surfaces
+        # as a clean KeyError rather than getting swallowed by the fallback path
+        # and producing a misleading "no results" response.
+        store = get_vector_store() if corpus == "default" else get_corpus(corpus)
+
         start = time.monotonic()
         try:
-            chunks = await self._dispatch(decision, top_k)
+            chunks = await self._dispatch(decision, top_k, store)
             fallback_used = False
         except Exception as e:
             logger.error(
@@ -48,7 +64,7 @@ class RetrievalExecutor:
                     expanded_queries=decision.expanded_queries[:1],
                     metadata_filter=None,  # relax filter on fallback
                 )
-                chunks = await self._dispatch(fallback_decision, top_k)
+                chunks = await self._dispatch(fallback_decision, top_k, store)
                 fallback_used = True
             except Exception as e2:
                 logger.error("Fallback retrieval also failed: %s", e2)
@@ -74,40 +90,42 @@ class RetrievalExecutor:
             fallback_used=fallback_used,
         )
 
-    async def _dispatch(self, decision: RoutingDecision, top_k: int) -> list[RetrievedChunk]:
+    async def _dispatch(
+        self, decision: RoutingDecision, top_k: int, store: BaseVectorStore,
+    ) -> list[RetrievedChunk]:
         strategy = decision.primary_strategy
         query = decision.expanded_queries[0]
 
         if strategy == RetrievalStrategy.SEMANTIC:
-            return await self._semantic_search(query, top_k, decision.metadata_filter)
+            return await self._semantic_search(query, top_k, decision.metadata_filter, store)
 
         elif strategy == RetrievalStrategy.KEYWORD:
-            return await self._keyword_search(query, top_k, decision.metadata_filter)
+            return await self._keyword_search(query, top_k, decision.metadata_filter, store)
 
         elif strategy == RetrievalStrategy.HYBRID:
-            return await self._hybrid_search(query, top_k, decision.metadata_filter)
+            return await self._hybrid_search(query, top_k, decision.metadata_filter, store)
 
         elif strategy == RetrievalStrategy.METADATA_FILTER:
-            return await self._metadata_filtered_search(query, top_k, decision.metadata_filter)
+            return await self._metadata_filtered_search(query, top_k, decision.metadata_filter, store)
 
         elif strategy == RetrievalStrategy.MULTI_QUERY:
-            return await self._multi_query_search(decision.expanded_queries, top_k, decision.metadata_filter)
+            return await self._multi_query_search(decision.expanded_queries, top_k, decision.metadata_filter, store)
 
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
     # ── Strategy implementations ──────────────────────────────────────────────
 
-    async def _semantic_search(self, query, top_k, metadata_filter) -> list[RetrievedChunk]:
+    async def _semantic_search(self, query, top_k, metadata_filter, store) -> list[RetrievedChunk]:
         embedding = await self._embedder.embed_query(query)
-        return await self._store.vector_search(embedding, top_k, metadata_filter)
+        return await store.vector_search(embedding, top_k, metadata_filter)
 
-    async def _keyword_search(self, query, top_k, metadata_filter) -> list[RetrievedChunk]:
-        return await self._store.keyword_search(query, top_k, metadata_filter)
+    async def _keyword_search(self, query, top_k, metadata_filter, store) -> list[RetrievedChunk]:
+        return await store.keyword_search(query, top_k, metadata_filter)
 
-    async def _hybrid_search(self, query, top_k, metadata_filter) -> list[RetrievedChunk]:
+    async def _hybrid_search(self, query, top_k, metadata_filter, store) -> list[RetrievedChunk]:
         embedding = await self._embedder.embed_query(query)
-        return await self._store.hybrid_search(
+        return await store.hybrid_search(
             query=query,
             query_embedding=embedding,
             top_k=top_k,
@@ -115,21 +133,21 @@ class RetrievalExecutor:
             metadata_filter=metadata_filter,
         )
 
-    async def _metadata_filtered_search(self, query, top_k, metadata_filter) -> list[RetrievedChunk]:
+    async def _metadata_filtered_search(self, query, top_k, metadata_filter, store) -> list[RetrievedChunk]:
         """Strict metadata filter + vector search within filtered set."""
         if not metadata_filter:
             logger.warning("Metadata strategy selected but no filters provided; falling back to hybrid")
-            return await self._hybrid_search(query, top_k, None)
+            return await self._hybrid_search(query, top_k, None, store)
         embedding = await self._embedder.embed_query(query)
-        return await self._store.vector_search(embedding, top_k, metadata_filter)
+        return await store.vector_search(embedding, top_k, metadata_filter)
 
-    async def _multi_query_search(self, queries: list[str], top_k: int, metadata_filter) -> list[RetrievedChunk]:
+    async def _multi_query_search(self, queries: list[str], top_k: int, metadata_filter, store) -> list[RetrievedChunk]:
         """
         Run retrieval for each expanded query in parallel, then merge
         with Reciprocal Rank Fusion.
         """
         tasks = [
-            self._hybrid_search(q, top_k, metadata_filter) for q in queries
+            self._hybrid_search(q, top_k, metadata_filter, store) for q in queries
         ]
         all_result_sets = await asyncio.gather(*tasks, return_exceptions=True)
 

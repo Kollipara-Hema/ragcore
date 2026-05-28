@@ -168,6 +168,10 @@ class QueryRequest(BaseModel):
         default=False,
         description="Opt in to Self-RAG per-claim verification. ~3x slower.",
     )
+    corpus: str = PField(
+        default="default",
+        description="Which registered corpus to query. Omitting routes to the 'default' corpus.",
+    )
 
 
 class QueryResponse(BaseModel):

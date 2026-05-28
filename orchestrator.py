@@ -246,7 +246,7 @@ class RAGOrchestrator:
             # Uses the strategy from Step 1 to search for relevant document chunks.
             # Returns the top_k most relevant chunks as RetrievedChunk objects.
             top_k = request.top_k or settings.retrieval_top_k  # From .env or request
-            retrieval_result = await self._executor.execute(decision, top_k=top_k)
+            retrieval_result = await self._executor.execute(decision, top_k=top_k, corpus=request.corpus)
             t_retrieve = time.perf_counter()
             # Log retrieval results (how many found, scores, latency)
             await self._tracer.log_retrieval(trace_id, retrieval_result)
@@ -506,7 +506,7 @@ class RAGOrchestrator:
             metadata_filter=request.metadata_filter,
         )
 
-        retrieval_result = await self._executor.execute(decision)
+        retrieval_result = await self._executor.execute(decision, corpus=request.corpus)
 
         # If nothing found, yield a single explanation message and stop
         if not retrieval_result.chunks:

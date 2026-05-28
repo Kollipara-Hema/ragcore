@@ -43,13 +43,22 @@ class TestPipelineIntegration:
         assert len(embeddings) == len(chunks)
 
     def test_retrieval_executor_initialization(self):
-        """Test that retrieval executor can be initialized and used."""
+        """Test that retrieval executor can be initialized.
+
+        Note: the executor no longer caches a store reference; the store is
+        looked up per-request via the corpus parameter on execute(). The only
+        cached resource at __init__ time is the embedder. The execute method's
+        corpus-routing behavior is covered by test_corpus_routing.py.
+        """
         from retrieval.strategies.retrieval_executor import RetrievalExecutor
 
         executor = RetrievalExecutor()
         assert executor is not None
         assert executor._embedder is not None
-        assert executor._store is not None
+        # execute() must accept a corpus kwarg (smoke; routing covered elsewhere)
+        import inspect
+        sig = inspect.signature(executor.execute)
+        assert "corpus" in sig.parameters
 
     def test_llm_service_providers_available(self):
         """Test that all LLM providers are available."""
