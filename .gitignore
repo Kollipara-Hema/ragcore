@@ -217,6 +217,10 @@ chroma_db/
 faiss/
 faiss_index.idx
 faiss_metadata.pkl
+
+# Locally-materialized corpus payload (README is tracked; payload is fetched
+# via scripts/fetch_apple_corpus.py from an external staging dir).
+data/apple_demo/
 ui_chainlit/.files/
 
 # Virtual environment
