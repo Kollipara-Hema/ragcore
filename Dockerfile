@@ -39,6 +39,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir redis==5.0.3 && \
     # Document processing
     pip install --no-cache-dir pdfplumber==0.10.3 && \
+    pip install --no-cache-dir pymupdf==1.27.2.3 && \
+    pip install --no-cache-dir pymupdf4llm==1.27.2.3 && \
     pip install --no-cache-dir python-docx==1.1.0 && \
     pip install --no-cache-dir beautifulsoup4==4.12.3 && \
     # API and web framework
