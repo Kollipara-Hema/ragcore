@@ -100,8 +100,15 @@ class SemanticChunker(BaseChunker):
         3. Measure similarity between consecutive sentences
         4. Split where similarity < breakpoint_threshold
 
-    BEST FOR: Most documents — recommended default
+    BEST FOR: Short documents (FiQA-scale, ~hundreds of chars). Recommended
+              default for that regime.
     SET:      CHUNKING_STRATEGY=semantic in .env
+
+    SCALE LIMIT: Memory scaling is O(N) on paper but with a high constant
+    factor through sentence-transformers' .encode() intermediates; observed
+    65 GB peak RAM on a 220k-char document. For documents above ~50k chars,
+    use HierarchicalChunker or DocumentStructureChunker instead. See
+    docs/debugging-notes.md for the incident write-up.
     """
 
     def __init__(self, breakpoint_threshold: float = 0.85, min_chunk_size: int = 200):
@@ -583,10 +590,12 @@ class DocumentStructureChunker(BaseChunker):
         """
         Args:
             max_section_chars: Sections larger than this are split further
-                              using SemanticChunker to avoid huge chunks
+                              with the overflow chunker to avoid huge chunks
         """
         self.max_section_chars = max_section_chars
-        self._overflow_chunker = SemanticChunker()
+        # FixedSizeChunker (not SemanticChunker) — SemanticChunker OOMs on
+        # 10-K-scale documents. See docs/debugging-notes.md for context.
+        self._overflow_chunker = FixedSizeChunker()
 
     def chunk(self, document: Document) -> list[Chunk]:
         sections = self._extract_sections(document.content)
