@@ -57,10 +57,14 @@ class FixedSizeChunker(BaseChunker):
         while start < len(text):
             end = min(start + self.chunk_size, len(text))
 
-            # Break at whitespace to avoid cutting mid-word
+            # Break at whitespace to avoid cutting mid-word.
+            # Only honor a boundary that leaves room to advance past chunk_overlap;
+            # a boundary <= start + chunk_overlap makes new_start <= start (infinite loop)
+            # — observed on dense markdown tables where the only spaces in a 512-char
+            # window fall within the first 64 chars.
             if end < len(text):
                 boundary = text.rfind(" ", start, end)
-                if boundary > start:
+                if boundary > start + self.chunk_overlap:
                     end = boundary
 
             chunk_text = text[start:end].strip()
