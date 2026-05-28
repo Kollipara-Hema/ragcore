@@ -221,6 +221,9 @@ faiss_metadata.pkl
 # Locally-materialized corpus payload (README is tracked; payload is fetched
 # via scripts/fetch_apple_corpus.py from an external staging dir).
 data/apple_demo/
+# Per-corpus Chroma persist_dirs produced by scripts/ingest_apple_corpus.py
+# (regenerated from the apple_demo payload; not version-controlled).
+data/chroma_collections/
 ui_chainlit/.files/
 
 # Virtual environment

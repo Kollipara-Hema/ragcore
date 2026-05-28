@@ -35,6 +35,7 @@ import structlog
 
 # contextlib.asynccontextmanager — used for startup/shutdown lifecycle
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncIterator, Optional
 
 # --- FastAPI framework ---
@@ -70,7 +71,15 @@ from agent.state import initial_state
 from ingestion.pipeline import IngestionPipeline, ingest_file_task
 
 # Vector store (for document deletion and health checks)
-from vectorstore.vector_store import get_vector_store
+from vectorstore.vector_store import (
+    FAISSVectorStore,
+    get_vector_store,
+    register_corpus,
+)
+from vectorstore.chroma_store import ChromaVectorStore
+
+# Apple multi-corpus demo configuration
+from config.corpora import CORPORA_CONFIG
 
 # Embedder (for health checks)
 from embeddings.embedder import get_embedder
@@ -125,6 +134,30 @@ async def lifespan(app: FastAPI):
 
     configure_logging()
     logger.info("Starting RAG system...")
+
+    # Register the FAISS-backed "default" corpus (FiQA). Unconditional —
+    # /query requests omitting `corpus` route here via the get_vector_store
+    # shim, which would lazy-construct on first call anyway; doing it here
+    # makes the registered set visible at startup and keeps the registration
+    # path uniform with the Chroma corpora below.
+    register_corpus("default", FAISSVectorStore())
+
+    # Register each Apple Chroma corpus whose persist_dir contains an
+    # ingested collection. Missing persist_dirs are skipped with a warning
+    # so a deploy without ingested Apple data (e.g. fresh Render boot
+    # before Setup B) still starts and serves the default corpus.
+    for corpus_name, config in CORPORA_CONFIG.items():
+        persist_dir = Path(config["persist_dir"])
+        if not (persist_dir / "chroma.sqlite3").is_file():
+            logger.warning(
+                "Corpus %s not found at %s, skipping", corpus_name, persist_dir,
+            )
+            continue
+        store = ChromaVectorStore(
+            persist_dir=str(persist_dir), collection_name=corpus_name,
+        )
+        register_corpus(corpus_name, store)
+        logger.info("Registered corpus %s from %s", corpus_name, persist_dir)
 
     # Create the main RAG orchestrator — this loads ML models into memory
     # (cross-encoder reranker, BGE embedder if local — may take 10-30 seconds)
