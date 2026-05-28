@@ -1342,8 +1342,86 @@ that corpus with a memory ceiling and a wall-clock budget.
   marked SemanticChunker WORKING; the classification was accurate against
   FiQA and false against the 10-K.
 
-### Commit
-_(Pending — substitution commit in this same Day 3 batch.)_
+---
+
+## 2026-05-28 — Dockerfile silently missing pymupdf4llm; Render deploy succeeded green, first PDF query crashed with ModuleNotFoundError
+
+### Symptom
+Render deploy completed, container started, /health returned 200, and
+/health/ready returned ready. The first request that loaded a PDF
+through the ingestion path raised ModuleNotFoundError: pymupdf and
+returned HTTP 500. Local development was unaffected because
+`pip install -e ".[all]"` in venv311 had pulled pymupdf4llm and its
+transitive pymupdf from pyproject.toml.
+
+### Root cause
+Three dependency sources in the repo, two in sync and one drifted:
+
+- pyproject.toml lists pymupdf4llm>=1.27 as a main dependency (added
+  alongside the AGPL notice commit).
+- requirements.txt is a one-line shim: `-e .[all]`. It resolves
+  through pyproject and gets pymupdf4llm correctly.
+- Dockerfile maintains its own hardcoded `pip install` list of ~22
+  packages. It COPYs requirements.txt but never sources from it —
+  the install layer runs explicit `pip install <pkg>==<pin>` lines
+  and ignores the COPYed file. pymupdf4llm was never added to that
+  hardcoded list when the dependency was introduced.
+
+The drift was structural, not accidental: the Dockerfile already
+carried a `# TODO(AUDIT #11)` comment explicitly acknowledging that
+its install list does not read from pyproject.toml and warning that
+manual pins would drift over time. The TODO predicted exactly this
+class of failure; nothing closed the loop on the prediction.
+
+### Why CI didn't catch it
+CI's unit-tests job runs `pip install -e ".[test]"`, which sources
+from pyproject.toml — it installs pymupdf4llm correctly and the test
+suite passes. CI's docker-build job builds the image (so it would
+catch a Dockerfile syntax error or unresolvable pin) but does not
+run the container or exercise any code path through the built image.
+No CI job both (a) builds the Docker image AND (b) runs the
+PDF-loading code through that image. The only environment that does
+both is Render production. The drift is invisible until first deploy.
+
+### Fix
+Add two lines to the Dockerfile pip install block, next to the
+existing pdfplumber line, pinning both pymupdf and pymupdf4llm
+explicitly. pymupdf is pulled transitively by pymupdf4llm but is
+also imported directly by the PDF loader (used for page_count), so
+it is a first-class dependency in the source code and is pinned
+explicitly to match. Versions match the resolved pins in venv311
+(currently 1.27.2.3 for both packages, which release in lockstep).
+
+Adding the new lines changes the RUN command string, which changes
+the layer hash, which invalidates the cache for the pip install
+layer and every downstream layer including the model pre-download.
+The next Render deploy will re-run pip install (~3-5 min) and
+re-download BGE-large + cross-encoder from HuggingFace (~1-2 min),
+adding ~5-7 min over a fully-cached build. Acceptable cost.
+
+### Deferred
+The permanent fix is the existing TODO(AUDIT #11): rewire the
+Dockerfile to `pip install -r requirements.txt` (or equivalent
+pyproject-sourced install), so the hardcoded list goes away and
+all future dependency additions to pyproject.toml automatically
+propagate to Docker builds. Not included in this commit — it's a
+larger refactor that benefits from being isolated and tested
+against a full deploy cycle.
+
+### Cross-reference
+- 2026-05-12 production-FiQA-corpus entry: same "deploy succeeded
+  green, feature broken" family. Different mechanism (data state
+  drift rather than dependency drift) but identical observability
+  failure: every standard signal (deploy status, /health, /metrics)
+  said the system was healthy while the actual code path was broken.
+  Generalizes to: green deploy is a necessary condition for "system
+  works," never sufficient.
+- TODO(AUDIT #11) in Dockerfile: predicted this class of drift
+  explicitly. The TODO is older than this incident and identifies
+  the exact structural fix. The lesson is not "we should have read
+  the TODO" — it's that flagged-but-not-acted-on technical debt
+  fires eventually, and the longer it sits, the more code paths
+  accumulate around it as latent traps.
 
 ---
 
