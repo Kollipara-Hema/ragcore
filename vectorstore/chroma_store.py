@@ -24,9 +24,17 @@ def _coerce_filter(metadata_filter: Optional[dict]) -> Optional[dict]:
 
 
 class ChromaVectorStore:
-    """Implements the BaseVectorStore interface backed by ChromaDB + BM25Index."""
+    """Implements the BaseVectorStore interface backed by ChromaDB + BM25Index.
 
-    def __init__(self, persist_dir: str = None) -> None:
+    Multi-corpus note: the BM25 sidecar lives at {persist_dir}/bm25_state.pkl
+    and is not collection-scoped. Two ChromaVectorStore instances sharing a
+    persist_dir but using different collection_names will corrupt each other's
+    BM25 state (last writer wins; subsequent keyword_search calls score IDF
+    over a mixed corpus). When hosting multiple Chroma corpora in one process,
+    give each a distinct persist_dir.
+    """
+
+    def __init__(self, persist_dir: str = None, collection_name: str = None) -> None:
         # chromadb 0.4.24 uses numpy 1.x aliases (np.float_, np.int_, np.NaN, etc.)
         # that were removed in NumPy 2.0.  The Docker image pins numpy==1.26.4 so
         # this shim is a no-op in production; local environments running NumPy 2.x
@@ -43,6 +51,7 @@ class ChromaVectorStore:
         import chromadb
 
         self._persist_dir = persist_dir or settings.chroma_persist_dir
+        self._collection_name = collection_name or settings.chroma_collection_name
         os.makedirs(self._persist_dir, exist_ok=True)
         self._bm25_state_path = os.path.join(self._persist_dir, "bm25_state.pkl")
         self._corpus_ids: List[str] = []
@@ -50,7 +59,7 @@ class ChromaVectorStore:
 
         self._client = chromadb.PersistentClient(path=self._persist_dir)
         self._collection = self._client.get_or_create_collection(
-            name=settings.chroma_collection_name,
+            name=self._collection_name,
             metadata={"hnsw:space": "cosine"},
         )
         self._load_bm25_state()

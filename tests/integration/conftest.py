@@ -20,7 +20,11 @@ def _use_faiss_for_get_vector_store():
     this fixture does not affect them.
     """
     from config.settings import settings, VectorStoreProvider
+    from vectorstore.vector_store import reset_corpus_registry
     original = settings.vector_store_provider
     settings.vector_store_provider = VectorStoreProvider.FAISS
     yield
     settings.vector_store_provider = original
+    # Clear the corpus registry so registrations from one test don't bleed
+    # into the next (matters once tests register named corpora directly).
+    reset_corpus_registry()
