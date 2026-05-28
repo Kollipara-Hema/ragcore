@@ -55,6 +55,11 @@ class BaseVectorStore(ABC):
         """Raise RuntimeError with a one-line reason if the store is unreachable."""
         raise NotImplementedError
 
+    @abstractmethod
+    def count(self) -> int:
+        """Return the number of indexed chunks. 0 if the store is empty."""
+        raise NotImplementedError
+
 
 class FAISSVectorStore(BaseVectorStore):
     def __init__(self, index_file: str = None, metadata_file: str = None):
@@ -231,6 +236,9 @@ class FAISSVectorStore(BaseVectorStore):
     def ping(self) -> None:
         if not Path(settings.faiss_data_dir).is_dir():
             raise RuntimeError(f"FAISS data directory missing: {settings.faiss_data_dir}")
+
+    def count(self) -> int:
+        return self.index.ntotal if self.index is not None else 0
 
 
 def register_corpus(name: str, store: BaseVectorStore) -> None:

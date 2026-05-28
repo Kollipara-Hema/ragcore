@@ -48,6 +48,9 @@ class _DummyStore(BaseVectorStore):
     def ping(self) -> None:
         return None
 
+    def count(self) -> int:
+        return 0
+
 
 @pytest.fixture(autouse=True)
 def _clean_registry():

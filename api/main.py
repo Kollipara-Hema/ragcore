@@ -58,7 +58,11 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from config.settings import settings, LLMProvider    # App configuration from .env
 
 # Data models for request/response shapes
-from utils.models import IngestRequest, IngestResponse, DocumentStatus, QueryRequest, AgentQueryRequest, AgentQueryResponse, QueryTrace
+from utils.models import (
+    IngestRequest, IngestResponse, DocumentStatus, QueryRequest,
+    AgentQueryRequest, AgentQueryResponse, QueryTrace,
+    CorpusInfo, CorporaListResponse,
+)
 
 # The main RAG pipeline orchestrator
 from orchestrator import RAGOrchestrator
@@ -73,7 +77,9 @@ from ingestion.pipeline import IngestionPipeline, ingest_file_task
 # Vector store (for document deletion and health checks)
 from vectorstore.vector_store import (
     FAISSVectorStore,
+    get_corpus,
     get_vector_store,
+    list_corpora,
     register_corpus,
 )
 from vectorstore.chroma_store import ChromaVectorStore
@@ -557,6 +563,11 @@ async def query(request: QueryRequest):
         # Run the full RAG pipeline and return the complete answer
         result = await orchestrator.query(request)
         return result
+    except KeyError as ke:
+        # Raised by get_corpus() when request.corpus names an unregistered
+        # corpus. Message is curated upstream and names the registered set
+        # so callers can spot a typo.
+        raise HTTPException(status_code=400, detail=str(ke))
     except Exception as e:
         logger.error("query_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
         raise HTTPException(
@@ -591,6 +602,19 @@ async def query_stream(request: QueryRequest):
              -d '{"query": "Summarize the key points."}'
              --no-buffer
     """
+    # Pre-validate corpus membership before constructing the StreamingResponse:
+    # once streaming begins the HTTP status is committed as 200, so an
+    # unknown-corpus KeyError raised mid-stream can only be surfaced as an
+    # in-band [ERROR] event, not as the 400 the caller deserves. /query and
+    # /query/stream therefore differ here by HTTP-semantic necessity, not by
+    # an accidental inconsistency — /query catches KeyError post-hoc; this
+    # endpoint must check up front.
+    if request.corpus != "default" and request.corpus not in list_corpora():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown corpus: {request.corpus!r}. Registered: {sorted(list_corpora())}",
+        )
+
     async def event_stream() -> AsyncIterator[str]:
         """
         Generator function that yields SSE-formatted tokens.
@@ -617,6 +641,46 @@ async def query_stream(request: QueryRequest):
             "X-Accel-Buffering": "no",        # Disable nginx buffering for streams
         },
     )
+
+
+# =============================================================================
+# CORPORA ENDPOINTS — Multi-corpus discovery
+# =============================================================================
+
+@app.get("/corpora", response_model=CorporaListResponse, tags=["query"])
+async def list_registered_corpora():
+    """
+    List corpora registered at startup with static metadata and live counts.
+
+    `source` and `chunker` are populated for corpora that have a config entry
+    in `config/corpora.py` (the six Apple corpora). The `default` corpus is
+    runtime-bound to a FAISS-backed FiQA collection and has no config record,
+    so its `source` and `chunker` are null.
+
+    `doc_count` is read live from each registered store via its count()
+    method — for FAISS this is index.ntotal, for Chroma it is the
+    collection's row count.
+    """
+    items: list[CorpusInfo] = []
+    for name in list_corpora():
+        cfg = CORPORA_CONFIG.get(name)
+        store = get_vector_store() if name == "default" else get_corpus(name)
+        # Some CORPORA_CONFIG entries (apple_financial_csvs) use a list of
+        # `sources` rather than a single `source`. Serialise as a CSV string
+        # so the response field stays scalar.
+        if cfg is None:
+            source = None
+        elif "sources" in cfg:
+            source = ", ".join(cfg["sources"])
+        else:
+            source = cfg.get("source")
+        items.append(CorpusInfo(
+            name=name,
+            source=source,
+            chunker=cfg.get("chunker") if cfg else None,
+            doc_count=store.count(),
+        ))
+    return CorporaListResponse(corpora=items)
 
 
 # =============================================================================
