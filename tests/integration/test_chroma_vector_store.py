@@ -67,6 +67,14 @@ class TestChromaVectorStore:
         results = asyncio.run(store.keyword_search("anything"))
         assert results == []
 
+    def test_count_empty_store_returns_zero(self, tmp_path):
+        store = ChromaVectorStore(persist_dir=str(tmp_path))
+        assert store.count() == 0
+
+    def test_count_after_upsert_matches_chunk_total(self, tmp_path):
+        store = _make_store_with_chunks(tmp_path)
+        assert store.count() == 3
+
     # ── Chroma-specific tests ─────────────────────────────────────────────────
 
     def test_persistence_survives_reload(self, tmp_path):

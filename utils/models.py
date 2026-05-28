@@ -199,6 +199,19 @@ class QueryResponse(BaseModel):
     # None when LLM emitted no <cite source="N"> markers.
 
 
+class CorpusInfo(BaseModel):
+    name: str
+    source: Optional[str] = None
+    # `source` and `chunker` come from config/corpora.py; both are None for
+    # the runtime-bound "default" corpus which has no static config record.
+    chunker: Optional[str] = None
+    doc_count: int
+
+
+class CorporaListResponse(BaseModel):
+    corpora: list[CorpusInfo]
+
+
 class IngestRequest(BaseModel):
     source_url: Optional[str] = None
     text_content: Optional[str] = None

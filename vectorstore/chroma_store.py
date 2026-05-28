@@ -296,3 +296,6 @@ class ChromaVectorStore:
             self._collection.count()
         except Exception as exc:
             raise RuntimeError(f"Chroma collection unreachable: {exc}") from exc
+
+    def count(self) -> int:
+        return self._collection.count()
