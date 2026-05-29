@@ -24,6 +24,10 @@ services:
         value: production
       - key: ENABLE_RERANKING
         value: "true"
+      - key: CHROMA_PERSIST_DIR
+        value: /var/data/chroma_db
+      - key: FAISS_DATA_DIR
+        value: /var/data/faiss
       - key: GROQ_API_KEY
         sync: false
       - key: OPENAI_API_KEY
