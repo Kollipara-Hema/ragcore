@@ -114,7 +114,7 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: LLMProvider = LLMProvider.GROQ
-    llm_model: str = "llama-3.1-70b-versatile"
+    llm_model: str = "llama-3.3-70b-versatile"
     llm_temperature: float = 0.1
     llm_max_tokens: int = 2048
     llm_streaming: bool = True
