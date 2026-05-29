@@ -1425,6 +1425,98 @@ against a full deploy cycle.
 
 ---
 
+## 2026-05-29 — Heuristic metadata-hint trap: boolean where-clause filter silently zeroed Apple retrieval
+
+### Symptom
+
+After Setup B shipped the 6 Apple Chroma corpora to Render's persistent disk, `GET /corpora` correctly reported 7 entries with the expected `doc_count` values. Every `/query` against an Apple corpus returned the empty-retrieval fallback — `citations: []`, `total_tokens: 0`, the canned abstention text — while FiQA queries continued to work. The pattern read like a deploy or seeding failure: the data was clearly on disk (count was right), but no chunks came back.
+
+### Investigation
+
+Each layer was probed in isolation and ruled out by a single targeted test before moving down.
+
+**Generation** — ruled out. `model_used` matched the configured `llama-3.3-70b-versatile` and `total_tokens` was 0, which is only emitted by `_empty_response` (the LLM is never called on that path). Generation could not be the failure point.
+
+**Deploy / seed** — ruled out. The exact failing query reproduced locally against the in-repo `data/chroma_collections/apple_10k_document_structure` collection. Whatever was happening was not specific to the Render disk or to the first-boot seed copy.
+
+**Store layer** — ruled out. A throwaway probe instantiated `ChromaVectorStore` directly, embedded the query through the same `BGEEmbedder` the deployed runtime uses, and ran both the raw `_collection.query(query_embeddings=[vec], n_results=5)` and the wrapper `vector_search(vec, top_k=5, metadata_filter=None)`. Both returned 5 strong matches (cosine distances 0.25–0.34, the top hit being the literal by-category sales table). The embeddings matched the stored vectors in shape and norm (both 1024-dim, both L2-normalized to 1.0). `list_collections()` showed a single collection of the right name and the right ID. The store was healthy end-to-end.
+
+The divergence was isolated by extending the probe to drive the real router → executor pipeline in-process, with the store's search methods monkey-patched to log their incoming arguments. At each boundary the chunk count was printed. `RetrievalExecutor.execute()` returned 0 chunks for the same query that returned 5 against the raw store, and the wrapped store call logged `metadata_filter={'author': True}` — a value that did not appear when the wrapper was called directly with `metadata_filter=None`.
+
+### Root cause
+
+`HeuristicRouter.extract_metadata_hints` at `retrieval/router/query_router.py` emits boolean markers — `{'author': True}`, `{'doc_type': True}`, `{'date_range': True}` — when its regex patterns fire. `QueryRouter.route()` merged these into `combined_filter`, which became `RoutingDecision.metadata_filter`, which became Chroma's `where=` clause. Chroma compared boolean `True` against the actual string-valued metadata on each chunk (e.g. `doc_type='pdf'`), matched nothing, and returned zero rows. The executor's `try/except` fallback at `retrieval_executor.py:51` is gated on **exceptions**, not on empty results — a cleanly-executed query that returns `[]` propagates straight through to the orchestrator's `if not retrieval_result.chunks` branch and emits `_empty_response`.
+
+The `author` pattern made the regression catastrophic on the Apple demo specifically. Its source pattern `by [A-Z][a-z]+ [A-Z][a-z]+` was written to match a proper-noun author name like "by Tim Cook." The call site at `query_router.py:88` passes `re.IGNORECASE`, which neuters the case classes — under that flag `[A-Z]` and `[a-z]` each match any letter — collapsing the regex to `by \w+ \w+`. Common financial phrasings such as "net sales by product category," "revenue by region," "costs by quarter" all match. Every one of them silently produced an empty result on every Apple corpus.
+
+The other two patterns share the same defect at the boolean-emission layer: `{'doc_type': True}` fires on "in the report" / "in the document" / "in the pdf"; `{'date_range': True}` fires on "from 2025" / "since 2020" / etc. Both are common in queries about a 10-K or an earnings report.
+
+### Why it stayed hidden
+
+The hint fields don't exist on Apple chunk metadata at all. No chunk carries `author` or `date_range`; `doc_type` exists but is degenerate per-corpus (every chunk in a given corpus has the same value). The filter could only ever subtract correct results, never match. `count()` was a faithful 392 and `/corpora` reported the right registered set because the collection itself was healthy — the kill was a query-time filter two layers above the store, applied to a column the data didn't even have.
+
+### Fix
+
+Stopped merging `meta_hints` into `combined_filter` at `query_router.py`. `HeuristicRouter.extract_metadata_hints` and `METADATA_PATTERNS` are left in place — they may be revived once a corpus carries real author or date metadata that a string-valued filter could match — but `route()` no longer consumes them. A comment at the merge site records the failure mode and the IGNORECASE detail so the trap is not reintroduced. Active metadata filtering still works via the LLM classifier's `llm_meta` (a JSON object emitting real string values per its system prompt) and any caller-supplied `metadata_filter`. Verified the previously failing query plus two other trap phrasings ("earnings from 2025" and "discussed in the report") each now retrieve 20 chunks instead of zero.
+
+### Lesson — primary
+
+Non-zero `count()` combined with zero query results is a query-time filter or where-clause problem, not a data problem. The bisection move is to call the store directly with `metadata_filter=None` and compare to the same call through the full pipeline; the first differing argument between the two calls names the buggy layer. Applied here, the difference at the executor boundary was `{'author': True}` vs `None` — and the layer that injected it was the router. Health signals at the registration layer (`count()`, `/corpora`) tell you the data is loaded; they do not tell you anything about what queries against that data return.
+
+### Lesson — secondary
+
+`re.IGNORECASE` silently disables the `[A-Z]` and `[a-z]` case classes. Never combine them in the same regex. The original `by [A-Z][a-z]+ [A-Z][a-z]+` was clearly meant to require proper-noun capitalization, and the IGNORECASE flag was equally clearly meant to be permissive about the literal `"by"` — those two intentions are incompatible. If the literal word needs case-insensitivity, use a per-token case-fold or a scoped inline flag like `(?-i:[A-Z][a-z]+)` for the parts that need their case classes intact. Cheaper still: lowercase the query and write the literal word in lowercase, leaving the case classes to mean what they say.
+
+### Cross-reference
+
+- 2026-05-12 production-FiQA-corpus and 2026-05-28 Dockerfile-pymupdf4llm: same "green deploy + healthy-looking endpoint, every query returns empty" family. This is the third confirmed instance and the third distinct mechanism — missing data, missing dependency, query-time filter. Each was invisible until the live `/query` path was exercised end-to-end against the real corpus. The "Patterns I've noticed" section below is updated with the generalization.
+
+### Commit
+
+`fbe1748` — Disable heuristic metadata hints from the retrieval filter
+
+---
+
+## 2026-05-29 — Citation markers render blank in answer text (observed on Apple queries)
+
+### Symptom
+
+A deployed Apple-corpus query returned a correct grounded answer, but the inline `[N]` citation markers in the answer text were empty — the rendered output read "According to , …" and "as noted in that …" rather than "According to [1], …" or "as noted in [2] that …". The `attributed_spans` field on the response carried correct source indices, so the attribution data was intact; only the substitution into the answer prose dropped the number.
+
+### Status
+
+Open. Not yet investigated. Generation/renderer layer.
+
+### Cross-reference
+
+Likely overlaps with two earlier entries — 2026-05-13 `attributed_spans` HTML rendering bug (renderer mishandling LLM-output HTML) and 2026-05-02 per-call Llama citation-marker stochasticity (model emits the markers inconsistently across calls). This symptom may be either of those resurfacing on the Apple corpus rather than a new bug. Confirm shape before treating as distinct.
+
+### Commit
+
+N/A — not yet investigated.
+
+---
+
+## 2026-05-29 — Follow-up questions are wrong-domain (FiQA topics on Apple queries)
+
+### Symptom
+
+A deployed Apple 10-K query returned `follow_up_questions` about IRAs, 401(k)s, and investment-tax topics — pure FiQA-domain content, completely unrelated to the Apple corpus or to the query that was actually asked. Suggests the follow-up generator either lacks corpus / query context at the prompt level or is running against a hardcoded FiQA-flavored template.
+
+### Status
+
+Open. Not yet investigated. Demo-visible — undercuts the multi-corpus story the Apple work was meant to demonstrate. Generation layer.
+
+### Cross-reference
+
+The 2026-04-29 entry covered follow-up question **parsing** (Llama's multi-array JSON output shape). This is a distinct failure mode of the same feature — topically wrong content, not malformed structure. The parser is presumably succeeding; what comes out of it is just on the wrong subject.
+
+### Commit
+
+N/A — not yet investigated.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -1448,3 +1540,5 @@ When 3+ varied prompt rewrites produce the same non-target shape, stop iterating
 The 2026-04-30 FLARE `[UNCERTAIN]` investigation is the second instance of the RLHF-prior pattern. Two rounds, two different failure modes — instruction absent in round 0, instruction ignored in round 1 — same output: complete confident answers with no self-interruption marker. The pivot to numeric-novelty was faster than the attribution-spans pivot because the prior entry had already established the threshold. Each recurrence narrows the generalization: it is not only `[Source N]` trailing citations that are entrenched; Llama's RLHF priors resist structural self-interruption markers of any shape. The downstream adaptation strategy now has two confirming cases. The 2026-05-02 citation-rendering misdiagnosis adds a second dimension: even the trailing-marker format Llama accepts is emitted with per-call stochasticity — the prior produces unreliable compliance across identical calls, not only structural resistance to the target format.
 
 The 2026-04-30 regex-asymmetry bug introduces a pattern distinct from the PARTIAL-module and RLHF-prior themes: asymmetric set-difference in heuristics. The `$18k` vs `$18,000` case is the archetype — two sets extracted from text that passed through different formatting conventions, compared as if normalized to the same space. The heuristic fired every round not because it was wrong about what it was measuring, but because the measure was applied inconsistently across the two sides of the comparison. Before treating a set-difference as meaningful, verify that both sets were produced by extraction paths that normalize to the same format. When a heuristic fires without converging across multiple rounds with no change in the underlying data, asymmetric normalization is the first thing to check. Generalizes beyond regex: any time two collections pass through separate extraction or formatting paths before being compared, the difference may be measuring format divergence rather than semantic novelty.
+
+The 2026-05-29 metadata-hint trap is the third confirmed instance of "green deploy + healthy status signals + every query returns empty," after the 2026-05-12 missing FiQA corpus and the 2026-05-28 missing pymupdf4llm dependency. The mechanism differs each time — missing data, missing dependency, query-time filter — but the observability gap is identical: no standard signal (deploy status, `/health`, `/health/ready`, `/corpora`, `count()`) exercises the actual retrieve → generate path with a real query against the real corpus. Each layer reports healthy in isolation, and the integration silently returns empty. The 2026-05-12 entry's standing lesson is therefore now triply confirmed and worth promoting from suggestion to standing operating procedure: **after any change to a deployment — env var, disk path, Dockerfile, start command, routing code, or a forced redeploy from any cause — run one real `/query` against production with a known-good question for each corpus, and verify a grounded answer with citations.** Ten seconds per corpus. Catches the entire class.
