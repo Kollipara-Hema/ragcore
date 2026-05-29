@@ -1,0 +1,5 @@
+# Source documents are only needed for re-ingestion via
+# scripts/ingest_apple_corpus.py, never at runtime. Excluding them keeps
+# the image ~25 MB leaner. data/chroma_collections/ is intentionally NOT
+# excluded — lifespan seeds it onto the persistent disk on first boot.
+data/apple_demo/
