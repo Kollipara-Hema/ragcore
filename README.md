@@ -29,6 +29,7 @@ finding.
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
 - [Security](#security)
+- [Deployment](#deployment)
 - [Project Structure](#project-structure)
 - [Testing](#testing)
 - [Status](#status)
@@ -375,6 +376,20 @@ RAGCore is a portfolio demo; its security posture is off by default to keep the 
 **Docker-compose credentials.** The compose stack defaults Redis and Grafana credentials to `CHANGE_ME_IN_PROD` if `REDIS_PASSWORD` and `GF_ADMIN_PASSWORD` are unset — a visible placeholder, not a silent default. Set both in `.env` before running `docker compose up`.
 
 Five security limitations are documented and tracked in [AUDIT.md](AUDIT.md): the in-memory trace store has no eviction and will exhaust memory on long-running deploys; the trace retrieval endpoints (`/agent/trace/{id}`, `/trace/{id}`) require no authentication; several endpoints surface raw exception messages to callers; the Celery failure path returns the serialized exception object verbatim; and `RequestIdMiddleware` accepts any client-supplied `X-Request-Id` value without format validation.
+
+---
+
+## Deployment
+
+The backend runs on Render as the `ragcore-api` service: Docker runtime, Standard plan, with a 5 GB persistent disk mounted at `/var/data`. `render.yaml` is the Blueprint source of truth for the plan, the disk declaration, and every managed environment variable. The three API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) are declared as `sync: false` so their secret values stay out of version control while their presence remains declared in the Blueprint. Pushes to `main` trigger autoDeploy.
+
+**Vector store split.** The FiQA `"default"` corpus lives on FAISS at `$FAISS_DATA_DIR` (`faiss_index.idx` plus `faiss_metadata.pkl`). The 6 Apple corpora live on Chroma, one per persist directory at `$CHROMA_PERSIST_DIR/<corpus_name>/` — each containing `chroma.sqlite3`, a `bm25_state.pkl` sidecar for hybrid retrieval, and a UUID-named HNSW segment subdir. `GET /corpora` returns all 7 entries from a single backend-agnostic registry, so clients select a corpus by name and never see the FAISS/Chroma split.
+
+**Apple corpus delivery (Setup B).** The Apple Chroma collections are built locally with `python scripts/ingest_apple_corpus.py`, committed under `data/chroma_collections/<corpus_name>/`, and bundled into the Docker image. On first boot, the lifespan handler in `api/main.py` runs `_seed_apple_collections()`, which atomically copies each per-corpus directory from `/app/data/chroma_collections/<name>` to `$CHROMA_PERSIST_DIR/<name>` via a sibling temp directory plus `os.replace` — `chroma.sqlite3` only appears at the destination once the whole tree is in place. Subsequent boots detect the existing `chroma.sqlite3` at the destination and skip the seed for that corpus. In local development, where the source and destination resolve to the same path, the function no-ops.
+
+**Verification after deploy.** `curl https://ragcore-api.onrender.com/corpora` should return 7 entries (the FiQA `default` plus the 6 Apple corpora) with their expected `doc_count` values. Then run one `/query` per corpus with a known-good question and confirm a grounded answer with citations and `total_tokens > 0` — HTTP 200 alone is not sufficient, since a healthy registration is fully compatible with an empty-retrieval bug elsewhere in the pipeline. As of 2026-05-29, all 7 corpora are verified live through `/query`; one cosmetic issue — inline `[N]` citation markers sometimes render without the digit — is tracked separately in [docs/debugging-notes.md](docs/debugging-notes.md) and does not affect retrieval or grounding. If `/corpora` returns fewer than 7, check the boot logs for `Seed failed for <corpus>` warnings: the seed step logs-and-continues on error, so a failed seed surfaces as a silently missing corpus rather than a startup crash.
+
+**Updating a corpus.** Re-ingest locally with `python scripts/ingest_apple_corpus.py`, commit the regenerated `data/chroma_collections/<corpus_name>/`, and push. The seed step does **not** overwrite a destination that already contains a `chroma.sqlite3`, so a push alone will not propagate the change to the live disk. The surgical workaround is to open a Render shell and remove that corpus's directory under `/var/data/chroma_db/` before the next deploy; rotating the persist root (`CHROMA_PERSIST_DIR=/var/data/chroma_db_v2`) is an alternative that re-seeds every corpus on first boot. A manifest-hash trigger that re-seeds when the in-image collection differs from the on-disk one is a planned follow-up. One related note for contributors: local queries can write back into a Chroma HNSW segment and dirty the tracked binaries; whether to gitignore the per-segment files or restore them after testing is a separate deferred decision.
 
 ---
 
