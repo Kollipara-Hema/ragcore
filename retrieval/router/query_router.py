@@ -237,7 +237,6 @@ class QueryRouter:
         """
         # Step 1: Fast heuristic pass
         heuristic_type = self._heuristic.classify(query)
-        meta_hints = self._heuristic.extract_metadata_hints(query)
 
         # Step 2: LLM classification if heuristics were uncertain
         if heuristic_type is None:
@@ -245,10 +244,19 @@ class QueryRouter:
         else:
             query_type, llm_meta, confidence = heuristic_type, {}, 0.9
 
-        # Merge metadata filters
+        # Merge metadata filters.
+        #
+        # HeuristicRouter.extract_metadata_hints() is intentionally NOT
+        # consumed here. It emits boolean True markers like {'author': True},
+        # which Chroma compares against string metadata (e.g. doc_type='pdf')
+        # and silently matches nothing — zeroing out retrieval. The 'author'
+        # pattern in particular fires on common financial phrasings such as
+        # "net sales by product category" because re.IGNORECASE neuters its
+        # [A-Z][a-z]+ case classes. The function and METADATA_PATTERNS are
+        # left in place for a future revival that emits real, string-valued
+        # filters; until then, active metadata filtering goes through the
+        # LLM classifier (llm_meta) and any caller-supplied filter only.
         combined_filter = {}
-        if meta_hints:
-            combined_filter.update(meta_hints)
         if llm_meta:
             combined_filter.update({k: v for k, v in llm_meta.items() if v})
         if metadata_filter:
