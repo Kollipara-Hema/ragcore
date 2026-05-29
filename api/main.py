@@ -28,6 +28,7 @@ HOW TO TEST:
 from __future__ import annotations
 import logging     # For writing log messages
 import os          # For file path operations and environment
+import shutil      # For copytree() when seeding Apple collections onto the persist disk
 import tempfile    # For saving uploaded files temporarily
 import uuid        # For generating unique IDs
 
@@ -122,6 +123,78 @@ ingestion_pipeline: Optional[IngestionPipeline] = None  # Document indexing
 
 
 # =============================================================================
+# Apple-corpus seeding — copy repo-shipped collections to the persist dir
+# =============================================================================
+# The 6 Apple Chroma collections are tracked in-repo at data/chroma_collections/
+# and bundled into the Docker image. In production, settings.chroma_persist_dir
+# points at the persistent disk (e.g. /var/data/chroma_db), which starts empty
+# on a fresh disk. _seed_apple_collections() copies each per-corpus directory
+# from the repo path to the persist path on first boot; subsequent boots
+# detect the existing chroma.sqlite3 and skip. In local dev where the two
+# paths resolve to the same location, the function no-ops.
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_REPO_CHROMA_SOURCE = _REPO_ROOT / "data" / "chroma_collections"
+
+
+def _seed_apple_collections() -> None:
+    """Idempotent, atomic first-boot copy of repo-shipped Chroma collections
+    onto the runtime persist_dir. Copies the ENTIRE per-corpus directory —
+    copying only chroma.sqlite3 would leave bm25_state.pkl and the HNSW
+    binaries behind, breaking hybrid retrieval.
+
+    Atomicity matters because the next-boot skip-check keys off
+    `dest/chroma.sqlite3`. A crashed mid-copy that left a bare sqlite at dest
+    would be mistaken for a complete seed forever — bricking that corpus. We
+    copy into a sibling temp dir and os.replace() it into the final dest, so
+    chroma.sqlite3 only appears at dest when the whole tree is in place.
+    """
+    for corpus_name, config in CORPORA_CONFIG.items():
+        source = _REPO_CHROMA_SOURCE / corpus_name
+        dest = Path(config["persist_dir"])
+
+        if source.resolve() == dest.resolve():
+            logger.info(
+                "Seed skipped for %s: source == dest (%s)", corpus_name, source,
+            )
+            continue
+        if (dest / "chroma.sqlite3").is_file():
+            logger.info(
+                "Seed skipped for %s: %s already seeded", corpus_name, dest,
+            )
+            continue
+        if not source.is_dir():
+            logger.warning(
+                "Seed source missing for %s at %s; corpus will be skipped at registration",
+                corpus_name, source,
+            )
+            continue
+
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.parent / f".{corpus_name}.seeding-tmp"
+        logger.info("Seeding %s: %s -> %s (via %s)", corpus_name, source, dest, tmp)
+        try:
+            # Clean up any leftover temp from a prior crashed seed before we
+            # start, so copytree has a clean dst to create.
+            if tmp.exists():
+                shutil.rmtree(tmp)
+            shutil.copytree(source, tmp)
+            # A partial dest (no sqlite, the skip-check already passed) gets
+            # removed so os.replace can land the fully-populated temp atomically.
+            if dest.exists():
+                shutil.rmtree(dest)
+            os.replace(tmp, dest)
+        except Exception as exc:
+            logger.error(
+                "Seed failed for %s (%s); corpus will be skipped at registration",
+                corpus_name, exc, exc_info=True,
+            )
+            if tmp.exists():
+                shutil.rmtree(tmp, ignore_errors=True)
+            continue
+
+
+# =============================================================================
 # LIFESPAN — Startup and Shutdown Logic
 # =============================================================================
 
@@ -148,10 +221,17 @@ async def lifespan(app: FastAPI):
     # path uniform with the Chroma corpora below.
     register_corpus("default", FAISSVectorStore())
 
+    # Seed Apple collections onto the runtime persist_dir before registration.
+    # No-op in local dev (source == dest) and on subsequent prod boots
+    # (chroma.sqlite3 already present on the persistent disk).
+    _seed_apple_collections()
+
     # Register each Apple Chroma corpus whose persist_dir contains an
-    # ingested collection. Missing persist_dirs are skipped with a warning
-    # so a deploy without ingested Apple data (e.g. fresh Render boot
-    # before Setup B) still starts and serves the default corpus.
+    # ingested AND non-empty collection. Missing persist_dirs are skipped
+    # with a warning so a deploy without ingested Apple data still starts
+    # and serves the default corpus. Empty collections (count() == 0) are
+    # also skipped — guards against a partial seed leaving an unusable
+    # store registered.
     for corpus_name, config in CORPORA_CONFIG.items():
         persist_dir = Path(config["persist_dir"])
         if not (persist_dir / "chroma.sqlite3").is_file():
@@ -162,6 +242,12 @@ async def lifespan(app: FastAPI):
         store = ChromaVectorStore(
             persist_dir=str(persist_dir), collection_name=corpus_name,
         )
+        if store.count() == 0:
+            logger.warning(
+                "Corpus %s at %s is empty (count=0); skipping registration",
+                corpus_name, persist_dir,
+            )
+            continue
         register_corpus(corpus_name, store)
         logger.info("Registered corpus %s from %s", corpus_name, persist_dir)
 
