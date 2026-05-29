@@ -2,11 +2,15 @@ services:
   - type: web
     name: ragcore-api
     runtime: docker
-    plan: starter
+    plan: standard
     region: ohio
     healthCheckPath: /health
     autoDeploy: true
     branch: main
+    disk:
+      name: ragcore-data
+      mountPath: /var/data
+      sizeGB: 5
     envVars:
       - key: LLM_PROVIDER
         value: groq

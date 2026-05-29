@@ -29,11 +29,19 @@ being served); the `chunker` field below MUST be the factory key
 """
 from __future__ import annotations
 
+from config.settings import settings
+
+# Root for per-corpus Chroma persist directories. Local dev resolves to
+# ./data/chroma_collections (settings.chroma_persist_dir default); production
+# sets CHROMA_PERSIST_DIR=/var/data/chroma_db so collections live on the
+# persistent disk instead of the ephemeral container filesystem.
+_CHROMA_ROOT = settings.chroma_persist_dir
+
 CORPORA_CONFIG: dict[str, dict] = {
     "apple_10k_fixed": {
         "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "fixed",
-        "persist_dir": "data/chroma_collections/apple_10k_fixed",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_10k_fixed",
     },
     # NOTE: "hierarchical" here names the CHUNKER class
     # (HierarchicalChunker), not retrieve-child-return-parent semantics.
@@ -45,22 +53,22 @@ CORPORA_CONFIG: dict[str, dict] = {
     "apple_10k_hierarchical": {
         "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "hierarchical",
-        "persist_dir": "data/chroma_collections/apple_10k_hierarchical",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_10k_hierarchical",
     },
     "apple_10k_document_structure": {
         "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "structure",
-        "persist_dir": "data/chroma_collections/apple_10k_document_structure",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_10k_document_structure",
     },
     "apple_environmental": {
         "source": "data/apple_demo/apple__corporate__environmental_progress_report__2025.pdf",
         "chunker": "structure",
-        "persist_dir": "data/chroma_collections/apple_environmental",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_environmental",
     },
     "apple_earnings_html": {
         "source": "data/apple_demo/apple__sec__q4_earnings_release__2025.html",
         "chunker": "fixed",
-        "persist_dir": "data/chroma_collections/apple_earnings_html",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_earnings_html",
     },
     # Two CSVs, one corpus. The ingest script special-cases this entry by
     # iterating `sources` instead of using `source` directly, so the same
@@ -72,6 +80,6 @@ CORPORA_CONFIG: dict[str, dict] = {
             "data/apple_demo/apple__sec__financial_metrics_annual__2026.csv",
         ],
         "chunker": "fixed",
-        "persist_dir": "data/chroma_collections/apple_financial_csvs",
+        "persist_dir": f"{_CHROMA_ROOT}/apple_financial_csvs",
     },
 }
