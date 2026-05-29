@@ -108,7 +108,7 @@ class Settings(BaseSettings):
     pinecone_environment: str = "us-east-1-aws"
     pinecone_index_name: str = "docintel"
     qdrant_url: str = "http://localhost:6333"
-    chroma_persist_dir: str = "./chroma_db"
+    chroma_persist_dir: str = "./data/chroma_collections"
     chroma_collection_name: str = "ragcore"
     faiss_data_dir: str = "./faiss"
 
