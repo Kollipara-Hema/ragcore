@@ -1,12 +1,17 @@
 """Chunker comparison data layer.
 
-Fires concurrent /query calls (one per Apple 10-K chunker variant), pins
+Fires sequential /query calls (one per Apple 10-K chunker variant), pins
 strategy to hybrid, and returns just the retrieval metrics the comparison
-view needs. Part 1 of the comparison-view arc: data only, no rendering.
+view needs.
+
+Why sequential rather than parallel: three concurrent /query calls against
+a single Render dyno (running embedding + cross-encoder per request) plus
+shared Groq tokens-per-day limits made the parallel version drop random
+columns. Sequential is slower (~30-45s wall) but each call gets resources
+to itself and completes reliably.
 """
 from __future__ import annotations
 
-import concurrent.futures
 import time
 from typing import Any
 
@@ -25,7 +30,9 @@ def _post_query(
     backend_url: str,
     api_key: str,
     timeout: int,
-) -> dict[str, Any]:
+) -> tuple[int, dict[str, Any]]:
+    """POST /query and return (status_code, body). Body is a dict either
+    way — wraps transport errors in {"error": ...} with status_code 0."""
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["X-API-Key"] = api_key
@@ -42,14 +49,33 @@ def _post_query(
             headers=headers,
             timeout=timeout,
         )
-        return r.json()
     except Exception as e:
-        return {"error": str(e)}
+        return 0, {"error": str(e)}
+    try:
+        body = r.json()
+    except Exception as e:
+        body = {"error": f"non-JSON response: {e}", "_text": r.text[:200]}
+    return r.status_code, body
 
 
-def _summarize(resp: dict[str, Any]) -> dict[str, Any]:
+def _summarize(status: int, resp: dict[str, Any]) -> dict[str, Any]:
+    """Project the full /query response down to the comparison-view fields.
+
+    Detects three error shapes so a failed call surfaces as a real error in
+    the UI instead of a silently-empty column:
+      1. Transport error from _post_query ({"error": ...}, status 0)
+      2. FastAPI 4xx/5xx body ({"detail": "..."}, status >= 400)
+      3. 200 with the QueryResponse shape (no error)
+    """
     if "error" in resp:
         return {"error": resp["error"]}
+    if status >= 400:
+        detail = resp.get("detail")
+        msg = detail if isinstance(detail, str) else str(resp)[:300]
+        return {"error": f"HTTP {status}: {msg[:280]}"}
+    if "strategy_used" not in resp:
+        return {"error": f"unexpected response shape: keys={list(resp.keys())[:6]}"}
+
     cits = resp.get("citations") or []
     cands = resp.get("retrieval_candidates") or []
     stage = resp.get("stage_timings") or {}
@@ -79,52 +105,39 @@ def fetch_chunker_comparison(
     corpora: tuple[str, ...] = CHUNKER_COMPARISON_CORPORA,
     timeout: int = 90,
 ) -> dict[str, Any]:
-    """Fire concurrent /query calls (one per chunker variant), strategy pinned
-    to hybrid, return per-corpus retrieval metrics plus concurrency metadata.
+    """Fire sequential /query calls (one per chunker variant), strategy pinned
+    to hybrid, return per-corpus retrieval metrics.
 
-    Per-call errors/timeouts surface as ``{"error": ...}`` for that corpus
-    only; the other corpora still return. Cold-start safe — default per-call
-    timeout is 90s (Render dynos can take 30–60s to wake).
+    Per-call errors (transport failures, HTTP 4xx/5xx, unexpected response
+    shapes) are isolated to that corpus's entry; the loop keeps going so
+    the other corpora still get a chance to return. Cold-start safe — per-call
+    timeout defaults to 90s (Render dynos can take 30–60s to wake).
     """
     t0 = time.monotonic()
     results: dict[str, dict[str, Any]] = {}
 
-    def _one(corpus: str) -> tuple[str, dict[str, Any], float, float]:
+    for corpus in corpora:
         c_start = time.monotonic()
-        resp = _post_query(query, corpus, backend_url, api_key, timeout)
+        try:
+            status, resp = _post_query(query, corpus, backend_url, api_key, timeout)
+            summary = _summarize(status, resp)
+        except Exception as e:
+            summary = {"error": str(e)}
         c_end = time.monotonic()
-        return corpus, resp, c_start - t0, c_end - t0
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(corpora)) as ex:
-        futures = {ex.submit(_one, c): c for c in corpora}
-        for fut in concurrent.futures.as_completed(futures):
-            corpus = futures[fut]
-            try:
-                _name, resp, started_s, finished_s = fut.result(timeout=timeout + 5)
-                summary = _summarize(resp)
-                summary["timing"] = {
-                    "started_s":  round(started_s, 3),
-                    "finished_s": round(finished_s, 3),
-                    "duration_s": round(finished_s - started_s, 3),
-                }
-                results[corpus] = summary
-            except concurrent.futures.TimeoutError:
-                results[corpus] = {"error": f"timeout after {timeout}s"}
-            except Exception as e:
-                results[corpus] = {"error": str(e)}
+        summary["timing"] = {
+            "started_s":  round(c_start - t0, 3),
+            "finished_s": round(c_end - t0, 3),
+            "duration_s": round(c_end - c_start, 3),
+        }
+        results[corpus] = summary
 
     wall_s = time.monotonic() - t0
-    sum_durations = sum(
-        (r.get("timing", {}).get("duration_s") or 0.0)
-        for r in results.values()
-    )
     return {
         "query":   query,
         "results": results,
         "meta": {
-            "wall_seconds":       round(wall_s, 2),
-            "sum_durations":      round(sum_durations, 2),
-            "concurrent_speedup": round(sum_durations / wall_s, 2) if wall_s > 0 else None,
-            "strategies_used":    {c: r.get("strategy_used") for c, r in results.items()},
+            "wall_seconds":    round(wall_s, 2),
+            "mode":            "sequential",
+            "strategies_used": {c: r.get("strategy_used") for c, r in results.items()},
         },
     }
