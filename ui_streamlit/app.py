@@ -541,45 +541,65 @@ def _follow_up_chips(follow_ups: list[str], message_idx: int = 0) -> None:
 
 
 def _retrieval_expander(retrieval_candidates: Optional[list], citations: list) -> None:
-    """Pre-rerank candidates with Altair histogram — diagnostic expander."""
+    """Retrieval candidates with rerank-score histogram and dual-score table."""
     cands = retrieval_candidates or []
     if not cands:
         return
+    has_pre = any(c.get("pre_rerank_score") is not None for c in cands)
     with st.expander(f"Retrieval candidates — {len(cands)} chunks before reranking", expanded=False):
-        st.caption(
-            "Scores are pre-rerank hybrid (FAISS dense + BM25 sparse). "
-            "Citation scores above are post-rerank cross-encoder — different scale."
-        )
+        if has_pre:
+            st.caption(
+                "Each candidate carries two scores on **different scales** — they are not "
+                "directly comparable. **Retrieval (hybrid)** is FAISS+BM25 fusion (~0–1). "
+                "**Rerank (cross-encoder)** is an unbounded logit (~−10 to +4). "
+                "Rows are sorted by retrieval order; the ✅ marks chunks that survived "
+                "into the final answer — scattered ✅ rows mean the cross-encoder reordered."
+            )
+        else:
+            st.caption(
+                "Rerank cross-encoder scores shown (unbounded logit). "
+                "Pre-rerank hybrid scores unavailable for this response."
+            )
         scores = [c["score"] for c in cands]
         df_hist = pd.DataFrame({"score": scores})
         hist = (
             alt.Chart(df_hist)
             .mark_bar(color=ACCENT, opacity=0.75)
             .encode(
-                alt.X("score:Q", bin=alt.Bin(maxbins=12), title="Hybrid score"),
+                alt.X("score:Q", bin=alt.Bin(maxbins=12), title="Rerank score (cross-encoder logit)"),
                 alt.Y("count():Q", title="Chunks"),
             )
-            .properties(height=200, title="Score distribution (top-K pre-rerank)")
+            .properties(height=200, title="Rerank score distribution")
         )
         st.altair_chart(hist, use_container_width=True)
+        if has_pre:
+            sorted_cands = sorted(
+                cands,
+                key=lambda x: (x["pre_rerank_score"] if x.get("pre_rerank_score") is not None else -1e9),
+                reverse=True,
+            )
+        else:
+            sorted_cands = sorted(cands, key=lambda x: x["score"], reverse=True)
         df_cands = pd.DataFrame([
             {
+                "pre_rerank_score": c.get("pre_rerank_score"),
                 "score": round(c["score"], 4),
                 "used": "✅" if c.get("used_in_answer", False) else "—",
                 "source": Path(c.get("source", "")).name or c.get("source", ""),
                 "excerpt": (c.get("excerpt") or "")[:120],
             }
-            for c in sorted(cands, key=lambda x: x["score"], reverse=True)
+            for c in sorted_cands
         ])
         st.dataframe(
             df_cands,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "score":   st.column_config.NumberColumn("Score",   format="%.4f", width="small"),
-                "used":    st.column_config.TextColumn("Used",      width="small"),
-                "source":  st.column_config.TextColumn("Source",    width="medium"),
-                "excerpt": st.column_config.TextColumn("Excerpt",   width="large"),
+                "pre_rerank_score": st.column_config.NumberColumn("Retrieval (hybrid)",     format="%.4f", width="small"),
+                "score":            st.column_config.NumberColumn("Rerank (cross-encoder)", format="%.4f", width="small"),
+                "used":             st.column_config.TextColumn(  "Used",                                  width="small"),
+                "source":           st.column_config.TextColumn(  "Source",                                width="medium"),
+                "excerpt":          st.column_config.TextColumn(  "Excerpt",                               width="large"),
             },
         )
 
