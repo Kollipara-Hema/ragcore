@@ -1127,25 +1127,29 @@ A Phase 4 verification query ("How does a 401k employer match work and how shoul
 
 The query answer contained dollar amounts with commas (`$54,000`, `$18,000`). The `_render_answer_with_spans()` function in the Streamlit UI processes LLM output containing `<cite source="N">` trailing markers by substituting each span with `<mark>` highlight tags and `<sup>` citation links. The suspected failure mode: the regex that consumes each `<cite source="N">` token fails to match cleanly when the marker is adjacent to a numeral or comma, leaving an unclosed HTML span in the output that Streamlit's markdown renderer passes through as raw HTML. A secondary candidate: the markdown-unsafe-HTML pass closes spans in the wrong order when a sentence ends with a number followed immediately by a cite marker.
 
+The May 30 root-cause investigation showed both suspected mechanisms above were wrong. See the 2026-05-30 math-parser entry for the actual cause.
+
 ### Impact
 
 Cosmetic but damaging for a portfolio demo. Raw HTML in an LLM answer is the kind of artifact that signals a broken product to a reviewer, regardless of whether the underlying information is correct. Observed on one of four production queries during the May 12 Phase 4 verification batch (the 401k query). The other three rendered cleanly. The trigger rate at scale is unknown.
 
 ### Status
 
-Not yet fixed. The bug was observed during verification and documented here; no code changes have been made.
+Resolved by the 2026-05-30 math-parser fix. Re-running the 401k trigger query confirmed the citation-chrome fragments (`</mark>`, `<sup>`) and the source-card chrome fragments (`</div><div class="src-chunk">`) all render correctly. Scope is narrow: the markup chrome fragments are fixed. Source-card excerpt content rendering still has a separate hazard observed on the same re-run — see the 2026-05-30 source-card excerpt entry below.
 
-### Proposed fix
+### Proposed fix (superseded)
 
-Two layers. First: tighten the regex in `_render_answer_with_spans()` so it anchors correctly when a `<cite source="N">` marker is adjacent to a digit, comma, or period. Second: replace the current approach of trusting LLM-output HTML passthrough with a "render plain markdown first, then post-hoc inject highlights" strategy — strip `<cite>` tags from LLM output, render as clean markdown, then apply citation highlights as a post-processing pass over the rendered HTML. This separates markdown rendering and citation highlighting into independent concerns and removes the dependency on the LLM emitting well-formed HTML-adjacent syntax.
+Two layers were proposed at the time: tighten the cite-marker regex, and restructure into a markdown-then-injection pipeline. Neither was needed — the actual fix was a one-line `\$` escape in the renderer's text-extraction path (see the 2026-05-30 math-parser entry's Fix section). Kept here for the historical record of the hypothesis that didn't pan out.
 
 ### Cross-reference
 
 The 2026-04-30 entry covers the attributed-spans parser design — how trailing `<cite source="N">` markers get attributed to the preceding clause, and why Llama's RLHF prior resists wrapping cited content directly in XML tags. The 2026-04-30 entry resolved the parser layer (trailing-marker attribution instead of LLM-bounded wrapping). This bug surfaces in the renderer layer that consumes those attributed spans — the next step in the same pipeline.
 
+The 2026-05-30 math-parser entry is the closing entry for this bug.
+
 ### Commit
 
-N/A — not yet fixed.
+Pending — same corpus-aware UI commit as the 2026-05-30 math-parser entry (hash filled at commit time).
 
 ---
 
@@ -1514,6 +1518,97 @@ The 2026-04-29 entry covered follow-up question **parsing** (Llama's multi-array
 ### Commit
 
 N/A — not yet investigated.
+
+---
+
+## 2026-05-30 — Streamlit markdown-it inline-math parser silently consumes citation HTML between paired `$` signs
+
+### Symptom
+
+During the corpus-aware UI work, the new sidebar dropdown made the six Apple corpora reachable from the Streamlit app for the first time. On Apple 10-K queries (financial-figure-heavy), the rendered answer body showed raw HTML markup inline — visible fragments like `</mark><sup style="background:#6d4aab;...">` appearing as text instead of as a rendered highlight/badge. Some `<mark>` / `<sup>` spans in the same answer rendered correctly; others did not. FiQA-default queries continued to render cleanly.
+
+### Initial hypothesis (wrong)
+
+Suspected a regression from the same session's edits to `_render_assistant_message` (added `corpus` kwarg, gated follow-up chips). Audit ruled it out: no edits in this session touched `_render_answer_with_spans`, the `unsafe_allow_html=True` flag, the answer-rendering CSS, or any selector reaching the answer body. The function's HTML-building loop and final `st.markdown(final_html, unsafe_allow_html=True)` were byte-identical to the pre-session version.
+
+### What the data showed
+
+Counted dollar signs across the saved `/tmp/q_*.json` responses:
+
+| corpus                   | `$` in answer |
+|--------------------------|---------------|
+| `q_fiqa.json` (FiQA)     | 0             |
+| `q_default.json`         | 0             |
+| `q_apple_environmental`  | 0             |
+| `q_apple_10k_fixed`      | 18            |
+
+The 10-K answer is full of `$209,586`, `$201,183`, `$33,708`, etc. After `_render_answer_with_spans` builds `final_html` and `\n` is replaced with `<br>`, the actual string handed to `st.markdown` looks like:
+
+```
+... $209,586 in 2025, $201,183 in 2024, and $200,583 in 2023</mark><sup>1</sup> . <br><mark>- Mac: $33,708 ...
+```
+
+### Root cause
+
+Streamlit 1.32.0's `st.markdown` runs the answer through markdown-it with inline-math (`$...$`) parsing enabled by default. The parser pairs dollar signs greedily — `$209,586 in 2025, $`, then `201,183 in 2024, and $200,583 in 2023</mark><sup>1</sup>.<br><mark>- Mac: $`, etc. — and silently consumes any HTML tags falling between paired dollar signs as math content. The HTML chunks lucky enough to land outside a math pair render normally. That exactly produces the "some spans render correctly, others show raw markup" symptom; uniform breakage from a dropped `unsafe_allow_html` flag would have looked different.
+
+### Why this stayed hidden
+
+Latent until the corpus dropdown shipped. FiQA-default answers contained zero dollar signs, so the bug never fired in any prior verification run. Apple corpora had been ingestable for two weeks but had no UI path that reached them — the dropdown was the first surface that let a user issue a `/query` against a financial-figure-heavy corpus and see the rendered output. The classification: not a regression from the corpus-aware-UI commits, but a latent renderer bug those commits surfaced by widening the answer-content distribution.
+
+### Fix
+
+Added a tiny `_md_escape(text)` helper that does `html.escape(text).replace("$", r"\$")` and routed all three answer-text extraction calls in `_render_answer_with_spans` through it (the gap text between spans, the span text inside `<mark>`, and the trailing text after the last span). Also escaped `$` in the empty-spans `st.markdown(answer)` fallback so the same hazard doesn't bite if a future corpus produces an answer with no citations. The `<mark>` and `<sup>` injection sites are untouched — only the user text passing through them gets the dollar-sign escape. Markdown then renders `\$` as a literal `$` and never enters math mode.
+
+### Cross-reference
+
+The 2026-05-13 entry ("attributed_spans HTML leaks into rendered answer on dollar-amount-heavy outputs") observed the same renderer-layer symptom on a FiQA 401k query that contained `$54,000` and `$18,000`. That entry hypothesized a regex-anchoring bug in `_render_answer_with_spans` — close, but wrong about the layer: the regex wasn't the problem, markdown-it's math parser was. Re-ran the May 13 trigger query after this fix landed; all three observed fragment types (`</mark>`, the purple `<sup>...</sup>`, and `</div><div class="src-chunk">`) render correctly. May 13 is closed by this commit. (The source-card chrome fragment was initially expected to need a separate fix because it comes from a different `st.markdown` call in `_sources_grid`. The re-run confirmed all three fragment types render correctly; the mechanism by which the source-card chrome fragment resolved was not separately diagnosed, and is not assumed here.)
+
+This fix does NOT touch bug 2a (blank `[N]` citation markers, still open per the 2026-05-29 entry). 2a is an attribution-substitution layer issue with a different symptom; today's fix is purely about HTML chrome surviving the markdown render. The two bugs are independent.
+
+The post-fix re-run also surfaced a separate hazard in source-card excerpt rendering (markdown-formatting from raw chunk text) — see the 2026-05-30 source-card excerpt entry below. Same content-distribution pattern, different surface, deferred.
+
+The 2026-04-30 attribution-spans entry remains the upstream layer (parser turning trailing `<cite>` markers into spans). This bug was always in the next stage (renderer consuming those spans for display), and that layer is now hardened against dollar-amount content.
+
+### Lesson
+
+Two distinct generalizations, both well-supported.
+
+First — content-distribution dependence is a real risk class. A renderer that's been verified against one corpus's answer distribution is verified for that distribution only. When the upstream content source widens (new corpus, new domain, new LLM, different question types), the renderer's hidden assumptions about answer content get re-tested whether the work plan acknowledges it or not. Treat "first time a code path sees a new content distribution" as deserving the same verification rigor as "first time a code path runs in production." Both are integration-shaped surfaces.
+
+Second — markdown-it has a non-obvious set of plugins enabled by default in Streamlit. Inline math (`$...$`), tables, footnotes, and others are not opt-in; user-supplied content can trigger them without warning. Before passing user-derived (or LLM-derived) text into `st.markdown`, audit it for the special tokens that activate plugins: `$` for math, leading `|` for tables, `[...]` for links/footnotes, leading `>` for blockquotes, `~~` for strikethrough. For any token whose presence in the input would be incidental rather than intentional, escape it. This is the markdown analogue of html.escape — and the standard `html.escape` does not cover it.
+
+### Commit
+
+Pending — included in the corpus-aware UI commit that introduced the dropdown and surfaced this bug.
+
+---
+
+## 2026-05-30 — Source-card excerpt renders raw chunk text as markdown (observed during the math-parser fix re-run)
+
+### Symptom
+
+On the post-fix re-run of the 401k FiQA query that validated the 2026-05-13 closure, one of the source-card excerpts in the 2×2 sources grid rendered "18k/year" in monospace font — markdown code-formatting applied to text that should be plain prose. The answer body rendered correctly (the math-parser fix landed); the artifact was confined to a source-card excerpt.
+
+### Suspected mechanism
+
+The `_md_escape` helper introduced in this commit hardens only the answer body — it's called from `_render_answer_with_spans`. The source-card path in `_sources_grid` passes `cite.get("excerpt")` to the rendered HTML (via the `.src-excerpt` div) without escaping markdown-trigger tokens. Any backtick pair in the retrieved chunk content survives to the rendered HTML and triggers markdown code formatting; underscores would render italics; leading pipes would start a table; and so on. The "18k/year" monospace artifact is most likely a backtick pair in the chunk content reaching the renderer unescaped.
+
+### Status
+
+Observed-not-diagnosed. The suspected mechanism above is inferred from symptom shape and the obvious asymmetry in escaping coverage between the two render paths; not yet confirmed by inspecting the actual chunk content or stepping through `_sources_grid`. The retrieved chunk text itself is presumed correct — the issue is rendering, not retrieval.
+
+### Likely fix (not applied this session)
+
+Route source-card excerpts through the same `_md_escape` (or a sources-grid-specific equivalent covering the same markdown-trigger token set). The answer body now has a documented escape contract; source-card excerpts should match. Out of scope for the corpus-aware UI commit — observation only, deferred.
+
+### Cross-reference
+
+Same content-distribution-dependence pattern as the 2026-05-30 math-parser entry above: a renderer surface that worked fine on FiQA-default chunk content turns out to be sensitive to incidental markdown tokens in chunk text when the corpus distribution widens. The lesson there ("audit user-derived text for markdown-trigger tokens before passing into `st.markdown`") applies here too — `_sources_grid` is a second instance of the same hazard class. The math-parser fix hardened one of the two renderer surfaces; this entry tracks the other.
+
+### Commit
+
+N/A — observed, not fixed.
 
 ---
 

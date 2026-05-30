@@ -145,7 +145,10 @@ footer    {{visibility: hidden;}}
 }}
 
 /* ── Sources 2×2 grid ── */
-.src-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }}
+/* minmax(0, 1fr) lets a wide child shrink below its min-content size,
+   so a long unbroken string (raw CSV chunk) can't push the column past
+   the grid container and produce a horizontal scrollbar. */
+.src-grid {{ display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin: 8px 0; }}
 .src-card {{ background: {BG_PAGE}; border: 1px solid {BORDER}; border-radius: 8px; padding: 12px; }}
 .src-num {{
     display: inline-flex; align-items: center; justify-content: center;
@@ -161,6 +164,9 @@ footer    {{visibility: hidden;}}
     font-size: 12px; color: {TEXT_SECONDARY}; line-height: 1.5;
     display: -webkit-box; -webkit-line-clamp: 3;
     -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 3px;
+    /* Allow long unbroken strings (raw CSV chunk content) to wrap inside
+       the card instead of forcing horizontal overflow. */
+    overflow-wrap: anywhere; word-break: break-word;
 }}
 .src-chunk {{ font-family: monospace; font-size: 10px; color: {TEXT_MUTED}; }}
 
@@ -238,11 +244,42 @@ def _auth_headers() -> dict[str, str]:
     """Return X-API-Key header if RAGCORE_API_KEY is set, else empty dict."""
     return {"X-API-Key": API_KEY} if API_KEY else {}
 
-PROMPT_CARDS = [
-    ("MORTGAGES",     CORAL,  "Should I pay off my mortgage early or invest the extra cash?"),
-    ("RETIREMENT",    ACCENT, "What are the contribution limits for a Roth IRA vs Traditional IRA?"),
-    ("EMPLOYER 401K", TEAL,   "How does a 401k employer match work and how should I maximize it?"),
+# Starter prompt cards per corpus. The three 10-K variants share one set
+# (same underlying document, different chunkers). Each set's lead question
+# is the known-good one Hema confirmed answers cleanly; the other two are
+# plausible follow-ons against the same document. Anything not in this dict
+# falls back to the FiQA set.
+_APPLE_10K_STARTERS = [
+    ("REVENUE",      CORAL,  "What were Apple's net sales by product category?"),
+    ("GEOGRAPHY",    ACCENT, "How did Apple's net sales break down by geographic segment?"),
+    ("RISK FACTORS", TEAL,   "What are the principal risks Apple flagged in fiscal 2025?"),
 ]
+
+PROMPT_STARTERS: dict[str, list[tuple[str, str, str]]] = {
+    "default": [
+        ("MORTGAGES",     CORAL,  "Should I pay off my mortgage early or invest the extra cash?"),
+        ("RETIREMENT",    ACCENT, "What are the contribution limits for a Roth IRA vs Traditional IRA?"),
+        ("EMPLOYER 401K", TEAL,   "How does a 401k employer match work and how should I maximize it?"),
+    ],
+    "apple_10k_fixed":              _APPLE_10K_STARTERS,
+    "apple_10k_hierarchical":       _APPLE_10K_STARTERS,
+    "apple_10k_document_structure": _APPLE_10K_STARTERS,
+    "apple_environmental": [
+        ("EMISSIONS",    CORAL,  "What are Apple's carbon emissions reduction goals?"),
+        ("RENEWABLES",   ACCENT, "How much of Apple's energy comes from renewable sources?"),
+        ("SUPPLY CHAIN", TEAL,   "What environmental commitments has Apple set for its supply chain?"),
+    ],
+    "apple_earnings_html": [
+        ("HIGHLIGHTS",   CORAL,  "What were Apple's Q4 2025 earnings highlights?"),
+        ("GUIDANCE",     ACCENT, "Did Apple provide any guidance for the next quarter?"),
+        ("MARGINS",      TEAL,   "What was Apple's gross margin in Q4 2025?"),
+    ],
+    "apple_financial_csvs": [
+        ("REVENUE",      CORAL,  "What was Apple's quarterly revenue?"),
+        ("EARNINGS",     ACCENT, "How has Apple's earnings per share trended over recent quarters?"),
+        ("CASH FLOW",    TEAL,   "What were Apple's operating cash flows by quarter?"),
+    ],
+}
 
 # ─── Session state ────────────────────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -266,12 +303,13 @@ def _check_backend_cached(url: str) -> bool:
         return False
 
 
-def ask_question(query: str, strategy: str, verify_claims: bool = False) -> dict:
+def ask_question(query: str, strategy: str, verify_claims: bool = False, corpus: str = "default") -> dict:
     try:
         payload = {
             "query": query,
             "strategy_override": strategy if strategy != "auto" else None,
             "verify_claims": verify_claims,
+            "corpus": corpus,
         }
         r = requests.post(
             f"{BACKEND_URL}/query",
@@ -282,6 +320,116 @@ def ask_question(query: str, strategy: str, verify_claims: bool = False) -> dict
         return r.json()
     except Exception as e:
         return {"error": str(e)}
+
+
+# Human-readable labels for the corpus dropdown. Machine names returned by
+# /corpora map to these; unknown corpora fall back to a Title-Case slug.
+# For apple_10k_document_structure (chunker key "structure") we use the
+# corpus-name framing — "document structure" — so the label is one consistent
+# term and the structure/document_structure split stays hidden from users.
+CORPUS_LABELS = {
+    "default":                       "FiQA (financial Q&A)",
+    "apple_10k_fixed":               "Apple 10-K — fixed chunking",
+    "apple_10k_hierarchical":        "Apple 10-K — hierarchical",
+    "apple_10k_document_structure":  "Apple 10-K — document structure",
+    "apple_environmental":           "Apple Environmental Report",
+    "apple_earnings_html":           "Apple Q4 earnings (HTML)",
+    "apple_financial_csvs":          "Apple financial CSVs",
+}
+
+# Aggregate eval metrics exist ONLY for corpora that have been run through
+# the eval harness. Apple corpora were never benchmarked, so a missing entry
+# means "show facts, not fabricated metrics" — the stat-card section keys
+# off membership here to decide eval vs. facts layout.
+EVAL_METRICS = {
+    "default": {
+        "chunks":   380,
+        "hit_at_5": 0.92,
+        "mrr":      0.86,
+        "label":    "FiQA-2018",
+    },
+}
+
+
+# Pretty source names for the hero sentence + Source stat card. These describe
+# the underlying document (or document group), not the chunker variant — so the
+# three 10-K corpora share one entry. Anything not in this dict falls back to
+# the live filename (or "N files" for comma-joined multi-source corpora).
+CORPUS_SOURCE_LABELS = {
+    "apple_10k_fixed":               "Apple 10-K (2025)",
+    "apple_10k_hierarchical":        "Apple 10-K (2025)",
+    "apple_10k_document_structure":  "Apple 10-K (2025)",
+    "apple_environmental":           "Apple Environmental Report (2025)",
+    "apple_earnings_html":           "Apple Q4 Earnings Release (2025)",
+    "apple_financial_csvs":          "Apple Financial Metrics (2026)",
+}
+
+
+def _corpus_label(name: str) -> str:
+    return CORPUS_LABELS.get(name, name.replace("_", " ").title())
+
+
+def _corpus_source_label(name: str, fallback_src: str) -> str:
+    """Pretty source name with filename fallback. `fallback_src` is the raw
+    `source` field from /corpora (single path, or comma-joined for
+    apple_financial_csvs)."""
+    pretty = CORPUS_SOURCE_LABELS.get(name)
+    if pretty:
+        return pretty
+    if "," in fallback_src:
+        return f"{len(fallback_src.split(','))} files"
+    if fallback_src:
+        return Path(fallback_src).name
+    return "—"
+
+
+@st.cache_data(ttl=60)
+def _fetch_corpora(url: str) -> list[dict]:
+    """GET /corpora; returns [] on any failure so the caller can fall back."""
+    try:
+        r = requests.get(f"{url}/corpora", headers=_auth_headers(), timeout=5)
+        if r.status_code == 200:
+            return r.json().get("corpora") or []
+    except Exception:
+        pass
+    return []
+
+
+# Vector-store backend per corpus, for the M5 footer. /corpora does NOT
+# expose this — it's a UI-side assumption mirroring api/main.py lifespan:
+# "default" is registered as FAISSVectorStore; every other corpus is a
+# ChromaVectorStore in the Apple-seeding loop. Update this map if the
+# backend split changes (e.g. a new FAISS-backed corpus is added).
+CORPUS_VECTOR_STORE: dict[str, str] = {
+    "default": "FAISS",
+}
+
+
+def _corpus_vector_store(name: str) -> str:
+    return CORPUS_VECTOR_STORE.get(name, "Chroma")
+
+
+# Per-answer retrieval-strategy label. Strategy is a PER-QUERY fact (auto
+# router can pick any of these), so it lives next to each assistant message,
+# not in the static footer. Mechanism descriptions verified against
+# retrieval/strategies/retrieval_executor.py:99-115:
+#   semantic → dense vector search only
+#   keyword  → BM25 only
+#   hybrid   → dense + BM25
+# Other RetrievalStrategy values (metadata / multi_query / parent_child)
+# fall through to the bare string so the caption doesn't fabricate a
+# mechanism description for code paths we haven't audited.
+RETRIEVAL_STRATEGY_LABELS: dict[str, str] = {
+    "hybrid":   "hybrid (dense + BM25)",
+    "keyword":  "keyword (BM25)",
+    "semantic": "semantic (dense)",
+}
+
+
+def _strategy_label(strategy: Optional[str]) -> Optional[str]:
+    if not strategy:
+        return None
+    return RETRIEVAL_STRATEGY_LABELS.get(strategy, strategy)
 
 
 def upload_document(file) -> dict:
@@ -490,9 +638,21 @@ def _self_rag_chips(self_rag_stats: Optional[dict]) -> None:
                 st.markdown(chips_html, unsafe_allow_html=True)
 
 
+def _md_escape(text: str) -> str:
+    """HTML-escape + backslash-escape `$` so Streamlit's markdown-it parser
+    doesn't treat dollar-amount sequences (e.g. "$209,586 ... $201,183") as
+    inline LaTeX math, which silently consumes any HTML tags falling between
+    the paired dollar signs — visible as raw `</mark><sup ...>` text in the
+    rendered answer. Latent until the corpus dropdown exposed
+    financial-figure-heavy Apple answers."""
+    return html.escape(text).replace("$", r"\$")
+
+
 def _render_answer_with_spans(answer: str, attributed_spans: list[dict]) -> None:
     if not attributed_spans:
-        st.markdown(answer)
+        # No HTML to inject, but `$` still needs escaping or markdown-it
+        # will math-parse the answer body.
+        st.markdown(answer.replace("$", r"\$"))
         return
 
     spans_sorted = sorted(attributed_spans, key=lambda s: s["start"])
@@ -500,12 +660,12 @@ def _render_answer_with_spans(answer: str, attributed_spans: list[dict]) -> None
     html_parts = []
     last_end = 0
     for span in spans_sorted:
-        html_parts.append(html.escape(answer[last_end:span["start"]]))
+        html_parts.append(_md_escape(answer[last_end:span["start"]]))
         html_parts.append(
             f'<mark style="background:#fff8c5; '
             f'border-bottom:2px solid #d4a017; '
             f'padding:0 2px; border-radius:2px;">'
-            f'{html.escape(span["text"])}'
+            f'{_md_escape(span["text"])}'
             f'</mark>'
         )
         html_parts.append(
@@ -515,7 +675,7 @@ def _render_answer_with_spans(answer: str, attributed_spans: list[dict]) -> None
         )
         last_end = span["end"]
 
-    html_parts.append(html.escape(answer[last_end:]))
+    html_parts.append(_md_escape(answer[last_end:]))
 
     final_html = "".join(html_parts).replace("\n", "<br>")
     st.markdown(final_html, unsafe_allow_html=True)
@@ -532,8 +692,16 @@ def _abstention_card() -> None:
 </div>""", unsafe_allow_html=True)
 
 
-def _render_assistant_message(result: dict, show_retry: bool = False, message_idx: int = 0) -> None:
-    """Render a complete assistant turn (no routing strip; sources via P2 grid)."""
+def _render_assistant_message(
+    result: dict, show_retry: bool = False, message_idx: int = 0,
+    corpus: str = "default",
+) -> None:
+    """Render a complete assistant turn (no routing strip; sources via P2 grid).
+
+    `corpus` is the corpus the answer was generated against — used to gate
+    the follow-up chip row, which the backend only generates correctly for
+    the default (FiQA) corpus (see 2b stopgap below).
+    """
     if "error" in result and result["error"]:
         st.markdown(f"""
 <div class="error-card">
@@ -582,11 +750,49 @@ def _render_assistant_message(result: dict, show_retry: bool = False, message_id
         attributed = result.get("attributed_spans") or []
         _render_answer_with_spans(answer, attributed)
         _sources_grid(citations)
-        _follow_up_chips(follow_up_questions, message_idx)
+        # 2b stopgap pending backend fix: the follow-up generator returns
+        # FiQA-domain questions regardless of which corpus was queried, so
+        # for Apple corpora the chips are off-topic noise. Suppress the
+        # entire block — header included — until the backend conditions
+        # follow-ups on the corpus.
+        if corpus == "default":
+            _follow_up_chips(follow_up_questions, message_idx)
+
+    # Per-answer retrieval strategy that actually ran. Reflects Auto's
+    # resolved choice, not the sidebar setting. Outside the abstention/
+    # normal split because both cases pass through the router and the
+    # field is populated in either case.
+    strategy_label = _strategy_label(result.get("strategy_used"))
+    if strategy_label:
+        st.caption(f"retrieval: {strategy_label}")
 
     _retrieval_expander(retrieval_candidates, citations)
     _trace_expander(stage_timings)
     _self_rag_chips(self_rag_stats)
+
+
+# ─── Stat card renderer ───────────────────────────────────────────────────────
+def _stat_card(bg: str, label_color: str, label: str, value: str,
+               sublabel: str = "", value_size: int = 28) -> str:
+    """Returns the HTML for one stat card. Used by both eval-metric (default)
+    and facts-only (Apple) layouts; the choice between layouts is made
+    structurally upstream based on EVAL_METRICS membership."""
+    sub = (
+        f'<div style="font-size:11px;font-style:italic;color:{TEXT_SECONDARY};'
+        f'margin-top:4px">{html.escape(sublabel)}</div>'
+        if sublabel else ""
+    )
+    return (
+        f'<div style="background:{bg};border-radius:10px;padding:16px;min-height:140px;'
+        f'display:flex;flex-direction:column;justify-content:center">'
+        f'<div style="font-size:11px;font-weight:600;letter-spacing:0.5px;'
+        f'text-transform:uppercase;color:{label_color};margin-bottom:6px">'
+        f'{html.escape(label)}</div>'
+        f'<div style="font-size:{value_size}px;font-weight:700;color:{TEXT_PRIMARY};'
+        f'word-break:break-word;line-height:1.2">{html.escape(value)}</div>'
+        f'{sub}'
+        f'</div>'
+    )
 
 
 # ─── Helpers for sidebar S4 ───────────────────────────────────────────────────
@@ -626,6 +832,29 @@ with st.sidebar:
         st.markdown('<div class="status-pill status-ok">✓ Backend online</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="status-pill status-err">✕ Backend offline</div>', unsafe_allow_html=True)
+
+    # S2b. Corpus selector — populated from GET /corpora at app load. On
+    # failure (backend offline, network error) we synthesize a single
+    # "default" entry so the dropdown stays functional and ask_question
+    # still has a valid corpus name to send.
+    raw_corpora = _fetch_corpora(BACKEND_URL)
+    corpora_ok = bool(raw_corpora)
+    if not raw_corpora:
+        raw_corpora = [{"name": "default", "doc_count": 0, "chunker": None, "source": None}]
+    corpora_by_name = {c["name"]: c for c in raw_corpora}
+    corpus_names_sorted = ["default"] + [n for n in corpora_by_name if n != "default"]
+    corpus_names_sorted = [n for n in corpus_names_sorted if n in corpora_by_name]
+
+    st.markdown('<span class="sec-label" style="margin-top:8px">Corpus</span>', unsafe_allow_html=True)
+    selected_corpus = st.selectbox(
+        "corpus",
+        options=corpus_names_sorted,
+        format_func=_corpus_label,
+        label_visibility="collapsed",
+    )
+    if not corpora_ok:
+        st.caption("⚠ Could not load corpus list — using default")
+    selected_info = corpora_by_name.get(selected_corpus, {})
 
     st.divider()
 
@@ -711,9 +940,14 @@ with st.sidebar:
 
     # S8. About expander
     with st.expander("About"):
+        if selected_corpus == "default":
+            corpus_about = "FiQA-2018 financial Q&A corpus (380 chunks). "
+        else:
+            chunk_n = selected_info.get("doc_count") or 0
+            corpus_about = f"{_corpus_label(selected_corpus)} ({chunk_n} chunks). "
         st.markdown(
             "Llama 3.3 70B via Groq for generation. FAISS dense + BM25 sparse hybrid retrieval. "
-            "ms-marco cross-encoder reranking. FiQA-2018 financial Q&A corpus (380 chunks). "
+            "ms-marco cross-encoder reranking. " + corpus_about +
             "Self-RAG verification when enabled."
         )
         repo = _repo_url()
@@ -725,6 +959,25 @@ with st.sidebar:
 # ─── Main area ────────────────────────────────────────────────────────────────
 
 # M1. Hero block
+if selected_corpus == "default":
+    hero_corpus_sentence = (
+        f'Built for grounded answers, not guesswork. Explore questions in personal '
+        f'finance using the <a href="https://huggingface.co/datasets/vibrantlabsai/fiqa" '
+        f'target="_blank" style="color:{ACCENT};text-decoration:underline">FiQA-2018</a> dataset.'
+    )
+else:
+    src_raw = selected_info.get("source") or ""
+    src_phrase = _corpus_source_label(selected_corpus, src_raw)
+    # Lead with the pretty source label only. The dropdown selection and
+    # the Source/Chunker stat cards already show the chunker variant, so
+    # the previous "<dropdown_label> (<source_label>)" pattern duplicated
+    # the doc name (e.g. "Apple 10-K — fixed chunking (Apple 10-K (2025))")
+    # and wrapped awkwardly.
+    hero_corpus_sentence = (
+        f'Built for grounded answers, not guesswork. Now querying the '
+        f'<strong>{html.escape(src_phrase)}</strong>.'
+    )
+
 st.markdown(f"""
 <div style="text-align:center;margin-top:48px;margin-bottom:32px">
   <h1 style="font-size:36px;font-weight:600;letter-spacing:-0.02em;
@@ -739,53 +992,83 @@ st.markdown(f"""
             max-width:540px;margin:0 auto">
     A production-grade RAG system combining query routing, hybrid retrieval,
     cross-encoder reranking, inline citations, and hallucination verification.
-    Built for grounded answers, not guesswork. Explore questions in personal
-    finance using the <a href="https://huggingface.co/datasets/vibrantlabsai/fiqa"
-    target="_blank" style="color:{ACCENT};text-decoration:underline">FiQA-2018</a> dataset.
+    {hero_corpus_sentence}
   </p>
 </div>
 """, unsafe_allow_html=True)
 
+eval_data = EVAL_METRICS.get(selected_corpus)
+if eval_data:
+    benchmark_subtitle = (
+        f"Aggregate benchmark on the {eval_data['label']} corpus. "
+        f"Per-query metrics in sidebar after each response."
+    )
+else:
+    benchmark_subtitle = (
+        "No aggregate benchmark for this corpus. "
+        "Per-query metrics in sidebar after each response."
+    )
 st.markdown(
     f'<p style="text-align:center;font-size:11px;font-style:italic;color:{TEXT_MUTED};'
-    f'max-width:540px;margin:12px auto 16px">'
-    f'Aggregate benchmark on the FiQA-2018 corpus. Per-query metrics in sidebar after each response.</p>',
+    f'max-width:540px;margin:12px auto 16px">{benchmark_subtitle}</p>',
     unsafe_allow_html=True,
 )
 
-# M2. Stat cards
-# Stat values from evaluation/results/basic_fiqa_2026-04-26.json
-# (50-query FiQA benchmark, baseline strategy, run 2026-04-26).
-# Chunk count from faiss_metadata.pkl.
+# M2. Stat cards — eval metrics for corpora in EVAL_METRICS (FiQA only today),
+# facts-only (doc_count / chunker / source) for everything else. Suppressing
+# HIT@5 / MRR when there's no real eval number keeps the demo honest about
+# what we've actually benchmarked.
 _sc1, _sc2, _sc3 = st.columns(3, gap="small")
-with _sc1:
-    st.markdown(f"""
-<div style="background:{ACCENT_TINT};border-radius:10px;padding:16px;min-height:140px;
-            display:flex;flex-direction:column;justify-content:center">
-  <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;
-              color:{ACCENT_DARK};margin-bottom:6px">Chunks Indexed</div>
-  <div style="font-size:28px;font-weight:700;color:{TEXT_PRIMARY}">380</div>
-</div>""", unsafe_allow_html=True)
-with _sc2:
-    st.markdown(f"""
-<div style="background:{TEAL_TINT};border-radius:10px;padding:16px;min-height:140px;
-            display:flex;flex-direction:column;justify-content:center">
-  <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;
-              color:#176363;margin-bottom:6px">HIT@5</div>
-  <div style="font-size:28px;font-weight:700;color:{TEXT_PRIMARY}">0.92</div>
-  <div style="font-size:11px;font-style:italic;color:{TEXT_SECONDARY};margin-top:4px">
-    fraction of queries with a correct chunk in top 5</div>
-</div>""", unsafe_allow_html=True)
-with _sc3:
-    st.markdown(f"""
-<div style="background:{AMBER_TINT};border-radius:10px;padding:16px;min-height:140px;
-            display:flex;flex-direction:column;justify-content:center">
-  <div style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;
-              color:#8a6520;margin-bottom:6px">MRR</div>
-  <div style="font-size:28px;font-weight:700;color:{TEXT_PRIMARY}">0.86</div>
-  <div style="font-size:11px;font-style:italic;color:{TEXT_SECONDARY};margin-top:4px">
-    mean reciprocal rank — higher means correct chunks rank earlier</div>
-</div>""", unsafe_allow_html=True)
+if eval_data:
+    # Stat values from evaluation/results/basic_fiqa_2026-04-26.json
+    # (50-query FiQA benchmark, baseline strategy, run 2026-04-26).
+    with _sc1:
+        st.markdown(
+            _stat_card(ACCENT_TINT, ACCENT_DARK, "Chunks Indexed", str(eval_data["chunks"])),
+            unsafe_allow_html=True,
+        )
+    with _sc2:
+        st.markdown(
+            _stat_card(
+                TEAL_TINT, "#176363", "HIT@5", f"{eval_data['hit_at_5']:.2f}",
+                "fraction of queries with a correct chunk in top 5",
+            ),
+            unsafe_allow_html=True,
+        )
+    with _sc3:
+        st.markdown(
+            _stat_card(
+                AMBER_TINT, "#8a6520", "MRR", f"{eval_data['mrr']:.2f}",
+                "mean reciprocal rank — higher means correct chunks rank earlier",
+            ),
+            unsafe_allow_html=True,
+        )
+else:
+    doc_count = selected_info.get("doc_count") or 0
+    chunker   = selected_info.get("chunker") or "—"
+    src_raw   = selected_info.get("source") or ""
+    source_label = _corpus_source_label(selected_corpus, src_raw)
+    with _sc1:
+        st.markdown(
+            _stat_card(ACCENT_TINT, ACCENT_DARK, "Chunks Indexed", str(doc_count)),
+            unsafe_allow_html=True,
+        )
+    with _sc2:
+        st.markdown(
+            _stat_card(
+                TEAL_TINT, "#176363", "Chunker", chunker,
+                "chunking strategy used at ingest",
+            ),
+            unsafe_allow_html=True,
+        )
+    with _sc3:
+        st.markdown(
+            _stat_card(
+                AMBER_TINT, "#8a6520", "Source", source_label,
+                "input document", value_size=18,
+            ),
+            unsafe_allow_html=True,
+        )
 
 # M3. Try asking label
 st.markdown(
@@ -795,9 +1078,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# M4. Prompt cards
+# M4. Prompt cards — corpus-aware. Falls back to the FiQA set if the
+# selected corpus has no curated starters. Button keys include the corpus
+# name to avoid collisions when categories repeat across corpora
+# (e.g. REVENUE for both apple_10k_* and apple_financial_csvs).
+active_starters = PROMPT_STARTERS.get(selected_corpus, PROMPT_STARTERS["default"])
 _pc1, _pc2, _pc3 = st.columns(3, gap="small")
-for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], PROMPT_CARDS):
+for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], active_starters):
     with col:
         st.markdown(
             f'<span style="color:{color};font-size:10px;font-weight:600;'
@@ -805,7 +1092,7 @@ for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], PROMPT_CARDS):
             f'display:block;margin-bottom:4px">{cat}</span>',
             unsafe_allow_html=True,
         )
-        if st.button(question, key=f"pc_{cat.lower().replace(' ', '_')}",
+        if st.button(question, key=f"pc_{selected_corpus}_{cat.lower().replace(' ', '_')}",
                      use_container_width=True):
             st.session_state.prompt_prefill = question
             st.rerun()
@@ -813,7 +1100,8 @@ for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], PROMPT_CARDS):
 # M5. Stack subtitle
 st.markdown(
     f'<p style="text-align:center;font-size:11px;color:{TEXT_MUTED};margin-top:24px">'
-    f'Powered by Llama 3.3 70B via Groq · FAISS · ms-marco cross-encoder</p>',
+    f'Powered by Llama 3.3 70B via Groq · {_corpus_vector_store(selected_corpus)} · '
+    f'ms-marco cross-encoder</p>',
     unsafe_allow_html=True,
 )
 
@@ -824,7 +1112,15 @@ for i, message in enumerate(st.session_state.messages):
             st.markdown(message["content"])
     else:
         with st.chat_message("assistant", avatar=ASST_AVATAR):
-            _render_assistant_message(message.get("result", {}), show_retry=False, message_idx=i)
+            # Use the corpus the answer was generated against, not the
+            # currently selected one — that way switching corpora after
+            # asking questions doesn't retroactively toggle follow-ups
+            # on past Apple answers.
+            _render_assistant_message(
+                message.get("result", {}),
+                show_retry=False, message_idx=i,
+                corpus=message.get("corpus", "default"),
+            )
 
 # ─── Chat input + query dispatch ─────────────────────────────────────────────
 prefill = st.session_state.get("prompt_prefill", "")
@@ -859,12 +1155,20 @@ if active_prompt:
                 "Searching corpus and generating answer…"
             )
             with st.spinner(spinner_text):
-                result = ask_question(active_prompt, strategy, verify_claims=verify)
+                result = ask_question(
+                    active_prompt, strategy,
+                    verify_claims=verify, corpus=selected_corpus,
+                )
 
-        _render_assistant_message(result, show_retry=True, message_idx=len(st.session_state.messages))
+        _render_assistant_message(
+            result, show_retry=True,
+            message_idx=len(st.session_state.messages),
+            corpus=selected_corpus,
+        )
         st.session_state.messages.append({
             "role": "assistant",
             "content": result.get("answer", result.get("error", "")),
             "result": result,
+            "corpus": selected_corpus,
         })
         st.rerun()
