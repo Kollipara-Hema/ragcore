@@ -44,7 +44,7 @@ def _post_query(
     }
     try:
         r = requests.post(
-            f"{backend_url}/query",
+            f"{backend_url}/retrieve",
             json=payload,
             headers=headers,
             timeout=timeout,
@@ -76,22 +76,31 @@ def _summarize(status: int, resp: dict[str, Any]) -> dict[str, Any]:
     if "strategy_used" not in resp:
         return {"error": f"unexpected response shape: keys={list(resp.keys())[:6]}"}
 
-    cits = resp.get("citations") or []
     cands = resp.get("retrieval_candidates") or []
     stage = resp.get("stage_timings") or {}
-    top_cit = cits[0] if cits else None
+    # /retrieve returns no citations (no LLM was called). Source the top
+    # rerank score and the top-chunk excerpt from retrieval_candidates
+    # instead. Prefer the backend's convenience top_rerank_score field;
+    # fall back to max(retrieval_candidates) if it's missing (older deploys
+    # or non-/retrieve responses).
+    top_cand = max(
+        cands,
+        key=lambda c: c.get("score") if c.get("score") is not None else float("-inf"),
+        default=None,
+    ) if cands else None
+    top_rerank_score = resp.get("top_rerank_score")
+    if top_rerank_score is None and cands:
+        top_rerank_score = max(c.get("score", 0.0) for c in cands)
     return {
         "chunks_retrieved":  len(cands),
-        # Post-rerank cross-encoder logit. Max over citations[].score, which
-        # is set in prompt_builder from rc.score AFTER reranker overwrites it.
-        "top_rerank_score":  max((c.get("score", 0.0) for c in cits), default=None),
+        "top_rerank_score":  top_rerank_score,
         "latency_retrieval": (stage.get("retrieve_ms") or 0.0)
                             + (stage.get("rerank_ms") or 0.0),
         "top_chunk": {
-            "chunk_id": top_cit.get("chunk_id"),
-            "score":    top_cit.get("score"),
-            "excerpt":  top_cit.get("excerpt"),
-        } if top_cit else None,
+            "chunk_id": top_cand.get("chunk_id"),
+            "score":    top_cand.get("score"),
+            "excerpt":  top_cand.get("excerpt"),
+        } if top_cand else None,
         "ranked_list":   cands,
         "strategy_used": resp.get("strategy_used"),
         "raw_response":  resp,

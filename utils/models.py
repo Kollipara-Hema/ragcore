@@ -200,6 +200,33 @@ class QueryResponse(BaseModel):
     # None when LLM emitted no <cite source="N"> markers.
 
 
+class RetrievalOnlyResponse(BaseModel):
+    """Response from POST /retrieve — retrieval + rerank only, no generation,
+    no LLM tokens consumed. Mirrors the retrieval-side fields of QueryResponse
+    so clients comparing retrieval (e.g. the chunker comparison view) can
+    share their projection code."""
+    query_type: str
+    strategy_used: str
+    latency_ms: float
+    stage_timings: Optional[dict] = None
+    # Shape: {"router_ms", "retrieve_ms", "rerank_ms", "total_ms"}.
+    # No prompt_ms / generate_ms — those stages don't run here.
+    retrieval_candidates: list[dict]
+    # Same shape as QueryResponse.retrieval_candidates. CRITICAL: the
+    # used_in_answer field has a DIFFERENT meaning here than in /query.
+    # In /query, True means "the LLM cited this chunk in its answer." In
+    # /retrieve, no LLM is called — True means "this chunk survived rerank
+    # into the top-K that would have been packed into the prompt." Same
+    # field name across both endpoints, but the semantics diverge; this
+    # comment is the only thing preventing future conflation.
+    top_rerank_score: Optional[float] = None
+    # Convenience: max(retrieval_candidates[].score) — the post-rerank
+    # cross-encoder logit of the top chunk. Equivalent to citations[0].score
+    # in /query responses, but citations aren't built when generation is
+    # skipped, so callers reading "top rerank score" from /query need to
+    # source it from retrieval_candidates here instead.
+
+
 class CorpusInfo(BaseModel):
     name: str
     source: Optional[str] = None
