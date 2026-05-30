@@ -63,6 +63,7 @@ from utils.models import (
     IngestRequest, IngestResponse, DocumentStatus, QueryRequest,
     AgentQueryRequest, AgentQueryResponse, QueryTrace,
     CorpusInfo, CorporaListResponse,
+    RetrievalOnlyResponse,
 )
 
 # The main RAG pipeline orchestrator
@@ -659,6 +660,35 @@ async def query(request: QueryRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Query processing failed: {str(e)}"
+        )
+
+
+@app.post("/retrieve", response_model=RetrievalOnlyResponse, tags=["query"])
+async def retrieve(request: QueryRequest):
+    """
+    Retrieval-only endpoint: router → retrieve → rerank, NO generation.
+
+    Consumes ZERO LLM tokens — generation is skipped entirely. Used by the
+    chunker comparison view and other retrieval-debugging surfaces where the
+    generated answer isn't needed. Accepts the same QueryRequest as /query
+    (verify_claims is a no-op here, since no generation runs). Returns
+    retrieval_candidates, stage_timings (retrieve + rerank only),
+    strategy_used, query_type, and a top_rerank_score convenience field.
+
+    Example:
+        curl -X POST http://localhost:8000/retrieve
+             -H "Content-Type: application/json"
+             -d '{"query": "What is a 401k?", "corpus": "default"}'
+    """
+    try:
+        return await orchestrator.retrieve_only(request)
+    except KeyError as ke:
+        raise HTTPException(status_code=400, detail=str(ke))
+    except Exception as e:
+        logger.error("retrieve_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Retrieval processing failed: {str(e)}"
         )
 
 

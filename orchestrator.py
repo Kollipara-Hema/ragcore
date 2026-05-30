@@ -26,6 +26,7 @@ from __future__ import annotations   # Allows forward type references
 import logging                        # For writing log messages
 import re                             # For cite-tag parsing
 import time                           # For measuring how long things take
+from dataclasses import dataclass
 from typing import AsyncIterator, Optional  # Type hints
 
 import structlog
@@ -39,6 +40,8 @@ from utils.models import (
     QueryResponse,         # Final response sent back to the user
     QueryType,             # Enum: FACTUAL, SEMANTIC, MULTI_HOP, etc.
     RetrievalStrategy,     # Enum: SEMANTIC, HYBRID, KEYWORD, etc.
+    RetrievalOnlyResponse, # /retrieve response: retrieval+rerank only
+    RetrievedChunk,        # For the internal stage-result struct below
 )
 
 # The five pipeline modules (one per step)
@@ -51,6 +54,21 @@ from monitoring.tracer import get_tracer                       # Observability
 
 # Set up logger for this file — messages appear in console as "orchestrator: ..."
 logger = structlog.get_logger(__name__)
+
+@dataclass
+class _RetrieveStageResult:
+    """Bundles router+retrieve+rerank outputs so query() and retrieve_only()
+    can share stages 1-3 without duplication. ``chunks_were_found=False``
+    signals an empty retrieval, leaving the empty-response shape to the
+    caller (QueryResponse vs RetrievalOnlyResponse have different fields)."""
+    decision: "RoutingDecision"
+    pre_rerank_chunks: list  # list[RetrievedChunk]; empty when retrieval found nothing
+    reranked: list           # list[RetrievedChunk]; empty when retrieval found nothing
+    chunks_were_found: bool
+    t_router: float
+    t_retrieve: float
+    t_rerank: float
+
 
 _TRAILING_MARKER_RE = re.compile(r'<cite source="([^"]*)">')
 # Matches inline [Source N] notation (with surrounding whitespace) emitted by
@@ -200,6 +218,83 @@ class RAGOrchestrator:
         # Sends data to Langfuse if configured, otherwise just logs locally
         self._tracer = get_tracer()
 
+    async def _retrieve_and_rerank(
+        self,
+        request: QueryRequest,
+        trace_id: str,
+    ) -> _RetrieveStageResult:
+        """Stages 1-3 of the RAG pipeline: route → retrieve → rerank. Shared
+        by query() and retrieve_only() so the orchestration logic isn't
+        duplicated. Empty retrieval is reported via ``chunks_were_found=False``
+        rather than an early return, because the two callers wrap empty
+        results in different response types (QueryResponse vs
+        RetrievalOnlyResponse)."""
+        # STEP 1: ROUTE
+        decision = await self._router.route(
+            query=request.query,
+            strategy_override=request.strategy_override,
+            metadata_filter=request.metadata_filter,
+        )
+        t_router = time.perf_counter()
+        await self._tracer.log_routing(trace_id, decision)
+
+        # STEP 2: RETRIEVE
+        top_k = request.top_k or settings.retrieval_top_k
+        retrieval_result = await self._executor.execute(
+            decision, top_k=top_k, corpus=request.corpus,
+        )
+        t_retrieve = time.perf_counter()
+        await self._tracer.log_retrieval(trace_id, retrieval_result)
+
+        if not retrieval_result.chunks:
+            logger.warning(
+                "retrieval_empty",
+                query=request.query,
+                query_type=decision.query_type.value,
+                strategy=decision.primary_strategy.value,
+                top_k=top_k,
+            )
+            try:
+                from monitoring.metrics import retrieval_empty as _re
+                _re.labels(strategy=decision.primary_strategy.value).inc()
+            except Exception as _e:
+                logger.debug("Metrics recording skipped: %s", _e)
+            return _RetrieveStageResult(
+                decision=decision,
+                pre_rerank_chunks=[],
+                reranked=[],
+                chunks_were_found=False,
+                t_router=t_router,
+                t_retrieve=t_retrieve,
+                t_rerank=t_retrieve,  # rerank didn't run; collapse to t_retrieve
+            )
+
+        # Snapshot pre-rerank candidates before reranking mutates order/scores.
+        # Capture each chunk's retrieval score onto the chunk itself, because
+        # the reranker overwrites rc.score in place (reranking/reranker.py:37).
+        pre_rerank_chunks = list(retrieval_result.chunks)
+        for rc in pre_rerank_chunks:
+            rc.pre_rerank_score = rc.score
+
+        # STEP 3: RERANK
+        reranked = await self._reranker.rerank(
+            query=request.query,
+            chunks=retrieval_result.chunks,
+            top_k=settings.rerank_top_k,
+        )
+        t_rerank = time.perf_counter()
+        await self._tracer.log_reranking(trace_id, reranked)
+
+        return _RetrieveStageResult(
+            decision=decision,
+            pre_rerank_chunks=pre_rerank_chunks,
+            reranked=reranked,
+            chunks_were_found=True,
+            t_router=t_router,
+            t_retrieve=t_retrieve,
+            t_rerank=t_rerank,
+        )
+
     async def query(self, request: QueryRequest) -> QueryResponse:
         """
         Process a user's query through the full RAG pipeline.
@@ -226,70 +321,20 @@ class RAGOrchestrator:
 
         try:
             # ─────────────────────────────────────────────────────────────────
-            # STEP 1: ROUTE — Understand the query and choose retrieval strategy
+            # STAGES 1-3: route → retrieve → rerank (shared with /retrieve)
             # ─────────────────────────────────────────────────────────────────
-            # The router classifies the query type (factual? analytical? multi-hop?)
-            # and chooses the best retrieval strategy (hybrid? keyword? semantic?)
-            # It may also expand the query into multiple paraphrases for better recall
-            decision = await self._router.route(
-                query=request.query,
-                strategy_override=request.strategy_override,  # User can force a strategy
-                metadata_filter=request.metadata_filter,       # User can filter by doc type etc.
-            )
-            t_router = time.perf_counter()
-            # Log routing decision to trace (query_type, strategy chosen, etc.)
-            await self._tracer.log_routing(trace_id, decision)
+            stage_result = await self._retrieve_and_rerank(request, trace_id)
+            decision   = stage_result.decision
+            t_router   = stage_result.t_router
+            t_retrieve = stage_result.t_retrieve
+            t_rerank   = stage_result.t_rerank
 
-            # ─────────────────────────────────────────────────────────────────
-            # STEP 2: RETRIEVE — Search the vector store for relevant chunks
-            # ─────────────────────────────────────────────────────────────────
-            # Uses the strategy from Step 1 to search for relevant document chunks.
-            # Returns the top_k most relevant chunks as RetrievedChunk objects.
-            top_k = request.top_k or settings.retrieval_top_k  # From .env or request
-            retrieval_result = await self._executor.execute(decision, top_k=top_k, corpus=request.corpus)
-            t_retrieve = time.perf_counter()
-            # Log retrieval results (how many found, scores, latency)
-            await self._tracer.log_retrieval(trace_id, retrieval_result)
-
-            # Handle case where no relevant chunks were found
-            if not retrieval_result.chunks:
-                logger.warning(
-                    "retrieval_empty",
-                    query=request.query,
-                    query_type=decision.query_type.value,
-                    strategy=decision.primary_strategy.value,
-                    top_k=top_k,
-                )
-                try:
-                    from monitoring.metrics import retrieval_empty as _re
-                    _re.labels(strategy=decision.primary_strategy.value).inc()
-                except Exception as _e:
-                    logger.debug("Metrics recording skipped: %s", _e)
-                # Return a graceful "I couldn't find anything" response
+            if not stage_result.chunks_were_found:
+                # Graceful "I couldn't find anything" answer for the user
                 return self._empty_response(request.query, decision, start)
 
-            # Snapshot pre-rerank candidates before reranking mutates order/scores.
-            # Capture each chunk's retrieval score onto the chunk itself, because the
-            # reranker overwrites rc.score in place (reranking/reranker.py:37).
-            pre_rerank_chunks = list(retrieval_result.chunks)
-            for rc in pre_rerank_chunks:
-                rc.pre_rerank_score = rc.score
-
-            # ─────────────────────────────────────────────────────────────────
-            # STEP 3: RERANK — Re-score chunks to find the most relevant ones
-            # ─────────────────────────────────────────────────────────────────
-            # The vector store returns chunks sorted by embedding similarity.
-            # The reranker (cross-encoder) does a deeper analysis of each chunk
-            # against the specific query and re-sorts them by true relevance.
-            # This reduces retrieval_top_k chunks → rerank_top_k chunks.
-            reranked = await self._reranker.rerank(
-                query=request.query,
-                chunks=retrieval_result.chunks,
-                top_k=settings.rerank_top_k,   # Keep only the top N after reranking
-            )
-            t_rerank = time.perf_counter()
-            # Log reranking results (which chunks survived, new scores)
-            await self._tracer.log_reranking(trace_id, reranked)
+            pre_rerank_chunks = stage_result.pre_rerank_chunks
+            reranked          = stage_result.reranked
 
             # ─────────────────────────────────────────────────────────────────
             # STEP 4: BUILD PROMPT — Pack chunks into an LLM-ready prompt
@@ -488,6 +533,78 @@ class RAGOrchestrator:
             stage_timings=stage_timings,
             retrieval_candidates=retrieval_candidates,
             attributed_spans=attributed_spans if attributed_spans else None,
+        )
+
+    async def retrieve_only(self, request: QueryRequest) -> RetrievalOnlyResponse:
+        """Run router → retrieve → rerank, skip generation. Same tracing and
+        metrics as query(); consumes ZERO LLM tokens. Used by the chunker
+        comparison view and any caller that only needs to inspect what chunks
+        the pipeline would surface for a query.
+        """
+        start = time.monotonic()
+        t0 = time.perf_counter()
+        trace_id = await self._tracer.start_trace(request.query)
+
+        try:
+            stage_result = await self._retrieve_and_rerank(request, trace_id)
+        except Exception as e:
+            logger.error("retrieve_only_failed: %s", e, exc_info=True)
+            await self._tracer.log_error(trace_id, str(e))
+            raise
+
+        total_latency = (time.monotonic() - start) * 1000
+        await self._tracer.end_trace(trace_id, total_latency)
+
+        stage_timings = {
+            "router_ms":   (stage_result.t_router   - t0) * 1000,
+            "retrieve_ms": (stage_result.t_retrieve - stage_result.t_router)   * 1000,
+            "rerank_ms":   (stage_result.t_rerank   - stage_result.t_retrieve) * 1000,
+            "total_ms":    (stage_result.t_rerank   - t0) * 1000,
+        }
+
+        if not stage_result.chunks_were_found:
+            return RetrievalOnlyResponse(
+                query_type=stage_result.decision.query_type.value,
+                strategy_used=stage_result.decision.primary_strategy.value,
+                latency_ms=round(total_latency, 2),
+                stage_timings=stage_timings,
+                retrieval_candidates=[],
+                top_rerank_score=None,
+            )
+
+        # No LLM citations to mark "used_in_answer"; mark the top-K reranked
+        # set instead — "would have been packed into the prompt if generation
+        # had run." Different semantics from /query's used_in_answer; the
+        # RetrievalOnlyResponse docstring captures the divergence.
+        top_k_ids = {str(rc.chunk.chunk_id) for rc in stage_result.reranked}
+        retrieval_candidates = [
+            {
+                "rank": rc.rank,
+                "doc_id": str(rc.chunk.doc_id),
+                "chunk_id": str(rc.chunk.chunk_id),
+                "source": rc.chunk.metadata.get("source", ""),
+                "score": round(rc.score, 4),
+                "pre_rerank_score": (
+                    round(rc.pre_rerank_score, 4)
+                    if rc.pre_rerank_score is not None else None
+                ),
+                "used_in_answer": str(rc.chunk.chunk_id) in top_k_ids,
+                "excerpt": rc.chunk.content[:200],
+            }
+            for rc in stage_result.pre_rerank_chunks
+        ]
+        top_score = max(
+            (rc["score"] for rc in retrieval_candidates),
+            default=None,
+        )
+
+        return RetrievalOnlyResponse(
+            query_type=stage_result.decision.query_type.value,
+            strategy_used=stage_result.decision.primary_strategy.value,
+            latency_ms=round(total_latency, 2),
+            stage_timings=stage_timings,
+            retrieval_candidates=retrieval_candidates,
+            top_rerank_score=top_score,
         )
 
     async def stream_query(
