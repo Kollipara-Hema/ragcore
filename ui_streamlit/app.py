@@ -18,6 +18,8 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
+from comparison import fetch_chunker_comparison
+
 # ─── Design tokens ────────────────────────────────────────────────────────────
 ACCENT        = "#6d4aab"
 ACCENT_TINT   = "#f5f3ff"
@@ -956,6 +958,10 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+    # S6b. Comparison data-layer debug toggle (temporary — part 1 of the
+    # chunker-comparison arc; the real view replaces it in part 2).
+    st.checkbox("Comparison (debug)", value=False, key="cmp_debug_on")
+
     # S7. Version marker (temporary — removed after cloud deploy confirmed)
 
     # S8. About expander
@@ -1192,3 +1198,27 @@ if active_prompt:
             "corpus": selected_corpus,
         })
         st.rerun()
+
+
+# ─── Comparison data-layer debug (temporary — part 1 of arc B) ───────────────
+# Throwaway view to verify fetch_chunker_comparison before the real columns
+# get built in part 2. Hidden behind the sidebar "Comparison (debug)" toggle.
+if st.session_state.get("cmp_debug_on", False):
+    st.divider()
+    st.subheader("Chunker comparison — data-layer debug")
+    cmp_q = st.text_input(
+        "Query",
+        value="What were Apple's net sales by product category?",
+        key="cmp_debug_q",
+    )
+    if st.button("Run comparison", key="cmp_debug_run"):
+        with st.spinner("Firing 3 concurrent /query calls (cold start can be slow)…"):
+            data = fetch_chunker_comparison(cmp_q, BACKEND_URL, API_KEY)
+        m = data["meta"]
+        st.success(
+            f"Wall: {m['wall_seconds']}s  •  "
+            f"Σ per-call: {m['sum_durations']}s  •  "
+            f"Speedup: {m['concurrent_speedup']}×  •  "
+            f"strategies: {m['strategies_used']}"
+        )
+        st.json(data)
