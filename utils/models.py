@@ -105,6 +105,7 @@ class RetrievedChunk:
     score: float
     strategy_used: RetrievalStrategy
     rank: int = 0
+    pre_rerank_score: Optional[float] = None
 
 
 @dataclass
