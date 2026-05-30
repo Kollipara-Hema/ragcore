@@ -700,6 +700,129 @@ def _comparison_column(corpus_name: str, summary: dict, doc_count: Optional[int]
         st.caption("No top chunk returned.")
 
 
+def _build_differs_html(cmp_data: dict, corpora_by_name: dict) -> Optional[str]:
+    """Compute the body HTML for the 'what differs' summary row. Returns
+    None when there are fewer than two successful columns to compare —
+    in that case the caller skips the row entirely.
+
+    The text is generated from the actual fetched data so it stays honest
+    to whatever query ran. Two narratives:
+      - Fragment pattern: the highest-scoring chunker's top excerpt is
+        markedly shorter than the others' — name it, surface the tradeoff.
+      - Otherwise: a factual numeric line — scores side by side, chunk-
+        count range, and a reminder that cross-chunker scores aren't
+        directly comparable.
+    No winner, no rank, no failure highlight.
+    """
+    def _short(corpus_name: str) -> str:
+        label = _corpus_label(corpus_name)
+        return label.split(" — ", 1)[1] if " — " in label else label
+
+    results = cmp_data.get("results") or {}
+    rows = []
+    for corpus_name in CHUNKER_COMPARISON_CORPORA:
+        r = results.get(corpus_name) or {}
+        if "error" in r:
+            continue
+        top = r.get("top_chunk") or {}
+        info = corpora_by_name.get(corpus_name) or {}
+        rows.append({
+            "name":        corpus_name,
+            "doc_count":   info.get("doc_count") or 0,
+            "top_score":   r.get("top_rerank_score"),
+            "top_excerpt": top.get("excerpt") or "",
+        })
+
+    if len(rows) < 2:
+        return None
+
+    scored = [r for r in rows if r["top_score"] is not None]
+    if not scored:
+        return (
+            "Each chunker returned results; the substantive difference is in "
+            "the top-chunk text above — rerank scores aren't directly "
+            "comparable across chunkers of different granularity."
+        )
+
+    by_score = max(scored, key=lambda r: r["top_score"])
+    others = [r for r in scored if r["name"] != by_score["name"]]
+
+    # Boundary-alignment signal: does the top-scoring column's excerpt begin
+    # mid-passage or at a clean boundary? Length-based detection is defeated
+    # by the upstream 200-char cap that clips every excerpt to the same
+    # length. A chunk that was carved out mid-passage almost always begins
+    # with a lowercase letter (the back half of a word the chunk boundary
+    # split), whereas a chunk aligned to a structural boundary opens with a
+    # capital letter, a digit, a heading marker (#), or a table pipe (|).
+    # IMPORTANT: this signal supports "begins mid-passage," NOT "is
+    # incomplete." It correlates with the fragment hazard the comparison is
+    # meant to surface, but the user-facing text must not assert a
+    # completeness verdict from a first-character heuristic — let the
+    # reader's eyes on the excerpts make that call.
+    def _starts_mid_context(text: str) -> bool:
+        text = text.lstrip()
+        return bool(text) and text[0].islower()
+
+    fragment_pattern = (
+        len(others) >= 1
+        and _starts_mid_context(by_score["top_excerpt"])
+        and not all(_starts_mid_context(r["top_excerpt"]) for r in others)
+    )
+
+    if fragment_pattern:
+        top_em = f"<strong>{html.escape(_short(by_score['name']))}</strong>"
+        return (
+            f"{top_em} scored highest "
+            f"({by_score['top_score']:.2f}), but its top chunk begins "
+            f"mid-passage rather than at a clean boundary. A high rerank "
+            f"score on a tightly-matched fragment isn't the same as a "
+            f"complete answer — compare the top-chunk text above to see "
+            f"which actually answers the question."
+        )
+
+    score_bits = ", ".join(
+        f"{html.escape(_short(r['name']))} {r['top_score']:.2f}"
+        for r in scored
+    )
+    counts = sorted(r["doc_count"] for r in rows)
+    top_name = html.escape(_short(by_score["name"]))
+    return (
+        f"Top rerank scores: {score_bits}. Chunk counts range "
+        f"{counts[0]}–{counts[-1]}. The highest score ({top_name}, "
+        f"{by_score['top_score']:.2f}) reflects retrieval granularity, not "
+        f"completeness — different chunkers' scores aren't directly "
+        f"comparable. Read each top-chunk text above to see which would "
+        f"actually answer the question."
+    )
+
+
+def _comparison_differs_row(cmp_data: dict, corpora_by_name: dict) -> None:
+    """Full-width 'what differs' summary row below the comparison columns.
+    Honest narrative computed from the fetched data plus a standing one-line
+    label clarifying what the 'hierarchical' column actually is."""
+    differs_html = _build_differs_html(cmp_data, corpora_by_name)
+    if differs_html is None:
+        return
+    hierarchical_note = (
+        "Note: \"hierarchical\" here is fine-grained fixed-size child chunks "
+        "(256-char windows), not true parent-child retrieval — the project "
+        "label was kept for transparency."
+    )
+    st.markdown(
+        f'<div style="margin:6px 0 0 0;padding:14px 16px;border-radius:8px;'
+        f'background:{ACCENT_TINT};border:0.5px solid {ACCENT}">'
+        f'<div style="font-size:10.5px;font-weight:600;letter-spacing:0.5px;'
+        f'text-transform:uppercase;color:{ACCENT_DARK};margin-bottom:6px">'
+        f'What differs</div>'
+        f'<div style="font-size:13px;color:{TEXT_PRIMARY};line-height:1.55;'
+        f'margin-bottom:8px">{differs_html}</div>'
+        f'<div style="font-size:11.5px;color:{TEXT_SECONDARY};line-height:1.5;'
+        f'font-style:italic">{hierarchical_note}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _trace_expander(stage_timings: Optional[dict]) -> None:
     """Per-stage latency as horizontal stacked Plotly bar — diagnostic expander."""
     if not stage_timings:
@@ -1340,8 +1463,12 @@ if st.session_state.get("cmp_on", False):
                     summary = results.get(corpus_name) or {"error": "no response"}
                     info = corpora_by_name.get(corpus_name) or {}
                     _comparison_column(corpus_name, summary, info.get("doc_count"))
-            # Bottom breathing room so the top-chunk row doesn't run into
-            # the panel's bottom border.
+            # "What differs" summary row — full-width inside the panel,
+            # honest narrative computed from the data, with the standing
+            # hierarchical-label caveat.
+            _comparison_differs_row(cmp_data, corpora_by_name)
+            # Bottom breathing room so the row doesn't run into the panel's
+            # bottom border.
             st.markdown(
                 '<div style="height:12px"></div>',
                 unsafe_allow_html=True,
