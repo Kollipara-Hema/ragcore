@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import html
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -18,7 +19,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from comparison import fetch_chunker_comparison
+from comparison import CHUNKER_COMPARISON_CORPORA, fetch_chunker_comparison
 
 # ─── Design tokens ────────────────────────────────────────────────────────────
 ACCENT        = "#6d4aab"
@@ -606,6 +607,99 @@ def _retrieval_expander(retrieval_candidates: Optional[list], citations: list) -
         )
 
 
+def _clean_chunk_excerpt(text: str) -> str:
+    """Neutralize raw markdown/HTML tokens leaked from source chunks so the
+    excerpt renders as plain readable text. Strips <br> and other tags,
+    drops markdown bold markers, replaces table pipes with spaces, collapses
+    whitespace. Does NOT reformat the underlying table — just removes the
+    markers so a viewer reads words, not syntax.
+
+    The dangling-partial-tag strip handles the case where the upstream
+    200-char truncation cuts a tag mid-name (e.g. "<br" with no closing
+    ">"); without it, the <br> regex above can't match and a stray "<br"
+    leaks into the rendered output.
+    """
+    text = re.sub(r"<br\s*/?>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"</?[a-z][^>]*>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]*$", "", text)
+    text = text.replace("**", "").replace("|", " ")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _cmp_stat_card(label: str, value: str) -> str:
+    """Compact stat card for vertical stacking inside a comparison column.
+    Same visual language as _stat_card (ACCENT_TINT bg, ACCENT_DARK label,
+    bold value over uppercase small-caps label) but tighter padding and no
+    fixed min-height so three stack cleanly in one column."""
+    return (
+        f'<div style="background:{ACCENT_TINT};border-radius:8px;'
+        f'padding:12px 14px;margin-bottom:8px">'
+        f'<div style="font-size:10.5px;font-weight:600;letter-spacing:0.5px;'
+        f'text-transform:uppercase;color:{ACCENT_DARK};margin-bottom:4px">'
+        f'{html.escape(label)}</div>'
+        f'<div style="font-size:22px;font-weight:700;color:{TEXT_PRIMARY};'
+        f'line-height:1.2;word-break:break-word">{html.escape(value)}</div>'
+        f'</div>'
+    )
+
+
+def _comparison_column(corpus_name: str, summary: dict, doc_count: Optional[int]) -> None:
+    """One column of the chunker comparison panel: stacked stat cards plus a
+    cleaned top-chunk excerpt. Text is shown verbatim (markup neutralized)
+    so a high rerank score on a tiny fragment stays visible next to the
+    fragment itself — no winner highlight, no rank ordering."""
+    st.markdown(
+        f'<p style="font-size:13px;font-weight:600;color:{TEXT_PRIMARY};'
+        f'margin:0 0 10px 0">{html.escape(_corpus_label(corpus_name))}</p>',
+        unsafe_allow_html=True,
+    )
+    if "error" in summary:
+        st.error(f"Failed: {summary['error']}")
+        return
+
+    top_score = summary.get("top_rerank_score")
+    top_score_str = f"{top_score:.3f}" if top_score is not None else "—"
+    lat_ms = summary.get("latency_retrieval") or 0.0
+    lat_str = f"{lat_ms / 1000:.1f} s"
+
+    st.markdown(
+        _cmp_stat_card(
+            "Chunks Indexed",
+            str(doc_count) if doc_count is not None else "—",
+        ),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        _cmp_stat_card("Top Rerank Score (cross-encoder)", top_score_str),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        _cmp_stat_card("Latency (retrieve + rerank)", lat_str),
+        unsafe_allow_html=True,
+    )
+
+    top = summary.get("top_chunk") or {}
+    excerpt = top.get("excerpt") or ""
+    top_chunk_score = top.get("score")
+    score_str = f"{top_chunk_score:.3f}" if top_chunk_score is not None else "—"
+    cleaned = _clean_chunk_excerpt(excerpt)
+    if cleaned:
+        st.markdown(
+            f'<div style="font-size:10.5px;font-weight:600;letter-spacing:0.5px;'
+            f'text-transform:uppercase;color:{TEXT_MUTED};margin:14px 0 6px 0">'
+            f'Top chunk · {html.escape(score_str)}</div>'
+            f'<div style="border:0.5px solid #e5e7eb;border-radius:8px;'
+            f'padding:10px 12px;background:#fafafa;min-height:160px">'
+            f'<div style="font-size:12.5px;color:{TEXT_PRIMARY};line-height:1.55">'
+            f'{html.escape(cleaned)}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("No top chunk returned.")
+
+
 def _trace_expander(stage_timings: Optional[dict]) -> None:
     """Per-stage latency as horizontal stacked Plotly bar — diagnostic expander."""
     if not stage_timings:
@@ -892,6 +986,11 @@ with st.sidebar:
     st.markdown('<span class="sec-label" style="margin-top:10px">Verification</span>', unsafe_allow_html=True)
     st.checkbox("Hallucination verifier", key="verify_claims")
     st.caption("Per-claim grounding check (~3x slower)")
+    # Chunker-comparison view toggle. Gated so the ~30s 3-way fetch doesn't
+    # fire on every page load. Lives next to the verifier as a sibling
+    # diagnostic instrument.
+    st.checkbox("Comparison", value=False, key="cmp_on")
+    st.caption("Run the same query against three chunkers, side by side")
 
     st.divider()
 
@@ -957,10 +1056,6 @@ with st.sidebar:
     if st.button("Clear chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
-
-    # S6b. Comparison data-layer debug toggle (temporary — part 1 of the
-    # chunker-comparison arc; the real view replaces it in part 2).
-    st.checkbox("Comparison (debug)", value=False, key="cmp_debug_on")
 
     # S7. Version marker (temporary — removed after cloud deploy confirmed)
 
@@ -1200,25 +1295,61 @@ if active_prompt:
         st.rerun()
 
 
-# ─── Comparison data-layer debug (temporary — part 1 of arc B) ───────────────
-# Throwaway view to verify fetch_chunker_comparison before the real columns
-# get built in part 2. Hidden behind the sidebar "Comparison (debug)" toggle.
-if st.session_state.get("cmp_debug_on", False):
+# ─── Chunker comparison panel (part 2 of arc B) ──────────────────────────────
+# One bordered panel containing: a title bar with a three-bar columns glyph,
+# a one-line caption, the query input, the Run button, and three side-by-side
+# columns (same query, hybrid strategy held constant, only the chunker varies).
+# Result cached in session_state so unrelated reruns don't refire the fetch.
+# Part 3 will add the "what differs" row + honesty panel + full ranked list.
+if st.session_state.get("cmp_on", False):
     st.divider()
-    st.subheader("Chunker comparison — data-layer debug")
-    cmp_q = st.text_input(
-        "Query",
-        value="What were Apple's net sales by product category?",
-        key="cmp_debug_q",
-    )
-    if st.button("Run comparison", key="cmp_debug_run"):
-        with st.spinner("Firing 3 concurrent /query calls (cold start can be slow)…"):
-            data = fetch_chunker_comparison(cmp_q, BACKEND_URL, API_KEY)
-        m = data["meta"]
-        st.success(
-            f"Wall: {m['wall_seconds']}s  •  "
-            f"Σ per-call: {m['sum_durations']}s  •  "
-            f"Speedup: {m['concurrent_speedup']}×  •  "
-            f"strategies: {m['strategies_used']}"
+    with st.container(border=True):
+        # Title bar: three-bar columns glyph + label + one-line caption.
+        st.markdown(
+            f'<div style="display:flex;align-items:center;margin:2px 0 4px 0">'
+            f'<span style="display:inline-flex;gap:2px;align-items:center;margin-right:10px">'
+            f'<span style="width:3px;height:13px;background:{ACCENT};border-radius:1px"></span>'
+            f'<span style="width:3px;height:13px;background:{ACCENT};border-radius:1px"></span>'
+            f'<span style="width:3px;height:13px;background:{ACCENT};border-radius:1px"></span>'
+            f'</span>'
+            f'<span style="font-size:15px;font-weight:600;color:{TEXT_PRIMARY}">'
+            f'Chunker comparison</span>'
+            f'</div>'
+            f'<p style="font-size:12px;color:{TEXT_SECONDARY};margin:0 0 14px 0">'
+            f'Same query · hybrid strategy held constant · only the chunker varies</p>',
+            unsafe_allow_html=True,
         )
-        st.json(data)
+
+        cmp_q = st.text_input(
+            "Query",
+            value="What were Apple's net sales by product category?",
+            key="cmp_q",
+        )
+        if st.button("Run comparison", key="cmp_run"):
+            with st.spinner("Running three sequential queries (~30-45s)…"):
+                st.session_state["cmp_data"] = fetch_chunker_comparison(
+                    cmp_q, BACKEND_URL, API_KEY,
+                )
+
+        cmp_data = st.session_state.get("cmp_data")
+        if cmp_data:
+            results = cmp_data.get("results") or {}
+            cols = st.columns(len(CHUNKER_COMPARISON_CORPORA))
+            for col, corpus_name in zip(cols, CHUNKER_COMPARISON_CORPORA):
+                with col:
+                    summary = results.get(corpus_name) or {"error": "no response"}
+                    info = corpora_by_name.get(corpus_name) or {}
+                    _comparison_column(corpus_name, summary, info.get("doc_count"))
+            # Bottom breathing room so the top-chunk row doesn't run into
+            # the panel's bottom border.
+            st.markdown(
+                '<div style="height:12px"></div>',
+                unsafe_allow_html=True,
+            )
+
+    # Latency honesty — caption sits outside the panel so it reads as a
+    # footnote on the instrument, not part of it.
+    st.caption(
+        "Latency varies per run with server load and cold-start state — "
+        "it's not a fixed property of the chunker."
+    )
