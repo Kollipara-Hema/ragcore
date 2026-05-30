@@ -268,8 +268,12 @@ class RAGOrchestrator:
                 # Return a graceful "I couldn't find anything" response
                 return self._empty_response(request.query, decision, start)
 
-            # Snapshot pre-rerank candidates before reranking mutates order/scores
+            # Snapshot pre-rerank candidates before reranking mutates order/scores.
+            # Capture each chunk's retrieval score onto the chunk itself, because the
+            # reranker overwrites rc.score in place (reranking/reranker.py:37).
             pre_rerank_chunks = list(retrieval_result.chunks)
+            for rc in pre_rerank_chunks:
+                rc.pre_rerank_score = rc.score
 
             # ─────────────────────────────────────────────────────────────────
             # STEP 3: RERANK — Re-score chunks to find the most relevant ones
@@ -445,6 +449,11 @@ class RAGOrchestrator:
                 "chunk_id": str(rc.chunk.chunk_id),
                 "source": rc.chunk.metadata.get("source", ""),
                 "score": round(rc.score, 4),
+                "pre_rerank_score": (
+                    round(rc.pre_rerank_score, 4)
+                    if rc.pre_rerank_score is not None
+                    else None
+                ),
                 "used_in_answer": str(rc.chunk.chunk_id) in cited_chunk_ids,
                 "excerpt": rc.chunk.content[:200],
             }
