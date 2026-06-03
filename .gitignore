@@ -227,3 +227,6 @@ venv311/
 .chainlit/
 chainlit.md
 .DS_Store
+
+# Local project history reconstruction (not shared)
+history/
