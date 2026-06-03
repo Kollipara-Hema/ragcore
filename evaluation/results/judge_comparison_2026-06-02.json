@@ -1,0 +1,4186 @@
+{
+  "metadata": {
+    "run_timestamp_utc": "2026-06-02T23:15:42.094743+00:00",
+    "experiment": "self_rag_judge_comparison",
+    "source_run": "self_rag_fiqa_2026-05-05_gpt4o-mini.json",
+    "answer_gen_model": "gpt-4o-mini",
+    "claim_extractor_model": "gpt-4o-mini",
+    "judge_models": [
+      "gpt-4o",
+      "gpt-4o-mini"
+    ],
+    "judge_temperature": 0.0,
+    "verifier_function": "generation.advanced_generation.SelfRAGGenerator._verify_claim",
+    "context_truncation_chars": 3000,
+    "n_queries": 38,
+    "n_claims": 181,
+    "dataset": "fiqa_eval",
+    "dataset_size": 50,
+    "notes": "Frozen-claim verification-only replay. Claim set and contexts are held fixed; only the verifier model varies. No gold labels \u2014 agreement and support-rate are judge-vs-judge metrics, not accuracy metrics."
+  },
+  "results": [
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 0,
+      "claim": "You should start saving and investing for your retirement as early as possible.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Start as early as possible and you will want to kiss your younger self when you get to retirement age.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start as early as possible and you will want to kiss your younger self when you get to retirement age.\"}\n```",
+        "input_tokens": 266,
+        "output_tokens": 36,
+        "latency_ms": 2257.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Start as early as possible and you will want to kiss your younger self when you get to retirement age.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start as early as possible and you will want to kiss your younger self when you get to retirement age.\"}\n```",
+        "input_tokens": 266,
+        "output_tokens": 36,
+        "latency_ms": 1589.1
+      }
+    },
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 1,
+      "claim": "It's recommended to begin with whatever amount you feel comfortable with.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Start with whatever you feel comfortable with and be consistent.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start with whatever you feel comfortable with and be consistent.\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 26,
+        "latency_ms": 537.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Start with whatever you feel comfortable with and be consistent.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start with whatever you feel comfortable with and be consistent.\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 26,
+        "latency_ms": 1157.0
+      }
+    },
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 2,
+      "claim": "It's important to be consistent in increasing your savings amount over time.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Increase that amount with raises, income gains, and whenever you want.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Increase that amount with raises, income gains, and whenever you want.\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 29,
+        "latency_ms": 509.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Increase that amount with raises, income gains, and whenever you want.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Increase that amount with raises, income gains, and whenever you want.\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 29,
+        "latency_ms": 1323.5
+      }
+    },
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 3,
+      "claim": "You should increase your savings amount especially with raises or income gains.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Increase that amount with raises, income gains, and whenever you want.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Increase that amount with raises, income gains, and whenever you want.\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 29,
+        "latency_ms": 663.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Increase that amount with raises, income gains, and whenever you want.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Increase that amount with raises, income gains, and whenever you want.\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 29,
+        "latency_ms": 981.2
+      }
+    },
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 4,
+      "claim": "It's important to save some money out of each paycheck.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Start as soon as you can and make your saving routine.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start as soon as you can and make your saving routine.\"}\n```",
+        "input_tokens": 263,
+        "output_tokens": 27,
+        "latency_ms": 454.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Start as soon as you can and make your saving routine.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start as soon as you can and make your saving routine.\"}\n```",
+        "input_tokens": 263,
+        "output_tokens": 27,
+        "latency_ms": 910.3
+      }
+    },
+    {
+      "query_id": "10385",
+      "query_idx": 0,
+      "claim_index": 5,
+      "claim": "You can start saving with a small amount like $50.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 14,
+        "latency_ms": 523.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Start with whatever you feel comfortable with and be consistent.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start with whatever you feel comfortable with and be consistent.\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 26,
+        "latency_ms": 619.5
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 0,
+      "claim": "Interac is not available in the U.S.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "I am not aware of a version of Interac available in the U.S.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I am not aware of a version of Interac available in the U.S.\"}\n```",
+        "input_tokens": 282,
+        "output_tokens": 31,
+        "latency_ms": 953.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I am not aware of a version of Interac available in the U.S.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I am not aware of a version of Interac available in the U.S.\"}\n```",
+        "input_tokens": 282,
+        "output_tokens": 31,
+        "latency_ms": 1181.9
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 1,
+      "claim": "Mailed cheques take time to deliver and clear.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The problem with mailed cheques is that they take time to deliver, and time to cl...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The problem with mailed cheques is that they take time to deliver, and time to cl...\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 34,
+        "latency_ms": 618.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the problem with mailed cheques is that they take time to deliver",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the problem with mailed cheques is that they take time to deliver\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 28,
+        "latency_ms": 1446.3
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 2,
+      "claim": "There is a risk if goods are shipped before the cheque clears.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 14,
+        "latency_ms": 624.4
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 14,
+        "latency_ms": 505.7
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 3,
+      "claim": "Cash on Delivery (COD) involves placing a COD charge on the item at the post office.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 14,
+        "latency_ms": 717.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 14,
+        "latency_ms": 714.5
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 4,
+      "claim": "Customers pay upon delivery for Cash on Delivery (COD).",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 512.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 740.9
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 5,
+      "claim": "Domestic Money Orders can only be cashed at U.S. post offices.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 14,
+        "latency_ms": 895.8
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 14,
+        "latency_ms": 614.1
+      }
+    },
+    {
+      "query_id": "615",
+      "query_idx": 1,
+      "claim_index": 6,
+      "claim": "Customers should send an International Money Order.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 14,
+        "latency_ms": 388.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 14,
+        "latency_ms": 635.3
+      }
+    },
+    {
+      "query_id": "3783",
+      "query_idx": 2,
+      "claim_index": 0,
+      "claim": "Title insurance payouts are around 5% of premiums.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 255,
+        "output_tokens": 14,
+        "latency_ms": 715.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 255,
+        "output_tokens": 14,
+        "latency_ms": 720.2
+      }
+    },
+    {
+      "query_id": "3783",
+      "query_idx": 2,
+      "claim_index": 1,
+      "claim": "In 2003, the title insurance industry paid out about $662 million in claims.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "In 2003, according to ALTA, the industry paid out about $662 milli...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"In 2003, according to ALTA, the industry paid out about $662 milli...\"}\n```",
+        "input_tokens": 262,
+        "output_tokens": 34,
+        "latency_ms": 572.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "In 2003, according to ALTA, the industry paid out about $662 milli...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"In 2003, according to ALTA, the industry paid out about $662 milli...\"}\n```",
+        "input_tokens": 262,
+        "output_tokens": 34,
+        "latency_ms": 756.6
+      }
+    },
+    {
+      "query_id": "3783",
+      "query_idx": 2,
+      "claim_index": 2,
+      "claim": "The total premiums taken in by the title insurance industry in 2003 were approximately $15.7 billion.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 266,
+        "output_tokens": 14,
+        "latency_ms": 409.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "In 2003, according to ALTA, the industry paid out about $662 milli...",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"In 2003, according to ALTA, the industry paid out about $662 milli...\"}\n```",
+        "input_tokens": 266,
+        "output_tokens": 34,
+        "latency_ms": 1127.1
+      }
+    },
+    {
+      "query_id": "3783",
+      "query_idx": 2,
+      "claim_index": 3,
+      "claim": "The payout ratio in 2003 was approximately 4.3% of the premiums.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 262,
+        "output_tokens": 14,
+        "latency_ms": 565.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 262,
+        "output_tokens": 14,
+        "latency_ms": 968.3
+      }
+    },
+    {
+      "query_id": "3501",
+      "query_idx": 3,
+      "claim_index": 0,
+      "claim": "The dealership makes their profit from financing, not cash deals.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Simply stated, the dealerships hate paid up front cash deals. They make money on the financing.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Simply stated, the dealerships hate paid up front cash deals. They make money on the financing.\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 34,
+        "latency_ms": 860.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "They make money on the financing.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They make money on the financing.\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 22,
+        "latency_ms": 575.5
+      }
+    },
+    {
+      "query_id": "3501",
+      "query_idx": 3,
+      "claim_index": 1,
+      "claim": "The deal is done once the paperwork is signed.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Will the dealership let him do that after all the paperwork is signed?",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Will the dealership let him do that after all the paperwork is signed?\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 29,
+        "latency_ms": 715.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Will the dealership let him do that after all the paperwork is signed?",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Will the dealership let him do that after all the paperwork is signed?\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 29,
+        "latency_ms": 1435.0
+      }
+    },
+    {
+      "query_id": "3501",
+      "query_idx": 3,
+      "claim_index": 2,
+      "claim": "Your son should not return the car just because the dealership asks.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Don't take the car back! The dealership wants you to take it back to try and earn more money.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Don't take the car back! The dealership wants you to take it back to try and earn more money.\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 36,
+        "latency_ms": 613.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Don't take the car back! The dealership wants you to take it back to try and earn more money.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Don't take the car back! The dealership wants you to take it back to try and earn more money.\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 36,
+        "latency_ms": 921.3
+      }
+    },
+    {
+      "query_id": "3501",
+      "query_idx": 3,
+      "claim_index": 3,
+      "claim": "Your son is in the right for paying cash.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Simply stated, the dealerships hate paid up front cash deals.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Simply stated, the dealerships hate paid up front cash deals.\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 27,
+        "latency_ms": 497.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Your son is in the right.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Your son is in the right.\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 22,
+        "latency_ms": 837.9
+      }
+    },
+    {
+      "query_id": "3501",
+      "query_idx": 3,
+      "claim_index": 4,
+      "claim": "The dealership did not expect your son to pay all cash.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Simply stated, the dealerships hate paid up front cash deals. They make money on the financing.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Simply stated, the dealerships hate paid up front cash deals. They make money on the financing.\"\n}\n```",
+        "input_tokens": 271,
+        "output_tokens": 37,
+        "latency_ms": 1704.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the dealerships hate paid up front cash deals. They make money on the financing.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the dealerships hate paid up front cash deals. They make money on the financing.\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 31,
+        "latency_ms": 1054.8
+      }
+    },
+    {
+      "query_id": "2335",
+      "query_idx": 4,
+      "claim_index": 0,
+      "claim": "You can give each of your children $28,000 on or after January 1, 2013, without incurring gift tax.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 303,
+        "output_tokens": 18,
+        "latency_ms": 413.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "$14,000 on or after January 1, 2013, the annual exclusion applies to each gift...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"$14,000 on or after January 1, 2013, the annual exclusion applies to each gift...\"}\n```",
+        "input_tokens": 303,
+        "output_tokens": 37,
+        "latency_ms": 1149.3
+      }
+    },
+    {
+      "query_id": "2335",
+      "query_idx": 4,
+      "claim_index": 1,
+      "claim": "The amount is within the annual exclusion limit for that period.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "if you give each of your children $11,000 in 2002-2005, $12,000 in  2006-2008, $13,000 in 2009-2012 and $14,000 on or after January 1,  2013, the annual exclusion applies to each gift",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"if you give each of your children $11,000 in 2002-2005, $12,000 in  2006-2008, $13,000 in 2009-2012 and $14,000 on or after January 1,  2013, the annual exclusion applies to each gift\"\n}\n```",
+        "input_tokens": 287,
+        "output_tokens": 86,
+        "latency_ms": 901.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "$11,000 in 2002-2005, $12,000 in 2006-2008, $13,000 in 2009-2012 and $14,000 on or after January 1, 2013, the annual exclusion applies to each gift",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"$11,000 in 2002-2005, $12,000 in 2006-2008, $13,000 in 2009-2012 and $14,000 on or after January 1, 2013, the annual exclusion applies to each gift\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 72,
+        "latency_ms": 1530.5
+      }
+    },
+    {
+      "query_id": "1769",
+      "query_idx": 5,
+      "claim_index": 0,
+      "claim": "Renting out your personal car can be financially advantageous if you can charge more than your required monthly payments.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 1024.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 558.2
+      }
+    },
+    {
+      "query_id": "1769",
+      "query_idx": 5,
+      "claim_index": 1,
+      "claim": "You need to consider the true cost of ownership, including auto loan, insurance, and potential business taxes.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 465.2
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 580.1
+      }
+    },
+    {
+      "query_id": "1769",
+      "query_idx": 5,
+      "claim_index": 2,
+      "claim": "It is not safe to rent out your personal car unless you have a contract drawn up by a lawyer.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 749.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 725.9
+      }
+    },
+    {
+      "query_id": "8090",
+      "query_idx": 6,
+      "claim_index": 0,
+      "claim": "Corporate stock splits do not negate share repurchase programs.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 40,
+        "latency_ms": 878.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Apple (APPL) split its stock in 2014 and also continued a significant buyback program",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Apple (APPL) split its stock in 2014 and also continued a significant buyback program\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 35,
+        "latency_ms": 1062.3
+      }
+    },
+    {
+      "query_id": "8090",
+      "query_idx": 6,
+      "claim_index": 1,
+      "claim": "Corporate stock splits and share repurchase programs have opposite effects on the share price.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.\"}\n```",
+        "input_tokens": 258,
+        "output_tokens": 40,
+        "latency_ms": 712.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.\"}\n```",
+        "input_tokens": 258,
+        "output_tokens": 40,
+        "latency_ms": 1641.8
+      }
+    },
+    {
+      "query_id": "8090",
+      "query_idx": 6,
+      "claim_index": 2,
+      "claim": "Corporate stock splits do not affect the total value to the shareholders.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.\"}\n```",
+        "input_tokens": 255,
+        "output_tokens": 40,
+        "latency_ms": 714.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Companies do both quite often. They have opposite effects on the share price, but not on the total value to the shareholders.\"}\n```",
+        "input_tokens": 255,
+        "output_tokens": 40,
+        "latency_ms": 818.5
+      }
+    },
+    {
+      "query_id": "1519",
+      "query_idx": 7,
+      "claim_index": 0,
+      "claim": "If you are a US tax resident or citizen, the royalties related treaty provision might not apply to you at all due to the savings clause.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 411.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 558.3
+      }
+    },
+    {
+      "query_id": "1519",
+      "query_idx": 7,
+      "claim_index": 1,
+      "claim": "Double taxation provisions allow you to credit the foreign tax paid to your US tax liability.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 437.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 768.3
+      }
+    },
+    {
+      "query_id": "1519",
+      "query_idx": 7,
+      "claim_index": 2,
+      "claim": "The ability to credit foreign tax paid to US tax liability can vary based on treaties.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 487.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 818.3
+      }
+    },
+    {
+      "query_id": "1519",
+      "query_idx": 7,
+      "claim_index": 3,
+      "claim": "Some countries may not allow this credit.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 268,
+        "output_tokens": 14,
+        "latency_ms": 422.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 268,
+        "output_tokens": 14,
+        "latency_ms": 648.9
+      }
+    },
+    {
+      "query_id": "9186",
+      "query_idx": 8,
+      "claim_index": 0,
+      "claim": "You can buy only 4 shares of a company.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 282,
+        "output_tokens": 18,
+        "latency_ms": 415.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "you can buy only 4 stocks generally",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"you can buy only 4 stocks generally\"}\n```",
+        "input_tokens": 282,
+        "output_tokens": 23,
+        "latency_ms": 520.8
+      }
+    },
+    {
+      "query_id": "9186",
+      "query_idx": 8,
+      "claim_index": 1,
+      "claim": "It may not be the best idea depending on your overall investment strategy.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "I'm not sure it is the best idea, but you can buy only 4 stocks generally.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"I'm not sure it is the best idea, but you can buy only 4 stocks generally.\"\n}\n```",
+        "input_tokens": 285,
+        "output_tokens": 37,
+        "latency_ms": 758.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "My answer to that would be \"probably not\".",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"My answer to that would be \\\"probably not\\\".\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 26,
+        "latency_ms": 793.2
+      }
+    },
+    {
+      "query_id": "6387",
+      "query_idx": 9,
+      "claim_index": 0,
+      "claim": "Factors that make someone buy or sell a stock include news, earnings reports, stock analysis, and changes in public perception about the company.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "What causes people to buy or sell? Is it news? earnings...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"What causes people to buy or sell? Is it news? earnings...\"\n}\n```",
+        "input_tokens": 287,
+        "output_tokens": 32,
+        "latency_ms": 1254.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Is it news? earnings... Because the stock no longer fits your strategy. Or you've lost faith in the company.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Is it news? earnings... Because the stock no longer fits your strategy. Or you've lost faith in the company.\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 38,
+        "latency_ms": 1540.1
+      }
+    },
+    {
+      "query_id": "6387",
+      "query_idx": 9,
+      "claim_index": 1,
+      "claim": "If a company shows strong earnings, the stock price might increase.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 14,
+        "latency_ms": 717.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "So some people do buy and sell shares to try and earn money, but the reason they are able to do that is because the shares are inherently worth something - they are worth a small % of the company and ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"So some people do buy and sell shares to try and earn money, but the reason they are able to do that is because the shares are inherently worth something - they are worth a small % of the company and ...\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 58,
+        "latency_ms": 1000.1
+      }
+    },
+    {
+      "query_id": "6387",
+      "query_idx": 9,
+      "claim_index": 2,
+      "claim": "Negative news or scandals can lead to a decline in stock price.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 14,
+        "latency_ms": 518.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "you've lost faith in the company",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"you've lost faith in the company\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 22,
+        "latency_ms": 832.7
+      }
+    },
+    {
+      "query_id": "6387",
+      "query_idx": 9,
+      "claim_index": 3,
+      "claim": "Investors may sell if they lose faith in the company.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "why sell? Because the stock no longer fits your strategy. Or you've lost faith in the company.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"why sell? Because the stock no longer fits your strategy. Or you've lost faith in the company.\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 35,
+        "latency_ms": 514.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "you've lost faith in the company",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"you've lost faith in the company\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 22,
+        "latency_ms": 675.4
+      }
+    },
+    {
+      "query_id": "6387",
+      "query_idx": 9,
+      "claim_index": 4,
+      "claim": "Investors may sell if the stock no longer fits their investment strategy.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "why sell? Because the stock no longer fits your strategy.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"why sell? Because the stock no longer fits your strategy.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 27,
+        "latency_ms": 519.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Because the stock no longer fits your strategy.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Because the stock no longer fits your strategy.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 24,
+        "latency_ms": 645.1
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 0,
+      "claim": "An executor of a will is responsible for managing the estate.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 270,
+        "output_tokens": 18,
+        "latency_ms": 589.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 14,
+        "latency_ms": 664.9
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 1,
+      "claim": "An estate is a separate legal entity with its own Tax Identification Number (TIN).",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The estate is it's own separate legal entity with its own TIN.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The estate is it's own separate legal entity with its own TIN.\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 29,
+        "latency_ms": 588.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the estate is it's own separate legal entity with its own TIN",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the estate is it's own separate legal entity with its own TIN\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 28,
+        "latency_ms": 786.3
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 2,
+      "claim": "Creditors can only make claims against the estate itself, not the personal assets of the executor.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 277,
+        "output_tokens": 18,
+        "latency_ms": 440.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "The estate is it's own separate legal entity with its own TIN. Only creditors again...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The estate is it's own separate legal entity with its own TIN. Only creditors again...\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 33,
+        "latency_ms": 942.0
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 3,
+      "claim": "Creditors can make claims against the personal assets of the executor if the executor has commingled assets or treated estate assets as his own.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 286,
+        "output_tokens": 18,
+        "latency_ms": 432.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 14,
+        "latency_ms": 521.8
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 4,
+      "claim": "After the estate is divided, any inherited money or assets become the personal property of the heir.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "but at some point, the estate will be divided up. At that point, any money or ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"but at some point, the estate will be divided up. At that point, any money or ...\"\n}\n```",
+        "input_tokens": 277,
+        "output_tokens": 38,
+        "latency_ms": 562.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "At that point, any money or ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"At that point, any money or ...\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 23,
+        "latency_ms": 816.4
+      }
+    },
+    {
+      "query_id": "696",
+      "query_idx": 10,
+      "claim_index": 5,
+      "claim": "Inherited money or assets may be subject to claims by creditors.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 14,
+        "latency_ms": 381.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "At that point, any money or ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"At that point, any money or ...\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 23,
+        "latency_ms": 627.7
+      }
+    },
+    {
+      "query_id": "671",
+      "query_idx": 11,
+      "claim_index": 0,
+      "claim": "A low CAD negatively impacts Canadian investors when buying US stocks.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "When you want to invest in an asset denominated by a foreign currency, your investment is going to have some currency risk to it.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"When you want to invest in an asset denominated by a foreign currency, your investment is going to have some currency risk to it.\"\n}\n```",
+        "input_tokens": 275,
+        "output_tokens": 45,
+        "latency_ms": 756.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.\"}\n```",
+        "input_tokens": 275,
+        "output_tokens": 51,
+        "latency_ms": 990.6
+      }
+    },
+    {
+      "query_id": "671",
+      "query_idx": 11,
+      "claim_index": 1,
+      "claim": "Profits from stock investments will be reduced when converting back to CAD.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 529.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 51,
+        "latency_ms": 2497.1
+      }
+    },
+    {
+      "query_id": "671",
+      "query_idx": 11,
+      "claim_index": 2,
+      "claim": "Losses will be increased when converting back to CAD.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 14,
+        "latency_ms": 380.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you buy US stocks when the CAD is high and sell them when the CAD is lower you will make a currency gain on top of any profit or loss from the stock investments.\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 51,
+        "latency_ms": 1315.9
+      }
+    },
+    {
+      "query_id": "671",
+      "query_idx": 11,
+      "claim_index": 3,
+      "claim": "If the CAD goes up while holding US-denominated assets, it can hurt the investor.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 14,
+        "latency_ms": 523.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "When you want to invest in an asset denominated by a foreign currency, your investment is going to have some currency risk to it.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"When you want to invest in an asset denominated by a foreign currency, your investment is going to have some currency risk to it.\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 42,
+        "latency_ms": 884.8
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 0,
+      "claim": "Many manufacturers of name brand medication have programs to help those who cannot afford their medication.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Most of them have programs to help people who need their medication but can not afford it.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Most of them have programs to help people who need their medication but can not afford it.\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 33,
+        "latency_ms": 536.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Most of them have programs to help people who need their medication but can not afford it.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Most of them have programs to help people who need their medication but can not afford it.\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 33,
+        "latency_ms": 884.3
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 1,
+      "claim": "These programs may provide coupons for discounted or free medication.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "They may be able to send you coupons for discounted...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They may be able to send you coupons for discounted...\"}\n```",
+        "input_tokens": 247,
+        "output_tokens": 26,
+        "latency_ms": 442.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "They may be able to send you coupons for discounted...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They may be able to send you coupons for discounted...\"}\n```",
+        "input_tokens": 247,
+        "output_tokens": 26,
+        "latency_ms": 899.8
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 2,
+      "claim": "You can visit a free clinic that may provide medicine if your income is low enough.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 14,
+        "latency_ms": 540.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "{\"supported\": false, \"evidence\": \"\"}",
+        "input_tokens": 253,
+        "output_tokens": 11,
+        "latency_ms": 533.6
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 3,
+      "claim": "Free clinics may provide medicine until you can get back on insurance.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 249,
+        "output_tokens": 14,
+        "latency_ms": 498.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 249,
+        "output_tokens": 14,
+        "latency_ms": 602.7
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 4,
+      "claim": "You could pay for the medication out of pocket.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 246,
+        "output_tokens": 14,
+        "latency_ms": 996.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "{\"supported\": false, \"evidence\": \"\"}",
+        "input_tokens": 246,
+        "output_tokens": 11,
+        "latency_ms": 498.6
+      }
+    },
+    {
+      "query_id": "3436",
+      "query_idx": 12,
+      "claim_index": 5,
+      "claim": "You can discuss with your doctor about possible alternatives to expensive medicine.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 249,
+        "output_tokens": 14,
+        "latency_ms": 525.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 249,
+        "output_tokens": 14,
+        "latency_ms": 670.4
+      }
+    },
+    {
+      "query_id": "3616",
+      "query_idx": 13,
+      "claim_index": 0,
+      "claim": "It is advisable to live like you're still a college student when you start making real money.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \"real\" job at $40k (eg), put all the res...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \\\"real\\\" job at $40k (eg), put all the res...\"\n}\n```",
+        "input_tokens": 289,
+        "output_tokens": 70,
+        "latency_ms": 995.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \"real\" job at $40k (eg), put all the res...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \\\"real\\\" job at $40k (eg), put all the res...\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 67,
+        "latency_ms": 1325.3
+      }
+    },
+    {
+      "query_id": "3616",
+      "query_idx": 13,
+      "claim_index": 1,
+      "claim": "If you earn $40k, try to maintain a lifestyle as if you were earning $20k.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \"real\" job at $40k (eg), put all the res...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \\\"real\\\" job at $40k (eg), put all the res...\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 67,
+        "latency_ms": 906.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \"real\" job at $40k (eg), put all the res...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"My basic rule I tell everyone who will listen is to always live like you're a college student - if you could make it on $20k a year, when you get your first \\\"real\\\" job at $40k (eg), put all the res...\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 67,
+        "latency_ms": 2071.8
+      }
+    },
+    {
+      "query_id": "3616",
+      "query_idx": 13,
+      "claim_index": 2,
+      "claim": "Put the difference between your income and expenses into savings such as a 401(k) or IRA.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 14,
+        "latency_ms": 472.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "put all the rest into savings such as a 401(k) or IRA.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"put all the rest into savings such as a 401(k) or IRA.\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 31,
+        "latency_ms": 1162.7
+      }
+    },
+    {
+      "query_id": "3616",
+      "query_idx": 13,
+      "claim_index": 3,
+      "claim": "Gradually increase your lifestyle expenses only after reaching major savings goals like an emergency fund or a house down payment.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 14,
+        "latency_ms": 616.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 14,
+        "latency_ms": 597.9
+      }
+    },
+    {
+      "query_id": "3616",
+      "query_idx": 13,
+      "claim_index": 4,
+      "claim": "Start saving early, even if it's a small amount like $50 from each paycheck.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Start as early as possible and you will want to kiss your younger self when you get to retirement age.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Start as early as possible and you will want to kiss your younger self when you get to retirement age.\"\n}\n```",
+        "input_tokens": 288,
+        "output_tokens": 39,
+        "latency_ms": 937.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Start as early as possible and you will want to kiss your younger self when you get to retirement age.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Start as early as possible and you will want to kiss your younger self when you get to retirement age.\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 36,
+        "latency_ms": 952.9
+      }
+    },
+    {
+      "query_id": "7502",
+      "query_idx": 14,
+      "claim_index": 0,
+      "claim": "The ETF price quoted on the stock exchange is determined by the market.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The ETF price quoted on the stock exchange is in principle not referenced to NAV.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"The ETF price quoted on the stock exchange is in principle not referenced to NAV.\"\n}\n```",
+        "input_tokens": 296,
+        "output_tokens": 34,
+        "latency_ms": 613.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the ETF price you see is determined by ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the ETF price you see is determined by ...\"}\n```",
+        "input_tokens": 296,
+        "output_tokens": 24,
+        "latency_ms": 885.4
+      }
+    },
+    {
+      "query_id": "7502",
+      "query_idx": 14,
+      "claim_index": 1,
+      "claim": "The quoted price is generally assumed to be net of relevant fees.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 14,
+        "latency_ms": 495.2
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 14,
+        "latency_ms": 741.1
+      }
+    },
+    {
+      "query_id": "7502",
+      "query_idx": 14,
+      "claim_index": 2,
+      "claim": "The fund administrator calculates and publishes the NAV net of all fees.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The fund administrator will calculate and publish the NAV net of all fees,",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The fund administrator will calculate and publish the NAV net of all fees,\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 29,
+        "latency_ms": 611.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the fund administrator will calculate and publish the NAV net of all fees",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the fund administrator will calculate and publish the NAV net of all fees\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 28,
+        "latency_ms": 813.7
+      }
+    },
+    {
+      "query_id": "9464",
+      "query_idx": 15,
+      "claim_index": 0,
+      "claim": "Keeping cash in a bank account is particularly suitable if you need access to the money during a specific timeframe.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 14,
+        "latency_ms": 707.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Even if it takes a couple of days to ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Even if it takes a couple of days to ...\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 25,
+        "latency_ms": 940.8
+      }
+    },
+    {
+      "query_id": "9464",
+      "query_idx": 15,
+      "claim_index": 1,
+      "claim": "It is recommended to have some cash on hand for emergencies.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "there are still many instances of \"emergencies\" that need \"cash\"",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"there are still many instances of \\\"emergencies\\\" that need \\\"cash\\\"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 31,
+        "latency_ms": 593.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "recommend keeping some amount of money in cash as an emergency fund",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"recommend keeping some amount of money in cash as an emergency fund\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 27,
+        "latency_ms": 856.2
+      }
+    },
+    {
+      "query_id": "9464",
+      "query_idx": 15,
+      "claim_index": 2,
+      "claim": "Suggestions for emergency cash range from $1,000 to three to six times your monthly income in savings.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 48,
+        "latency_ms": 903.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 48,
+        "latency_ms": 919.6
+      }
+    },
+    {
+      "query_id": "9464",
+      "query_idx": 15,
+      "claim_index": 3,
+      "claim": "A simple and safe way to manage a lot of cash is to keep it in a bank account.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)",
+        "raw_response": "```json\n{\n    \"supported\": true,\n    \"evidence\": \"Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)\"\n}\n```",
+        "input_tokens": 280,
+        "output_tokens": 48,
+        "latency_ms": 765.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 44,
+        "latency_ms": 942.4
+      }
+    },
+    {
+      "query_id": "9464",
+      "query_idx": 15,
+      "claim_index": 4,
+      "claim": "Bank accounts are generally safe and may be insured.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Interest won't pay you much right now, but the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 44,
+        "latency_ms": 679.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the money should be safe (I presume Israel has some kind of deposit insurance for normal bank accounts?)\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 35,
+        "latency_ms": 888.1
+      }
+    },
+    {
+      "query_id": "8480",
+      "query_idx": 16,
+      "claim_index": 0,
+      "claim": "VIX is an index that can be associated with products like VXX.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "You can trade VXX, but VIX is only an index.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"You can trade VXX, but VIX is only an index.\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 29,
+        "latency_ms": 524.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "You can trade VXX, but VIX is only an index.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"You can trade VXX, but VIX is only an index.\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 29,
+        "latency_ms": 908.8
+      }
+    },
+    {
+      "query_id": "8480",
+      "query_idx": 16,
+      "claim_index": 1,
+      "claim": "VXX is a tradeable security.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "You can trade VXX, but VIX is only an index.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"You can trade VXX, but VIX is only an index.\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 29,
+        "latency_ms": 922.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "You can trade VXX, but VIX is only an index.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"You can trade VXX, but VIX is only an index.\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 29,
+        "latency_ms": 860.4
+      }
+    },
+    {
+      "query_id": "8480",
+      "query_idx": 16,
+      "claim_index": 2,
+      "claim": "S&P/TSX 60 VIX (VIXC) cannot be traded directly.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.\"\n}\n```",
+        "input_tokens": 285,
+        "output_tokens": 55,
+        "latency_ms": 1593.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 52,
+        "latency_ms": 1026.5
+      }
+    },
+    {
+      "query_id": "8480",
+      "query_idx": 16,
+      "claim_index": 3,
+      "claim": "S&P/TSX 60 VIX (VIXC) is not a tradeable product.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"S&P/TSX 60 VIX (CAD) is an equation and as the implied volatility of two close to the money TSX 60 options change, the output changes.\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 52,
+        "latency_ms": 819.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "VIX is only an index.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"VIX is only an index.\"}\n```",
+        "input_tokens": 287,
+        "output_tokens": 22,
+        "latency_ms": 815.2
+      }
+    },
+    {
+      "query_id": "8480",
+      "query_idx": 16,
+      "claim_index": 4,
+      "claim": "S&P/TSX 60 VIX (VIXC) serves as an important signal for traders.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 516.2
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 496.6
+      }
+    },
+    {
+      "query_id": "3183",
+      "query_idx": 17,
+      "claim_index": 0,
+      "claim": "Buying a car from a private party can save both parties money.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 14,
+        "latency_ms": 1250.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 269,
+        "output_tokens": 14,
+        "latency_ms": 850.2
+      }
+    },
+    {
+      "query_id": "3183",
+      "query_idx": 17,
+      "claim_index": 1,
+      "claim": "The 'middle man' is cut out when buying from a private party.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 14,
+        "latency_ms": 476.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 14,
+        "latency_ms": 1024.3
+      }
+    },
+    {
+      "query_id": "3183",
+      "query_idx": 17,
+      "claim_index": 2,
+      "claim": "Purchasing from a dealership can provide benefits related to the dealership/manufacturer relationship.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 14,
+        "latency_ms": 615.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 14,
+        "latency_ms": 821.5
+      }
+    },
+    {
+      "query_id": "3183",
+      "query_idx": 17,
+      "claim_index": 3,
+      "claim": "Purchasing from a dealership can provide warranty benefits.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 14,
+        "latency_ms": 638.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 265,
+        "output_tokens": 14,
+        "latency_ms": 521.7
+      }
+    },
+    {
+      "query_id": "3183",
+      "query_idx": 17,
+      "claim_index": 4,
+      "claim": "The choice of where to buy a car depends on individual priorities regarding cost savings versus warranty and support.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 276,
+        "output_tokens": 14,
+        "latency_ms": 525.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 276,
+        "output_tokens": 14,
+        "latency_ms": 576.0
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 0,
+      "claim": "Buying an inverse ETF does not yield the same results as shorting the ETF due to the compounding effect of daily returns.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 303,
+        "output_tokens": 14,
+        "latency_ms": 471.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "The most fundamental answer is that when you short a stock (or an ETF), you short a specific number of shares on a specific day, and you probably don't adjust this much as the price wobbles goes up a...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The most fundamental answer is that when you short a stock (or an ETF), you short a specific number of shares on a specific day, and you probably don't adjust this much as the price wobbles goes up a...\"}\n```",
+        "input_tokens": 303,
+        "output_tokens": 60,
+        "latency_ms": 1463.0
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 1,
+      "claim": "The ETF may experience a net gain over a period.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 407.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the next day it moves up 10% (to a price of $110) and the following day it moves down 5% (to a price of $104.5)",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the next day it moves up 10% (to a price of $110) and the following day it moves down 5% (to a price of $104.5)\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 52,
+        "latency_ms": 1878.8
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 2,
+      "claim": "The inverse ETF will reflect the opposite daily movements.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 579.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 14,
+        "latency_ms": 1535.9
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 3,
+      "claim": "The net loss for the inverse ETF can be greater than the gains of the original ETF.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 296,
+        "output_tokens": 14,
+        "latency_ms": 512.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 296,
+        "output_tokens": 14,
+        "latency_ms": 569.4
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 4,
+      "claim": "The inverse ETF results in a net loss over the same period.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 14,
+        "latency_ms": 609.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 291,
+        "output_tokens": 14,
+        "latency_ms": 662.2
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 5,
+      "claim": "Inverse funds adjust their positions continuously to maintain leverage.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 391.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 488.8
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 6,
+      "claim": "The differences in performance can be exacerbated compared to a straightforward short position.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 14,
+        "latency_ms": 405.1
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 14,
+        "latency_ms": 532.0
+      }
+    },
+    {
+      "query_id": "10595",
+      "query_idx": 18,
+      "claim_index": 7,
+      "claim": "If the ETF rises by 10% one day and then falls by 5% the next, the inverse ETF will drop by 10% and then rise by 5%.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 314,
+        "output_tokens": 14,
+        "latency_ms": 450.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 314,
+        "output_tokens": 14,
+        "latency_ms": 535.2
+      }
+    },
+    {
+      "query_id": "6340",
+      "query_idx": 19,
+      "claim_index": 0,
+      "claim": "Having both a liquid emergency fund and an untapped line of credit provides a more stable financial situation.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first. Having debt + cash is a much more stable situation than ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first. Having debt + cash is a much more stable situation than ...\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 53,
+        "latency_ms": 580.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Having debt + cash is a much more stable situation than ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Having debt + cash is a much more stable situation than ...\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 27,
+        "latency_ms": 612.5
+      }
+    },
+    {
+      "query_id": "6340",
+      "query_idx": 19,
+      "claim_index": 1,
+      "claim": "In the event of an emergency, one can draw from the line of credit first.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first.\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 41,
+        "latency_ms": 632.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first.\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 41,
+        "latency_ms": 1186.1
+      }
+    },
+    {
+      "query_id": "6340",
+      "query_idx": 19,
+      "claim_index": 2,
+      "claim": "The cash in the emergency fund can be used to pay off the debt or cover other expenses.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 14,
+        "latency_ms": 674.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 14,
+        "latency_ms": 782.6
+      }
+    },
+    {
+      "query_id": "6340",
+      "query_idx": 19,
+      "claim_index": 3,
+      "claim": "This dual approach offers flexibility and security compared to having neither option available.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Why can't you have both? If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first. Having debt + cash is a much more stable situation than ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Why can't you have both? If you do have both credit and an emergency fund, and an emergency occurs, you can draw from the line of credit first. Having debt + cash is a much more stable situation than ...\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 59,
+        "latency_ms": 763.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Having debt + cash is a much more stable situation than ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Having debt + cash is a much more stable situation than ...\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 27,
+        "latency_ms": 873.7
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 0,
+      "claim": "To manage household finances effectively, start by making a comprehensive list of all your expenses.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Make a list of all your expenses.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Make a list of all your expenses.\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 23,
+        "latency_ms": 445.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Make a list of all your expenses.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Make a list of all your expenses.\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 23,
+        "latency_ms": 1141.2
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 1,
+      "claim": "Expenses can be categorized into fixed expenses and regular but variable expenses.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "List fixed expenses, like rent, loan payments, insurance, etc.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"List fixed expenses, like rent, loan payments, insurance, etc.\"}\n```",
+        "input_tokens": 276,
+        "output_tokens": 29,
+        "latency_ms": 566.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "List fixed expenses, like rent, loan payments, insurance, etc.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"List fixed expenses, like rent, loan payments, insurance, etc.\"}\n```",
+        "input_tokens": 276,
+        "output_tokens": 29,
+        "latency_ms": 1355.8
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 2,
+      "claim": "Fixed expenses include items like rent and loan payments.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "List fixed expenses, like rent, loan payments, insurance, etc.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"List fixed expenses, like rent, loan payments, insurance, etc.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 29,
+        "latency_ms": 692.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "List fixed expenses, like rent, loan payments, insurance, etc.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"List fixed expenses, like rent, loan payments, insurance, etc.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 29,
+        "latency_ms": 919.1
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 3,
+      "claim": "Regular but variable expenses include items like food and utilities.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 14,
+        "latency_ms": 927.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 14,
+        "latency_ms": 528.0
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 4,
+      "claim": "It's advisable to keep records of expenses for at least a few months.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 530.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Make a list of all your expenses.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Make a list of all your expenses.\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 23,
+        "latency_ms": 779.9
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 5,
+      "claim": "Budgeting for savings and retirement is crucial.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 14,
+        "latency_ms": 441.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 14,
+        "latency_ms": 790.5
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 6,
+      "claim": "Even small amounts saved can accumulate over time.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 14,
+        "latency_ms": 498.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 14,
+        "latency_ms": 674.3
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 7,
+      "claim": "Savings should be treated as a non-negotiable expense.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n    \"supported\": false,\n    \"evidence\": \"\"\n}\n```",
+        "input_tokens": 275,
+        "output_tokens": 18,
+        "latency_ms": 774.4
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 275,
+        "output_tokens": 14,
+        "latency_ms": 511.4
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 8,
+      "claim": "After totaling your expenses, compare them to your income.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 14,
+        "latency_ms": 543.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you don't have any debt besides your mortgage, then add up all of your monthly expenses and compare them to your income.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you don't have any debt besides your mortgage, then add up all of your monthly expenses and compare them to your income.\"}\n```",
+        "input_tokens": 274,
+        "output_tokens": 40,
+        "latency_ms": 1243.0
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 9,
+      "claim": "If expenses exceed income, you need to identify areas to cut back.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 475.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 504.8
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 10,
+      "claim": "Maintaining an emergency fund is essential.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 57,
+        "latency_ms": 1038.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 57,
+        "latency_ms": 1366.4
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 11,
+      "claim": "Aim for 3 to 6 months' worth of expenses in savings.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"We aim to keep 6 months of expenses.\"\n}\n```",
+        "input_tokens": 278,
+        "output_tokens": 28,
+        "latency_ms": 565.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"We aim to keep 6 months of expenses.\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 25,
+        "latency_ms": 1326.7
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 12,
+      "claim": "The amount in the emergency fund depends on the stability of your income.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Your emergency fund should match the financial risks that are relevant to you.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Your emergency fund should match the financial risks that are relevant to you.\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 29,
+        "latency_ms": 787.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Your emergency fund should match the financial risks that are relevant to you.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Your emergency fund should match the financial risks that are relevant to you.\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 29,
+        "latency_ms": 1490.9
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 13,
+      "claim": "If your job is less stable, aim for 6 months of expenses.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"\n}\n```",
+        "input_tokens": 278,
+        "output_tokens": 60,
+        "latency_ms": 988.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 57,
+        "latency_ms": 1340.0
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 14,
+      "claim": "An emergency fund can help cover unexpected costs or loss of income.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"\n}\n```",
+        "input_tokens": 276,
+        "output_tokens": 60,
+        "latency_ms": 819.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"We aim to keep 6 months of expenses. The rationale is that its enough time to recover from most serious illnesses (that you can recover from) or a redundancy or pay for a large unexpected problem not ...\"}\n```",
+        "input_tokens": 276,
+        "output_tokens": 57,
+        "latency_ms": 1373.9
+      }
+    },
+    {
+      "query_id": "3460",
+      "query_idx": 20,
+      "claim_index": 15,
+      "claim": "If your job is secure, 3 months of expenses may suffice.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 439.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 1038.1
+      }
+    },
+    {
+      "query_id": "6774",
+      "query_idx": 21,
+      "claim_index": 0,
+      "claim": "The tax treatment of unexercised PSEC rights involves two taxable events for shareholders.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 14,
+        "latency_ms": 424.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Not only does the PSEC shareholder have a TAXABLE EVENT, but he has TWO ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Not only does the PSEC shareholder have a TAXABLE EVENT, but he has TWO ...\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 33,
+        "latency_ms": 661.9
+      }
+    },
+    {
+      "query_id": "6774",
+      "query_idx": 21,
+      "claim_index": 1,
+      "claim": "If a shareholder receives a Subscription Right from PSEC and does not sell or exercise it before expiration, they can expect to have taxable dividend income equal to the fair market value of the Subscription Right on the date of its distribution.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 316,
+        "output_tokens": 18,
+        "latency_ms": 521.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "if you receive a Subscription Right from PSEC and do no...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"if you receive a Subscription Right from PSEC and do no...\"}\n```",
+        "input_tokens": 316,
+        "output_tokens": 28,
+        "latency_ms": 1163.6
+      }
+    },
+    {
+      "query_id": "6774",
+      "query_idx": 21,
+      "claim_index": 2,
+      "claim": "Shareholders can expect a capital loss upon expiration equal to their adjusted tax basis in the right.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 290,
+        "output_tokens": 18,
+        "latency_ms": 753.4
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 290,
+        "output_tokens": 14,
+        "latency_ms": 689.4
+      }
+    },
+    {
+      "query_id": "6774",
+      "query_idx": 21,
+      "claim_index": 3,
+      "claim": "The dividend taxable event occurs on the date of distribution.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 282,
+        "output_tokens": 14,
+        "latency_ms": 602.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 282,
+        "output_tokens": 14,
+        "latency_ms": 523.8
+      }
+    },
+    {
+      "query_id": "6774",
+      "query_idx": 21,
+      "claim_index": 4,
+      "claim": "The capital loss occurs upon expiration of the right.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 14,
+        "latency_ms": 511.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "it has to deal with an expiration of rights as a taxable event",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"it has to deal with an expiration of rights as a taxable event\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 28,
+        "latency_ms": 963.7
+      }
+    },
+    {
+      "query_id": "9161",
+      "query_idx": 22,
+      "claim_index": 0,
+      "claim": "The balance sheet reflects the financial position as of the date it ends.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 296,
+        "output_tokens": 14,
+        "latency_ms": 400.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 296,
+        "output_tokens": 14,
+        "latency_ms": 887.1
+      }
+    },
+    {
+      "query_id": "9161",
+      "query_idx": 22,
+      "claim_index": 1,
+      "claim": "The pay period may end a few days earlier than the last day of the year.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 299,
+        "output_tokens": 14,
+        "latency_ms": 373.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 299,
+        "output_tokens": 14,
+        "latency_ms": 755.2
+      }
+    },
+    {
+      "query_id": "9161",
+      "query_idx": 22,
+      "claim_index": 2,
+      "claim": "A balance sheet typically ends on the latest check of the year.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 14,
+        "latency_ms": 610.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 295,
+        "output_tokens": 14,
+        "latency_ms": 824.7
+      }
+    },
+    {
+      "query_id": "9161",
+      "query_idx": 22,
+      "claim_index": 3,
+      "claim": "If one is paid bi-weekly, the balance sheet would end on the last day of the year.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 303,
+        "output_tokens": 14,
+        "latency_ms": 371.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 303,
+        "output_tokens": 14,
+        "latency_ms": 691.1
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 0,
+      "claim": "The difference between speculating and investing lies primarily in the level of risk and the intent behind the purchase.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Colloquially, there's no difference except for the level of risk (which is an estimate anyway).",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Colloquially, there's no difference except for the level of risk (which is an estimate anyway).\"\n}\n```",
+        "input_tokens": 263,
+        "output_tokens": 40,
+        "latency_ms": 460.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Colloquially, there's no difference except for the level of risk (which is an estimate anyway).",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Colloquially, there's no difference except for the level of risk (which is an estimate anyway).\"}\n```",
+        "input_tokens": 263,
+        "output_tokens": 36,
+        "latency_ms": 933.3
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 1,
+      "claim": "Investing is a conscious decision based on well-defined research.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 253,
+        "output_tokens": 18,
+        "latency_ms": 613.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Investment is a conscious decision based on well-defined research.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Investment is a conscious decision based on well-defined research.\"}\n```",
+        "input_tokens": 253,
+        "output_tokens": 26,
+        "latency_ms": 789.5
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 2,
+      "claim": "Investing aims to create wealth through improvement or production.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Classically, investment is creating wealth through improvement or production.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Classically, investment is creating wealth through improvement or production.\"}\n```",
+        "input_tokens": 252,
+        "output_tokens": 27,
+        "latency_ms": 746.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Classically, investment is creating wealth through improvement or production.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Classically, investment is creating wealth through improvement or production.\"}\n```",
+        "input_tokens": 252,
+        "output_tokens": 27,
+        "latency_ms": 979.0
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 3,
+      "claim": "An example of investing is purchasing a house to renovate and sell for a profit.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Purchasing a house with th...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Purchasing a house with th...\"\n}\n```",
+        "input_tokens": 258,
+        "output_tokens": 25,
+        "latency_ms": 522.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Classically, investment is creating wealth through improvement or production. Purchasing a house with th...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Classically, investment is creating wealth through improvement or production. Purchasing a house with th...\"}\n```",
+        "input_tokens": 258,
+        "output_tokens": 33,
+        "latency_ms": 1055.1
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 4,
+      "claim": "Speculation involves taking risks based on hunches about future market changes.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Speculation means putting your money on a hunch that some event may occur, depending on current circumstances and some future circumstances.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Speculation means putting your money on a hunch that some event may occur, depending on current circumstances and some future circumstances.\"}\n```",
+        "input_tokens": 257,
+        "output_tokens": 40,
+        "latency_ms": 551.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Speculation means putting your money on a hunch that some event may occur, depending on current circumstances and some future circumstances.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Speculation means putting your money on a hunch that some event may occur, depending on current circumstances and some future circumstances.\"}\n```",
+        "input_tokens": 257,
+        "output_tokens": 40,
+        "latency_ms": 1091.1
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 5,
+      "claim": "Speculators hope to make a profit without necessarily considering the underlying value of the asset.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.\"\n}\n```",
+        "input_tokens": 259,
+        "output_tokens": 40,
+        "latency_ms": 1023.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.\"}\n```",
+        "input_tokens": 259,
+        "output_tokens": 37,
+        "latency_ms": 1023.9
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 6,
+      "claim": "Speculators often seek short-term maximum returns.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "I consider speculation to be a security purchase where the point is to sell it to someone for a higher price. Day-trading is completely speculative.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I consider speculation to be a security purchase where the point is to sell it to someone for a higher price. Day-trading is completely speculative.\"}\n```",
+        "input_tokens": 251,
+        "output_tokens": 44,
+        "latency_ms": 1547.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I consider speculation to be a security purchase where the point is to sell it to someone for a higher price.\"}\n```",
+        "input_tokens": 251,
+        "output_tokens": 37,
+        "latency_ms": 1080.1
+      }
+    },
+    {
+      "query_id": "4236",
+      "query_idx": 23,
+      "claim_index": 7,
+      "claim": "Investors typically hold assets for an extended period.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "There's also a recognition that an investment will be in place for some extended period of time.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"There's also a recognition that an investment will be in place for some extended period of time.\"}\n```",
+        "input_tokens": 251,
+        "output_tokens": 33,
+        "latency_ms": 554.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "There's also a recognition that an investment will be in place for some extended period of time.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"There's also a recognition that an investment will be in place for some extended period of time.\"}\n```",
+        "input_tokens": 251,
+        "output_tokens": 33,
+        "latency_ms": 1014.2
+      }
+    },
+    {
+      "query_id": "4234",
+      "query_idx": 24,
+      "claim_index": 0,
+      "claim": "It is recommended to keep around $1,000 in liquid cash for emergencies.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 660.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 420.4
+      }
+    },
+    {
+      "query_id": "4234",
+      "query_idx": 24,
+      "claim_index": 1,
+      "claim": "A good rule of thumb for how much to set aside as emergency cash is to have between 3 to 6 times your monthly income in savings.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk, but it's not necessarily the most prudent str...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk, but it's not necessarily the most prudent str...\"}\n```",
+        "input_tokens": 297,
+        "output_tokens": 58,
+        "latency_ms": 1140.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"People say you should have 3x-6x of your monthly income in savings because it's an easy, back-of-the-envelope way to handle most financial emergency risk\"}\n```",
+        "input_tokens": 297,
+        "output_tokens": 48,
+        "latency_ms": 1567.4
+      }
+    },
+    {
+      "query_id": "2554",
+      "query_idx": 25,
+      "claim_index": 0,
+      "claim": "Executives are required to file with the SEC when they sell shares.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Exec Insiders have to file with the SEC and some sites like secform4.com track it.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Exec Insiders have to file with the SEC and some sites like secform4.com track it.\"\n}\n```",
+        "input_tokens": 260,
+        "output_tokens": 38,
+        "latency_ms": 612.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Exec Insiders have to file with the SEC",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Exec Insiders have to file with the SEC\"}\n```",
+        "input_tokens": 260,
+        "output_tokens": 24,
+        "latency_ms": 1336.7
+      }
+    },
+    {
+      "query_id": "2554",
+      "query_idx": 25,
+      "claim_index": 1,
+      "claim": "There are websites like secform4.com that track these transactions.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Exec Insiders have to file with the SEC and some sites like secform4.com track it.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Exec Insiders have to file with the SEC and some sites like secform4.com track it.\"}\n```",
+        "input_tokens": 259,
+        "output_tokens": 35,
+        "latency_ms": 615.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "some sites like secform4.com track it",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"some sites like secform4.com track it\"}\n```",
+        "input_tokens": 259,
+        "output_tokens": 24,
+        "latency_ms": 679.7
+      }
+    },
+    {
+      "query_id": "2554",
+      "query_idx": 25,
+      "claim_index": 2,
+      "claim": "Many insiders have selling programs where they sell a consistent amount of shares every month or quarter.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "But many insiders have selling programs where the sell the same amount every month or quarter so you would have to do...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"But many insiders have selling programs where the sell the same amount every month or quarter so you would have to do...\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 38,
+        "latency_ms": 497.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "many insiders have selling programs where the sell the same amount every month or quarter",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"many insiders have selling programs where the sell the same amount every month or quarter\"}\n```",
+        "input_tokens": 264,
+        "output_tokens": 30,
+        "latency_ms": 867.5
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 0,
+      "claim": "Contractors can recoup taxation-related expenses by ensuring that these expenses are built into their rates.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "They are already indirectly paying these expenses. They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They are already indirectly paying these expenses. They should be built into your rates.\"}\n```",
+        "input_tokens": 238,
+        "output_tokens": 31,
+        "latency_ms": 583.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They should be built into your rates.\"}\n```",
+        "input_tokens": 238,
+        "output_tokens": 23,
+        "latency_ms": 1142.0
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 1,
+      "claim": "Companies are already indirectly paying these expenses through the rates charged.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "They are already indirectly paying these expenses. They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They are already indirectly paying these expenses. They should be built into your rates.\"}\n```",
+        "input_tokens": 232,
+        "output_tokens": 31,
+        "latency_ms": 539.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "They are already indirectly paying these expenses. They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They are already indirectly paying these expenses. They should be built into your rates.\"}\n```",
+        "input_tokens": 232,
+        "output_tokens": 31,
+        "latency_ms": 845.4
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 2,
+      "claim": "Contractors need to craft their contracts to specify that they will be reimbursed for expenses.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 237,
+        "output_tokens": 14,
+        "latency_ms": 780.8
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 237,
+        "output_tokens": 14,
+        "latency_ms": 1318.7
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 3,
+      "claim": "The company typically expects contractors to cover their expenses from within their charges.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "They are already indirectly paying these expenses. They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They are already indirectly paying these expenses. They should be built into your rates.\"}\n```",
+        "input_tokens": 234,
+        "output_tokens": 31,
+        "latency_ms": 518.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "They should be built into your rates.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"They should be built into your rates.\"}\n```",
+        "input_tokens": 234,
+        "output_tokens": 23,
+        "latency_ms": 793.1
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 4,
+      "claim": "It is important for contractors to report the income accurately.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 231,
+        "output_tokens": 14,
+        "latency_ms": 354.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "the company isn't going to calculate or withhold taxes on your behalf - that is your responsibility.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"the company isn't going to calculate or withhold taxes on your behalf - that is your responsibility.\"}\n```",
+        "input_tokens": 231,
+        "output_tokens": 34,
+        "latency_ms": 1213.2
+      }
+    },
+    {
+      "query_id": "3393",
+      "query_idx": 26,
+      "claim_index": 5,
+      "claim": "The company will report the payments to the government as a business expense.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 234,
+        "output_tokens": 14,
+        "latency_ms": 552.9
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 234,
+        "output_tokens": 14,
+        "latency_ms": 615.2
+      }
+    },
+    {
+      "query_id": "5044",
+      "query_idx": 27,
+      "claim_index": 0,
+      "claim": "You can pull stock-related information from Google or Yahoo Finance.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 41,
+        "latency_ms": 776.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 41,
+        "latency_ms": 1331.1
+      }
+    },
+    {
+      "query_id": "5044",
+      "query_idx": 27,
+      "claim_index": 1,
+      "claim": "Stock-related information can be accessed over a certain period of time, including the 1980s.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "I dont know if this data is available for the 1980s, but this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"I dont know if this data is available for the 1980s, but this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 57,
+        "latency_ms": 818.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I dont know if this data is available for the 1980s, but this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I dont know if this data is available for the 1980s, but this response to an old question of mine discusses how you can pull stock related information from google or yahoo finance over a certain perio...\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 57,
+        "latency_ms": 1236.1
+      }
+    },
+    {
+      "query_id": "5044",
+      "query_idx": 27,
+      "claim_index": 2,
+      "claim": "You can use Excel or Google Sheets to access stock-related data.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 14,
+        "latency_ms": 606.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "you can pull stock related information from google or yahoo finance",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"you can pull stock related information from google or yahoo finance\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 26,
+        "latency_ms": 736.7
+      }
+    },
+    {
+      "query_id": "5044",
+      "query_idx": 27,
+      "claim_index": 3,
+      "claim": "You can graph stock-related data using Excel or Google Sheets.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 14,
+        "latency_ms": 1728.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "you can pull stock related information from google or yahoo finance",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"you can pull stock related information from google or yahoo finance\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 26,
+        "latency_ms": 773.8
+      }
+    },
+    {
+      "query_id": "1762",
+      "query_idx": 28,
+      "claim_index": 0,
+      "claim": "You can talk to local banks about a business account that allows certain employees to make deposits but not withdrawals.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.\"}\n```",
+        "input_tokens": 263,
+        "output_tokens": 40,
+        "latency_ms": 557.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.\"}\n```",
+        "input_tokens": 263,
+        "output_tokens": 40,
+        "latency_ms": 889.8
+      }
+    },
+    {
+      "query_id": "1762",
+      "query_idx": 28,
+      "claim_index": 1,
+      "claim": "This can be set up using sub-accounts with varying access privileges.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 256,
+        "output_tokens": 14,
+        "latency_ms": 474.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"talk to local banks about a business account, and tell them you want to enable certain employees to make deposits but not withdrawals.\"}\n```",
+        "input_tokens": 256,
+        "output_tokens": 40,
+        "latency_ms": 985.2
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 0,
+      "claim": "The individual is 18 years old.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 290,
+        "output_tokens": 14,
+        "latency_ms": 583.2
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 290,
+        "output_tokens": 14,
+        "latency_ms": 748.1
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 1,
+      "claim": "It is advisable to consider opening a Roth IRA.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "On the one hand, it's a great idea to open a Roth IRA now, once you've got the cash to contribute.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"On the one hand, it's a great idea to open a Roth IRA now, once you've got the cash to contribute.\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 39,
+        "latency_ms": 715.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "On the one hand, it's a great idea to open a Roth IRA now, once you've got the cash to contribute.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"On the one hand, it's a great idea to open a Roth IRA now, once you've got the cash to contribute.\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 39,
+        "latency_ms": 976.9
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 2,
+      "claim": "You can withdraw your contributions from a Roth IRA tax-free at any time.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\n  \"supported\": false,\n  \"evidence\": \"\"\n}\n```",
+        "input_tokens": 297,
+        "output_tokens": 18,
+        "latency_ms": 663.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"\"}\n```",
+        "input_tokens": 297,
+        "output_tokens": 14,
+        "latency_ms": 1533.9
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 3,
+      "claim": "A Solo 401(k) allows for higher contribution limits.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more, up...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more, up...\"}\n```",
+        "input_tokens": 294,
+        "output_tokens": 44,
+        "latency_ms": 615.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more\"}\n```",
+        "input_tokens": 294,
+        "output_tokens": 41,
+        "latency_ms": 953.4
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 4,
+      "claim": "A Solo 401(k) can provide tax advantages.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 14,
+        "latency_ms": 480.3
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"In 2017, this allows you to contribute up to $18k/year and your employer (the LLC) to contribute more\"}\n```",
+        "input_tokens": 293,
+        "output_tokens": 41,
+        "latency_ms": 1057.6
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 5,
+      "claim": "A mix of both Roth and Traditional accounts may occur as income and investment strategy evolve.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "That said, you will likely have many years of access to a 401k and high income in your future working years, in which you can contribute to a Traditional 401k (or if no access to 401k, then Traditiona...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"That said, you will likely have many years of access to a 401k and high income in your future working years, in which you can contribute to a Traditional 401k (or if no access to 401k, then Traditiona...\"}\n```",
+        "input_tokens": 299,
+        "output_tokens": 65,
+        "latency_ms": 1043.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "That said, you will likely have many years of access to a 401k and high income in your future working years, in which you can contribute to a Traditional 401k",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"That said, you will likely have many years of access to a 401k and high income in your future working years, in which you can contribute to a Traditional 401k\"}\n```",
+        "input_tokens": 299,
+        "output_tokens": 51,
+        "latency_ms": 1002.1
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 6,
+      "claim": "The individual makes $60,000 a year.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 14,
+        "latency_ms": 584.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "the main reason to op... sounds like it would fit your meager earnings this year.",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"the main reason to op... sounds like it would fit your meager earnings this year.\"}\n```",
+        "input_tokens": 292,
+        "output_tokens": 33,
+        "latency_ms": 917.6
+      }
+    },
+    {
+      "query_id": "1610",
+      "query_idx": 29,
+      "claim_index": 7,
+      "claim": "Some types of withdrawals from a Roth IRA require the account to be aged 5 years.",
+      "stored_5_05_verdict": 0,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 300,
+        "output_tokens": 14,
+        "latency_ms": 945.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 300,
+        "output_tokens": 14,
+        "latency_ms": 679.9
+      }
+    },
+    {
+      "query_id": "5715",
+      "query_idx": 30,
+      "claim_index": 0,
+      "claim": "Only a handful of Canadian companies have options trading on their stocks.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 412.8
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 14,
+        "latency_ms": 547.5
+      }
+    },
+    {
+      "query_id": "5715",
+      "query_idx": 30,
+      "claim_index": 1,
+      "claim": "Smaller and/or less liquid stocks do not have enough demand for options.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Yes it is possible but with a caveat. It is a pattern that can be observed in many lightly traded stocks that usually have a small market cap. I am talking about a stock that trades less than 2,000 sh...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Yes it is possible but with a caveat. It is a pattern that can be observed in many lightly traded stocks that usually have a small market cap. I am talking about a stock that trades less than 2,000 sh...\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 62,
+        "latency_ms": 796.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I am talking about a stock that trades less than 2,000 shares a day.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I am talking about a stock that trades less than 2,000 shares a day.\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 33,
+        "latency_ms": 937.7
+      }
+    },
+    {
+      "query_id": "5715",
+      "query_idx": 30,
+      "claim_index": 2,
+      "claim": "The options exchange and market makers do not offer options for these stocks.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 14,
+        "latency_ms": 400.2
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 14,
+        "latency_ms": 557.8
+      }
+    },
+    {
+      "query_id": "5715",
+      "query_idx": 30,
+      "claim_index": 3,
+      "claim": "It isn't cost-effective for them to create a market with very few participants.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 279,
+        "output_tokens": 14,
+        "latency_ms": 384.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "I am talking about a stock that trades less than 2,000 shares.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"I am talking about a stock that trades less than 2,000 shares.\"}\n```",
+        "input_tokens": 279,
+        "output_tokens": 31,
+        "latency_ms": 748.0
+      }
+    },
+    {
+      "query_id": "1668",
+      "query_idx": 31,
+      "claim_index": 0,
+      "claim": "CurrencyFair can be used to send money from Europe to the USA.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 14,
+        "latency_ms": 507.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "The website http://currencyfair.com/ provides a service which gives you both a decent exchange rate (about 1% off from mid-market rate) and a moderately low fee for the transfer: 4 USD for outgoing AC...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The website http://currencyfair.com/ provides a service which gives you both a decent exchange rate (about 1% off from mid-market rate) and a moderately low fee for the transfer: 4 USD for outgoing AC...\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 61,
+        "latency_ms": 2004.9
+      }
+    },
+    {
+      "query_id": "1668",
+      "query_idx": 31,
+      "claim_index": 1,
+      "claim": "CurrencyFair charges a fee of 3 EUR for an ACH transfer.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 14,
+        "latency_ms": 526.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 280,
+        "output_tokens": 14,
+        "latency_ms": 978.9
+      }
+    },
+    {
+      "query_id": "1668",
+      "query_idx": 31,
+      "claim_index": 2,
+      "claim": "CurrencyFair charges a fee of 8 EUR for a same-day EUR wire transfer.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 530.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 14,
+        "latency_ms": 588.2
+      }
+    },
+    {
+      "query_id": "1668",
+      "query_idx": 31,
+      "claim_index": 3,
+      "claim": "CurrencyFair offers an exchange rate that is approximately 1% off from the mid-market rate.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The website http://currencyfair.com/ provides a service which gives you both a decent exchange rate (about 1% off from mid-market rate)",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The website http://currencyfair.com/ provides a service which gives you both a decent exchange rate (about 1% off from mid-market rate)\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 45,
+        "latency_ms": 932.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "about 1% off from mid-market rate",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"about 1% off from mid-market rate\"}\n```",
+        "input_tokens": 285,
+        "output_tokens": 24,
+        "latency_ms": 837.0
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 0,
+      "claim": "High transaction costs for buying a house can total 6-10% of the house's value.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 14,
+        "latency_ms": 881.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 278,
+        "output_tokens": 14,
+        "latency_ms": 648.6
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 1,
+      "claim": "It can be difficult to achieve profitability from buying a house within a year.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-\"\n}\n```",
+        "input_tokens": 273,
+        "output_tokens": 47,
+        "latency_ms": 880.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 29,
+        "latency_ms": 638.4
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 2,
+      "claim": "Minimizing transaction costs can help in making a profit in a short timeframe.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year.",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 29,
+        "latency_ms": 486.5
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year.",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 29,
+        "latency_ms": 761.2
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 3,
+      "claim": "Handling transactions personally can help avoid costs associated with agents and inspectors.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 43,
+        "latency_ms": 921.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-...\"}\n```",
+        "input_tokens": 271,
+        "output_tokens": 44,
+        "latency_ms": 1061.4
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 4,
+      "claim": "Real estate typically requires a longer holding period to break even, often around three years.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 275,
+        "output_tokens": 14,
+        "latency_ms": 748.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year.\"}\n```",
+        "input_tokens": 275,
+        "output_tokens": 29,
+        "latency_ms": 782.7
+      }
+    },
+    {
+      "query_id": "5367",
+      "query_idx": 32,
+      "claim_index": 5,
+      "claim": "Costs associated with buying and market fluctuations contribute to the longer holding period.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-\"\n}\n```",
+        "input_tokens": 272,
+        "output_tokens": 47,
+        "latency_ms": 890.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Common transaction costs can be really hard to compensate in a single year. It can include house inspections, closing costs, agents commissions, etc-...\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 44,
+        "latency_ms": 1057.6
+      }
+    },
+    {
+      "query_id": "4055",
+      "query_idx": 33,
+      "claim_index": 0,
+      "claim": "Hull is a basic book that is informative for finance and economy resources.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "It is a basic book, but quite informative.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"It is a basic book, but quite informative.\"}\n```",
+        "input_tokens": 226,
+        "output_tokens": 25,
+        "latency_ms": 584.2
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "it is a basic book, but quite informative",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"it is a basic book, but quite informative\"}\n```",
+        "input_tokens": 226,
+        "output_tokens": 24,
+        "latency_ms": 685.0
+      }
+    },
+    {
+      "query_id": "4055",
+      "query_idx": 33,
+      "claim_index": 1,
+      "claim": "Wilmott's Forum is a good place to find material targeted at programmers and finance professionals.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 230,
+        "output_tokens": 14,
+        "latency_ms": 541.0
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 230,
+        "output_tokens": 14,
+        "latency_ms": 701.9
+      }
+    },
+    {
+      "query_id": "4055",
+      "query_idx": 33,
+      "claim_index": 2,
+      "claim": "Naked Capitalism is suggested for economic commentary.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Another good economic comment blog is Naked Capitalism.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Another good economic comment blog is Naked Capitalism.\"}\n```",
+        "input_tokens": 221,
+        "output_tokens": 25,
+        "latency_ms": 630.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Another good economic comment blog is Naked Capitalism.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Another good economic comment blog is Naked Capitalism.\"}\n```",
+        "input_tokens": 221,
+        "output_tokens": 25,
+        "latency_ms": 820.2
+      }
+    },
+    {
+      "query_id": "823",
+      "query_idx": 34,
+      "claim_index": 0,
+      "claim": "A husband and wife who are both members of the same LLC can file a joint tax return.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "You can definitely continue filing jointly. Being members of a partnership has no bearing on how you file ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"You can definitely continue filing jointly. Being members of a partnership has no bearing on how you file ...\"\n}\n```",
+        "input_tokens": 289,
+        "output_tokens": 38,
+        "latency_ms": 766.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "You can definitely continue filing jointly.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"You can definitely continue filing jointly.\"}\n```",
+        "input_tokens": 289,
+        "output_tokens": 22,
+        "latency_ms": 969.2
+      }
+    },
+    {
+      "query_id": "823",
+      "query_idx": 34,
+      "claim_index": 1,
+      "claim": "Being members of a partnership does not affect how they file their own tax return.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Being members of a partnership has no bearing on how you file ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"Being members of a partnership has no bearing on how you file ...\"\n}\n```",
+        "input_tokens": 286,
+        "output_tokens": 31,
+        "latency_ms": 751.0
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Being members of a partnership has no bearing on how you file ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Being members of a partnership has no bearing on how you file ...\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 28,
+        "latency_ms": 1082.4
+      }
+    },
+    {
+      "query_id": "823",
+      "query_idx": 34,
+      "claim_index": 2,
+      "claim": "They can report both K-1s from the partnership on the same return.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 14,
+        "latency_ms": 624.4
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 286,
+        "output_tokens": 14,
+        "latency_ms": 884.2
+      }
+    },
+    {
+      "query_id": "7907",
+      "query_idx": 35,
+      "claim_index": 0,
+      "claim": "A synthetic long put option can be created by combining a short stock position with a long call option.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 304,
+        "output_tokens": 14,
+        "latency_ms": 2095.7
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 304,
+        "output_tokens": 14,
+        "latency_ms": 913.1
+      }
+    },
+    {
+      "query_id": "7907",
+      "query_idx": 35,
+      "claim_index": 1,
+      "claim": "This strategy allows you to profit as the stock price decreases while limiting your risk if the stock price rises.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "A long put - you have a small initial cost (the option premium) but profit as the stock goes down. You have no additional risk if the shock rises, even a lot.",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"A long put - you have a small initial cost (the option premium) but profit as the stock goes down. You have no additional risk if the shock rises, even a lot.\"\n}\n```",
+        "input_tokens": 305,
+        "output_tokens": 55,
+        "latency_ms": 633.7
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "A long put - you have a small initial cost (the option premium) but profit as the stock goes down. You have no additional risk if the shock rises, even a lot.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"A long put - you have a small initial cost (the option premium) but profit as the stock goes down. You have no additional risk if the shock rises, even a lot.\"}\n```",
+        "input_tokens": 305,
+        "output_tokens": 52,
+        "latency_ms": 1620.8
+      }
+    },
+    {
+      "query_id": "7907",
+      "query_idx": 35,
+      "claim_index": 2,
+      "claim": "The profit/loss graph for this combination resembles that of a long put when both positions are held.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 304,
+        "output_tokens": 14,
+        "latency_ms": 1451.3
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 304,
+        "output_tokens": 14,
+        "latency_ms": 595.5
+      }
+    },
+    {
+      "query_id": "2147",
+      "query_idx": 36,
+      "claim_index": 0,
+      "claim": "You should consider whether you really want to buy that specific house.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "Never buy a house unless you really want to buy that house.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Never buy a house unless you really want to buy that house.\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 28,
+        "latency_ms": 921.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "Never buy a house unless you really want to buy that house.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"Never buy a house unless you really want to buy that house.\"}\n```",
+        "input_tokens": 270,
+        "output_tokens": 28,
+        "latency_ms": 709.4
+      }
+    },
+    {
+      "query_id": "2147",
+      "query_idx": 36,
+      "claim_index": 1,
+      "claim": "If you are not fully committed to it and are planning to move or prefer a different type of place long term, it may be better to continue renting.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "It doesn't sound like you love the house and you plan on moving or would prefer a different type of place long ...",
+        "raw_response": "```json\n{\n  \"supported\": true,\n  \"evidence\": \"It doesn't sound like you love the house and you plan on moving or would prefer a different type of place long ...\"\n}\n```",
+        "input_tokens": 288,
+        "output_tokens": 41,
+        "latency_ms": 826.1
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "It doesn't sound like you love the house and you plan on moving or would prefer a different type of place long ...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"It doesn't sound like you love the house and you plan on moving or would prefer a different type of place long ...\"}\n```",
+        "input_tokens": 288,
+        "output_tokens": 38,
+        "latency_ms": 1027.9
+      }
+    },
+    {
+      "query_id": "2147",
+      "query_idx": 36,
+      "claim_index": 2,
+      "claim": "It may be better to look for another property that suits your needs better.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 41,
+        "latency_ms": 729.9
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.\"}\n```",
+        "input_tokens": 272,
+        "output_tokens": 41,
+        "latency_ms": 905.2
+      }
+    },
+    {
+      "query_id": "2147",
+      "query_idx": 36,
+      "claim_index": 3,
+      "claim": "If there are many houses available in the market, it might be more beneficial to lease the house.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "If there are many houses in the market for sale, I would try to convince someone to lease the house for a year in the best terms possible",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If there are many houses in the market for sale, I would try to convince someone to lease the house for a year in the best terms possible\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 44,
+        "latency_ms": 1535.6
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If there are many houses in the market for sale, I would try to convince someone to lease the house for a year in the best terms possible",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If there are many houses in the market for sale, I would try to convince someone to lease the house for a year in the best terms possible\"}\n```",
+        "input_tokens": 277,
+        "output_tokens": 44,
+        "latency_ms": 1432.4
+      }
+    },
+    {
+      "query_id": "2147",
+      "query_idx": 36,
+      "claim_index": 4,
+      "claim": "It might be beneficial to explore rent-to-own options instead of purchasing it outright.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 14,
+        "latency_ms": 526.4
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"If you want to buy a house, it is very unlikely that the one you are renting right now is the best possible buy.\"}\n```",
+        "input_tokens": 273,
+        "output_tokens": 41,
+        "latency_ms": 1214.2
+      }
+    },
+    {
+      "query_id": "5693",
+      "query_idx": 37,
+      "claim_index": 0,
+      "claim": "The price to earnings (P/E) ratio is a measure of a company's current share price compared to its annual net earnings per share.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The price to earnings ratio is a measure of the company's current share price compared to the annual net earnings per share.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The price to earnings ratio is a measure of the company's current share price compared to the annual net earnings per share.\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 38,
+        "latency_ms": 631.5
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "The price to earnings ratio is a measure of the company's current share price compared to the annual net earnings per share.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The price to earnings ratio is a measure of the company's current share price compared to the annual net earnings per share.\"}\n```",
+        "input_tokens": 283,
+        "output_tokens": 38,
+        "latency_ms": 1044.1
+      }
+    },
+    {
+      "query_id": "5693",
+      "query_idx": 37,
+      "claim_index": 1,
+      "claim": "The P/E ratio indicates the number of years a company would take to pay back the share price if the earnings remain constant.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": true,
+        "evidence": "The other way to think about this is the number of years a company would ta...",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The other way to think about this is the number of years a company would ta...\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 32,
+        "latency_ms": 643.8
+      },
+      "gpt_4o_mini": {
+        "supported": true,
+        "evidence": "The other way to think about this is the number of years a company would take to pay back the share price if the earnings remain constant.",
+        "raw_response": "```json\n{\"supported\": true, \"evidence\": \"The other way to think about this is the number of years a company would take to pay back the share price if the earnings remain constant.\"}\n```",
+        "input_tokens": 281,
+        "output_tokens": 43,
+        "latency_ms": 857.3
+      }
+    },
+    {
+      "query_id": "5693",
+      "query_idx": 37,
+      "claim_index": 2,
+      "claim": "The P/E ratio can serve as an indicator of risk.",
+      "stored_5_05_verdict": 1,
+      "gpt_4o": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 268,
+        "output_tokens": 14,
+        "latency_ms": 509.6
+      },
+      "gpt_4o_mini": {
+        "supported": false,
+        "evidence": "",
+        "raw_response": "```json\n{\"supported\": false, \"evidence\": \"\"}\n```",
+        "input_tokens": 268,
+        "output_tokens": 14,
+        "latency_ms": 792.6
+      }
+    }
+  ]
+}
