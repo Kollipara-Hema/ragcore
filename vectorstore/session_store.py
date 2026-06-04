@@ -11,9 +11,8 @@ This separation is load-bearing for two reasons:
    reachable via the client-supplied corpus string.
 
 2. Session corpora have different lifetimes (TTL, eviction, per-session byte
-   budgets — landing in Commits 5-7) from curated Apple/FiQA corpora.
-   Keeping them in distinct data structures prevents accidental cleanup of
-   curated corpora.
+   budgets) from curated Apple/FiQA corpora. Keeping them in distinct data
+   structures prevents accidental cleanup of curated corpora.
 
 Sessions persist at {root}/<token>/, where root is a SEPARATE filesystem
 root from chroma_persist_dir (Apple corpora) and faiss_data_dir (FiQA), so
@@ -43,6 +42,12 @@ def new_session_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+class SessionCapacityError(Exception):
+    """Raised by SessionStore.create() when minting a NEW session would
+    exceed max_concurrent. Get-or-create on an existing token never raises
+    this — reads don't pay the concurrency check."""
+
+
 @dataclass
 class SessionRecord:
     token: str
@@ -53,14 +58,15 @@ class SessionRecord:
     persist_dir: Path
     created_at: float          # time.time() at create
     last_access: float         # time.time() updated by get()/create() hits
-    byte_count: int = 0        # populated by Commit 4 ingest wiring
-    file_count: int = 0        # populated by Commit 4 ingest wiring
+    byte_count: int = 0        # populated by the ingest handlers on success
+    file_count: int = 0        # populated by the ingest handlers on success
 
 
 class SessionStore:
     """
     Token -> SessionRecord. In-process dict, never persisted; process restart
-    loses all tokens. Boot cleanup of orphaned persist_dirs lands in Commit 7.
+    loses all tokens. Boot cleanup of orphaned persist_dirs is not yet
+    implemented.
 
     Concurrency model:
       - Single-worker asyncio (the deployed shape): the no-await rule alone
@@ -77,7 +83,11 @@ class SessionStore:
         self._records: dict[str, SessionRecord] = {}
         self._lock = threading.Lock()
 
-    def create(self, token: Optional[str] = None) -> SessionRecord:
+    def create(
+        self,
+        token: Optional[str] = None,
+        max_concurrent: Optional[int] = None,
+    ) -> SessionRecord:
         """
         Get-or-create. If `token` is provided and exists, returns the
         existing record. If `token` is provided and is new, OR `token` is
@@ -91,6 +101,11 @@ class SessionStore:
         raise chromadb 0.4.24's duplicate-client ValueError. The slow
         critical section is correctness-required; on a single-worker
         uvicorn the contention is negligible.
+
+        If `max_concurrent` is provided, raises SessionCapacityError when
+        MINTING a fresh session would push the total session count over
+        the cap. Get-or-create on an EXISTING token bypasses the check
+        (read paths don't shed load).
         """
         with self._lock:
             if token and token in self._records:
@@ -103,6 +118,14 @@ class SessionStore:
             # collision; bail without constructing a second client.
             if new_token in self._records:
                 return self._records[new_token]
+
+            # Concurrent-session cap — applied only when minting fresh.
+            # Atomic with the dict insert below so two concurrent mint
+            # requests can't both observe "under cap" and both proceed.
+            if max_concurrent is not None and len(self._records) >= max_concurrent:
+                raise SessionCapacityError(
+                    f"Process at max_concurrent={max_concurrent} sessions"
+                )
 
             persist_dir = self._root / new_token
             store = ChromaVectorStore(
@@ -127,6 +150,42 @@ class SessionStore:
                 record.last_access = time.time()
             return record
 
+    def try_reserve_file(self, token: str, max_files: int) -> bool:
+        """Atomic check-and-increment for file_count. Returns False if the
+        session is unknown OR already at max_files. On True, file_count is
+        incremented and last_access bumped; the caller MUST call
+        release_file_reservation() if the subsequent ingest fails — the
+        reserve+rollback pattern is what makes the cap a real limit under
+        concurrent ingests (without it, two parallel uploads can both
+        observe count == max-1 and both succeed)."""
+        with self._lock:
+            record = self._records.get(token)
+            if record is None or record.file_count >= max_files:
+                return False
+            record.file_count += 1
+            record.last_access = time.time()
+            return True
+
+    def release_file_reservation(self, token: str) -> None:
+        """Roll back a try_reserve_file() that preceded a failed ingest.
+        No-op if the session is gone or the counter is already at zero."""
+        with self._lock:
+            record = self._records.get(token)
+            if record is None or record.file_count <= 0:
+                return
+            record.file_count -= 1
+
+    def record_bytes(self, token: str, byte_delta: int) -> None:
+        """Track total bytes uploaded to a session. Telemetry today; future
+        per-session byte-budget enforcement and TTL/LRU decisions will read
+        this field. No-op if the session is gone."""
+        with self._lock:
+            record = self._records.get(token)
+            if record is None:
+                return
+            record.byte_count += byte_delta
+            record.last_access = time.time()
+
     def delete(self, token: str) -> bool:
         """
         Drop the dict entry, release the per-session chromadb System from
@@ -145,7 +204,8 @@ class SessionStore:
         dict entry is already gone, so no other caller can find this
         token).
 
-        TODO: RSS-actually-freed-after-delete verified in Commit 7.
+        TODO: verify RSS is actually freed after delete, not just the
+        cache dict entry.
         """
         with self._lock:
             record = self._records.pop(token, None)
@@ -168,7 +228,8 @@ def _release_chroma_cache_for_path(persist_dir: Path) -> None:
     system.settings.persist_directory). If those layouts change in a future
     chromadb upgrade, we log and continue rather than fail — the on-disk
     delete still runs, the consequence is a transient RAM leak until
-    process restart. Commit 7 verifies the property end-to-end.
+    process restart. End-to-end RSS reclamation after delete is not yet
+    verified.
     """
     try:
         from chromadb.api.client import SharedSystemClient
