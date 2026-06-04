@@ -91,6 +91,10 @@ class Settings(BaseSettings):
         default=False,
         description="Trust X-Forwarded-For for client IP. Only enable behind a trusted reverse proxy.",
     )
+    ragcore_ingest_max_body_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        description="Hard ceiling on /ingest/* request body size. Returns 413 above this.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE

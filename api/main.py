@@ -97,6 +97,9 @@ from api.middleware.rate_limit import RateLimitMiddleware
 # API key authentication middleware (optional, gated by settings.auth_enabled)
 from api.middleware.auth import APIKeyAuthMiddleware
 
+# Body-size limit middleware for /ingest/* (outermost; see onion order below)
+from api.middleware.body_size import BodySizeLimitMiddleware
+
 # Structured logging setup and request-ID middleware
 from monitoring.logging_config import configure_logging
 from api.middleware.request_id import RequestIdMiddleware
@@ -295,9 +298,9 @@ app.add_middleware(
 )
 
 # API Key Authentication Middleware — only registered when auth is enabled.
-# Placed between CORS and RateLimit: execution order is
-# RequestId → RateLimit → Auth → CORS → handler, so rate-limiting applies
-# before key validation and bad-key floods are still throttled.
+# Sits inside RateLimit so bad-key floods are throttled before key validation
+# runs. See the onion-order comment at BodySizeLimitMiddleware below for the
+# full pipeline.
 if settings.ragcore_auth_enabled:
     if not settings.ragcore_api_key:
         raise RuntimeError(
@@ -309,9 +312,9 @@ if settings.ragcore_auth_enabled:
 else:
     logger.info("API key authentication disabled (RAGCORE_AUTH_ENABLED=false)")
 
-# Rate Limiting Middleware — prevents a single user from spamming the API
-# Defined in api/middleware/rate_limit.py
-# Configurable via RAGCORE_RATE_LIMIT_MAX_REQUESTS / RAGCORE_RATE_LIMIT_WINDOW_SECONDS
+# Rate Limiting Middleware — prevents a single user from spamming the API.
+# Defined in api/middleware/rate_limit.py.
+# Configurable via RAGCORE_RATE_LIMIT_MAX_REQUESTS / RAGCORE_RATE_LIMIT_WINDOW_SECONDS.
 app.add_middleware(
     RateLimitMiddleware,
     max_requests=settings.ragcore_rate_limit_max_requests,
@@ -319,10 +322,33 @@ app.add_middleware(
     trust_proxy_headers=settings.ragcore_trust_proxy_headers,
 )
 
-# Request-ID Middleware — registered last so it executes first (outermost).
-# All downstream log calls run inside its bound_contextvars context and
-# therefore automatically carry request_id in their JSON output.
+# Request-ID Middleware — assigns a request_id and binds it to structlog
+# contextvars so downstream log calls carry it automatically. Note: 413/400
+# responses from BodySizeLimitMiddleware do NOT carry a request_id because
+# BodySize is outermost; acceptable, since those rejections never reach any
+# logic that would benefit from correlation.
 app.add_middleware(RequestIdMiddleware)
+
+# Body-size limit — OUTERMOST middleware. add_middleware is LIFO (last added
+# runs first), so registering this last makes it the first thing every
+# request hits. A single integer compare on Content-Length rejects oversized
+# /ingest/* bodies before any downstream component buffers a byte; the
+# wrapped receive() catches missing/lying Content-Length (chunked uploads).
+#
+# Outermost position is LOAD-BEARING. This guard's whole value is being
+# cheaper than anything it protects — moving it inward (e.g. inside
+# RateLimit or Auth) lets the protected components pay setup cost for
+# requests this would have rejected for free. A regression that reorders
+# middleware silently is exactly what tests/unit/test_body_size.py guards
+# against.
+#
+# Final onion order, outermost → innermost:
+#   BodySize → RequestId → RateLimit → Auth → CORS → handler
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_bytes=settings.ragcore_ingest_max_body_bytes,
+    protected_prefixes=("/ingest/file", "/ingest/text"),
+)
 
 
 # =============================================================================
