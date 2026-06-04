@@ -29,6 +29,11 @@ dependencies = [
     # Embeddings & vector search
     "sentence-transformers>=2.6",
     "faiss-cpu>=1.8",
+    # Pinned exactly: matches the Dockerfile pin, and session-store cache
+    # eviction reaches into SharedSystemClient._identifer_to_system, a 0.4.24
+    # internal attribute (typo'd in upstream source). A higher 0.4.x could
+    # rename it and silently fall back to a logged warning + RAM leak.
+    "chromadb==0.4.24",
     "tiktoken>=0.6",
     # Retrieval
     "rank-bm25>=0.2",
@@ -59,9 +64,6 @@ eval = [
     "plotly>=5.19",
     "rouge-score>=0.1",
     "bert-score>=0.3",
-]
-chroma = [
-    "chromadb>=0.4.24,<0.5",
 ]
 async = [
     "celery[redis]>=5.3",
