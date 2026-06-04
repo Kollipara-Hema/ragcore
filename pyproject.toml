@@ -45,6 +45,11 @@ dependencies = [
     "pymupdf4llm>=1.27",
     "python-docx>=1.1",
     "beautifulsoup4>=4.12",
+    # Magic-byte sniff for /ingest/file. Pure-Python, no system libmagic
+    # dependency. Security-critical: drives BOTH the type allowlist and the
+    # loader-dispatch suffix in api/main.py — see _sniff_file_kind. A
+    # transitively-installed version would be silent infra debt.
+    "filetype>=1.2,<2",
     # Numerics
     "numpy>=1.26",
     "pandas>=2.2",

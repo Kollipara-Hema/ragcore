@@ -118,6 +118,15 @@ class Settings(BaseSettings):
         default=3,
         description="Max concurrent sessions per process. Returns 503 above this.",
     )
+    ragcore_pdf_max_pages: int = Field(
+        default=100,
+        description=(
+            "Max page count for an uploaded PDF. Probed via pymupdf.open "
+            "(metadata read only — no text extraction) BEFORE the embed "
+            "pipeline runs. Returns 413 when exceeded. Inclusive — a PDF "
+            "with exactly N pages is accepted."
+        ),
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE
