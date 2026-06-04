@@ -127,6 +127,21 @@ class Settings(BaseSettings):
             "with exactly N pages is accepted."
         ),
     )
+    ragcore_session_idle_ttl_seconds: int = Field(
+        default=1800,
+        description=(
+            "Sessions whose (now - last_access) exceeds this are evicted by "
+            "the reaper. Idle TTL, NOT absolute — last_access bumps on every "
+            "ingest/query so an active user is never evicted mid-session."
+        ),
+    )
+    ragcore_session_sweep_interval_seconds: int = Field(
+        default=300,
+        description=(
+            "How often the reaper walks the session table. Worst-case "
+            "eviction lag = idle_ttl + sweep_interval."
+        ),
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE
