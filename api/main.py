@@ -484,6 +484,50 @@ def _resolve_or_mint_session(request: Request) -> SessionRecord:
         )
 
 
+# Magic-byte sniffer constants
+_SNIFF_PREFIX_BYTES = 8192  # filetype only needs the first few hundred bytes
+
+
+def _sniff_file_kind(content: bytes) -> str:
+    """Return the AUTHORITATIVE type of the uploaded bytes. One of:
+      "pdf"    — filetype.guess identified as PDF
+      "text"   — filetype.guess returned None AND bytes decode as UTF-8
+      "reject" — any recognized non-PDF binary (docx/zip/png/...) OR
+                 unrecognized AND non-UTF-8-decodable bytes
+
+    The three-way classification is deliberate. The final allowlist is PDF +
+    text only, so HTML/CSV-specific heuristics would (a) do security work for
+    types already eliminated by routing, and (b) false-reject valid Markdown
+    with inline <div> blocks or TXT with commas.
+
+    Safety property: an HTML or CSV file lands here as "text" and routes to
+    TextLoader (Path.read_text — no BeautifulSoup, no pandas). The parser
+    pathology that motivated dropping HTML/CSV from the user-input path is
+    eliminated structurally by removing the dangerous loaders from this
+    flow, not by a classifier that can misfire.
+    """
+    import filetype
+    kind = filetype.guess(content[:_SNIFF_PREFIX_BYTES])
+    if kind is not None:
+        return "pdf" if kind.extension == "pdf" else "reject"
+    try:
+        content.decode("utf-8")
+        return "text"
+    except UnicodeDecodeError:
+        return "reject"
+
+
+# Map sniffed_kind to the temp-file suffix used for loader dispatch. This is
+# the LOAD-BEARING seam: by deriving the suffix from sniffed_kind rather than
+# from file.filename, the loader registry's extension-based dispatch
+# (see ingestion/loaders/document_loaders.py LoaderRegistry) cannot be
+# steered by a client-supplied extension. A spoofed filename has no effect.
+_SNIFFED_KIND_TO_SUFFIX: dict[str, str] = {
+    "pdf": ".pdf",
+    "text": ".txt",
+}
+
+
 def _resolve_query_target(request: Request) -> Optional[SessionRecord]:
     """Resolves the query's vector-store target from the X-Session-Id header.
 
@@ -552,7 +596,11 @@ async def ingest_file(
     X-Session-Id RESPONSE header. The default FiQA store is NEVER touched
     by this endpoint.
 
-    Supported file types: PDF, TXT, MD, DOCX, HTML, CSV.
+    Supported file types: PDF and plain text (TXT/MD). The client-supplied
+    Content-Type and filename are IGNORED for type decisions — the actual
+    bytes are sniffed (magic-byte for PDF; UTF-8 decode for text). See
+    _sniff_file_kind. PDFs are also capped at ragcore_pdf_max_pages (default
+    100); larger PDFs return 413 before the embed pipeline runs.
 
     Blocks until indexing is complete. May take 10-60 seconds for large files.
 
@@ -562,21 +610,6 @@ async def ingest_file(
              -F "title=Q3 Report"
              -i  # show the X-Session-Id response header on first call
     """
-    allowed_types = {
-        "application/pdf",
-        "text/plain",
-        "text/markdown",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "text/html",
-        "text/csv",
-    }
-    if file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.content_type}. "
-                   f"Allowed: PDF, TXT, MD, DOCX, HTML, CSV",
-        )
-
     content = await file.read()
 
     # Per-file size guard — tighter than the outer 10 MB body cap. Body cap
@@ -587,6 +620,20 @@ async def ingest_file(
             detail=(
                 f"File exceeds per-file limit "
                 f"({settings.ragcore_session_max_file_bytes} bytes)."
+            ),
+        )
+
+    # Magic-byte sniff is the AUTHORITATIVE type. Drives both (a) the
+    # allowlist gate immediately below and (b) the temp-file suffix used
+    # for loader dispatch below — see _SNIFFED_KIND_TO_SUFFIX. The client's
+    # Content-Type and filename play NO role in routing.
+    sniffed_kind = _sniff_file_kind(content)
+    if sniffed_kind not in _SNIFFED_KIND_TO_SUFFIX:
+        raise HTTPException(
+            status_code=415,
+            detail=(
+                "Unsupported file type. Allowed: PDF, TXT, MD. "
+                f"Detected: {sniffed_kind!r}."
             ),
         )
 
@@ -607,8 +654,13 @@ async def ingest_file(
             ),
         )
 
-    # Save the bytes to disk — loaders read from a file path.
-    suffix = os.path.splitext(file.filename or "upload")[1]
+    # Save the bytes to disk — loaders read from a file path. CRITICAL: the
+    # suffix is derived from sniffed_kind, NOT from file.filename. This is
+    # the seam that makes the sniffed type drive loader dispatch: the loader
+    # registry's get_loader() walks loaders and calls supports() which
+    # checks str(source).lower().endswith(".ext"). A client-supplied
+    # extension cannot reach this codepath.
+    suffix = _SNIFFED_KIND_TO_SUFFIX[sniffed_kind]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(content)
         tmp_path = tmp.name
@@ -620,6 +672,39 @@ async def ingest_file(
     }
 
     try:
+        # PDF page-cap probe — fires AFTER cheap pymupdf metadata read,
+        # BEFORE pipeline.ingest_file() begins any chunk/embed work. A file
+        # whose bytes passed sniff (valid %PDF magic) but whose body is
+        # truncated/corrupt raises inside pymupdf.open and is classified
+        # as 400, NOT swallowed into a 500 from deep inside to_markdown().
+        # The existing except HTTPException branch below releases the
+        # session reservation and the finally unlinks the temp file, so
+        # this path needs no bespoke cleanup.
+        if sniffed_kind == "pdf":
+            import pymupdf
+            try:
+                with pymupdf.open(tmp_path) as _pdf:
+                    n_pages = _pdf.page_count
+            except Exception as exc:
+                logger.warning("PDF page-count probe failed: %s", exc)
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "PDF could not be parsed "
+                        f"({exc.__class__.__name__}). The file may be "
+                        "truncated or corrupt."
+                    ),
+                )
+            if n_pages > settings.ragcore_pdf_max_pages:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"PDF exceeds page limit "
+                        f"({settings.ragcore_pdf_max_pages} pages, "
+                        f"got {n_pages})."
+                    ),
+                )
+
         # Per-request IngestionPipeline bound to THIS session's store.
         # __init__ is cheap (chunker is a factory call with no ML state,
         # embedder is the module-level singleton — see pipeline.py:78-86
