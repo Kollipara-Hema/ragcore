@@ -9,7 +9,6 @@ PURPOSE:
 ENDPOINTS:
     POST /ingest/file         Upload a document file (PDF, DOCX, TXT, etc.)
     POST /ingest/text         Submit raw text directly for indexing
-    GET  /ingest/status/{id}  Check if a file upload has finished processing
     DELETE /documents/{id}    Remove a document from the index
     POST /query               Ask a question, get a full answer
     POST /query/stream        Ask a question, get a streaming answer
@@ -74,7 +73,7 @@ from agent.graph import build_graph
 from agent.state import initial_state
 
 # The document ingestion pipeline (loading, chunking, embedding, indexing)
-from ingestion.pipeline import IngestionPipeline, ingest_file_task
+from ingestion.pipeline import IngestionPipeline
 
 # Vector store (for document deletion and health checks)
 from vectorstore.vector_store import (
@@ -421,27 +420,19 @@ async def ingest_file(
     file: UploadFile = File(...),               # The uploaded file — REQUIRED
     title: Optional[str] = Form(None),          # Optional document title
     tags: Optional[str] = Form(None),           # Optional comma-separated tags
-    async_processing: bool = Form(True),        # True = background, False = wait
 ):
     """
     Upload a document file to be indexed.
 
     Supported file types: PDF, TXT, MD, DOCX, HTML, CSV
 
-    async_processing=true  (default):
-        Returns immediately with a job_id.
-        Use GET /ingest/status/{job_id} to check when it's done.
-        Best for large files or production use.
-
-    async_processing=false:
-        Waits until indexing is complete before responding.
-        Best for small files and demos where you want immediate feedback.
+    Blocks until indexing is complete before responding. May take 10-60
+    seconds for large files.
 
     Example:
         curl -X POST http://localhost:8000/ingest/file
              -F "file=@report.pdf"
              -F "title=Q3 Report"
-             -F "async_processing=false"
     """
 
     # List of allowed MIME types — reject anything else
@@ -479,44 +470,23 @@ async def ingest_file(
         "original_filename": file.filename,  # Keep the original name for reference
     }
 
-    # Generate a placeholder doc_id (the real one comes from the pipeline)
-    doc_id = str(uuid.uuid4())
-
-    if async_processing and ingest_file_task:
-        # ── ASYNC PATH: Queue as background Celery task ───────────────────
-        # Returns immediately — the file will be processed in the background
-        # The user polls /ingest/status/{job_id} to check progress
-        job = ingest_file_task.delay(tmp_path, metadata)
-        # .delay() sends the task to the Celery worker via Redis
-
-        return IngestResponse(
-            job_id=job.id,             # Celery task ID for status polling
-            doc_id=doc_id,             # Placeholder — real ID set by pipeline
-            status=DocumentStatus.PENDING,  # Not indexed yet
-            message=f"File queued for processing. "
-                    f"Poll /ingest/status/{job.id} to check progress.",
+    try:
+        actual_doc_id, chunk_count = await ingestion_pipeline.ingest_file(
+            tmp_path, metadata
         )
-
-    else:
-        # ── SYNC PATH: Process immediately, wait for completion ───────────
-        # Blocks until the file is fully indexed. May take 10-60 seconds for large files.
-        try:
-            actual_doc_id, chunk_count = await ingestion_pipeline.ingest_file(
-                tmp_path, metadata
-            )
-            return IngestResponse(
-                job_id="sync",              # No background job
-                doc_id=actual_doc_id,       # Real doc_id from the pipeline
-                status=DocumentStatus.INDEXED,  # Fully indexed
-                message=f"Successfully indexed {chunk_count} chunks.",
-            )
-        except Exception as e:
-            logger.error("Synchronous ingestion failed: %s", e)
-            raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
-        finally:
-            # Always delete the temp file, even if ingestion failed
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+        return IngestResponse(
+            job_id="sync",              # No background job
+            doc_id=actual_doc_id,       # Real doc_id from the pipeline
+            status=DocumentStatus.INDEXED,  # Fully indexed
+            message=f"Successfully indexed {chunk_count} chunks.",
+        )
+    except Exception as e:
+        logger.error("Synchronous ingestion failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+    finally:
+        # Always delete the temp file, even if ingestion failed
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @app.post("/ingest/text", response_model=IngestResponse, tags=["ingestion"])
@@ -551,45 +521,6 @@ async def ingest_text(request: IngestRequest):
             status=DocumentStatus.INDEXED,
             message=f"Successfully indexed {chunk_count} chunks.",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/ingest/status/{job_id}", tags=["ingestion"])
-async def ingest_status(job_id: str):
-    """
-    Check the processing status of an async file ingestion job.
-
-    States:
-        PENDING   = Task queued, not started yet
-        STARTED   = Currently being processed
-        SUCCESS   = Finished successfully — document is now searchable
-        FAILURE   = Something went wrong
-
-    Example:
-        curl http://localhost:8000/ingest/status/abc-123-def
-    """
-    try:
-        from celery.result import AsyncResult
-        from ingestion.pipeline import celery_app
-
-        # Check if Celery is configured
-        if not celery_app:
-            raise HTTPException(
-                status_code=503,
-                detail="Async processing not configured. Start with async_processing=false."
-            )
-
-        # Look up the task status in Redis
-        result = AsyncResult(job_id, app=celery_app)
-
-        return {
-            "job_id": job_id,
-            "state": result.state,   # PENDING | STARTED | SUCCESS | FAILURE
-            # result.result contains the return value if SUCCESS,
-            # or the error message if FAILURE
-            "result": result.result if result.ready() else None,
-        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
