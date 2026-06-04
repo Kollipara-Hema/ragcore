@@ -77,6 +77,7 @@ from ingestion.pipeline import IngestionPipeline
 
 # Vector store (for document deletion and health checks)
 from vectorstore.vector_store import (
+    BaseVectorStore,
     FAISSVectorStore,
     get_corpus,
     get_vector_store,
@@ -483,6 +484,59 @@ def _resolve_or_mint_session(request: Request) -> SessionRecord:
         )
 
 
+def _resolve_query_target(request: Request) -> Optional[SessionRecord]:
+    """Resolves the query's vector-store target from the X-Session-Id header.
+
+    Routing precedence (load-bearing isolation invariant):
+      - X-Session-Id present AND resolves to a live session → return that
+        session's record. The request body's `corpus` field is IGNORED
+        ENTIRELY. Session routing wins unconditionally — a session header
+        commits the request to the session store even if `corpus` names a
+        valid public corpus.
+      - X-Session-Id present BUT unknown/expired → raise HTTPException(404).
+        Presence of the header commits to the session path; we do NOT
+        silently fall back to the public corpus. Falling back would answer
+        "what does my doc say?" with default-corpus chunks the user never
+        uploaded — a worse failure mode than a clean 404.
+      - X-Session-Id absent → return None. Caller routes via body.corpus
+        through the public registry.
+
+    The 404 body intentionally does NOT echo the submitted token. Logs use a
+    6-char truncated prefix only; full tokens never appear in logs or
+    responses.
+
+    INVARIANT (use-after-free, mirrors ingest sites):
+      record.store is captured here for the lifetime of the query. A
+      concurrent session reaper that evicts this session between this
+      resolve and the orchestrator returning would read from a deleted
+      store. No reaper exists yet — when one is added (Commit 7), it MUST
+      update BOTH this site and the ingest sites (ingest_file, ingest_text)
+      consistently. Grep "use-after-free" to find all three.
+    """
+    token = request.headers.get("X-Session-Id")
+    if token is None:
+        return None
+
+    existing = session_store.get(token)
+    if existing is not None:
+        logger.info(
+            "query_routed",
+            route="session",
+            session_prefix=token[:6],
+        )
+        return existing
+
+    logger.info(
+        "query_routed",
+        route="session_unknown",
+        session_prefix=token[:6],
+    )
+    raise HTTPException(
+        status_code=404,
+        detail="Session not found or expired",
+    )
+
+
 @app.post("/ingest/file", response_model=IngestResponse, tags=["ingestion"])
 async def ingest_file(
     request: Request,
@@ -572,12 +626,12 @@ async def ingest_file(
         # and embedder.py:199-230), so allocating one per request is fine.
         #
         # INVARIANT: record.store is captured here for the duration of the
-        # ingest. A concurrent session reaper that evicts this session
-        # between this line and pipeline.ingest_file() returning would
-        # upsert into a deleted store (use-after-free). No reaper exists
-        # yet — when one is added, it must either pin the session for the
-        # ingest duration or surface a retry path. Do not introduce one
-        # before resolving this.
+        # ingest (use-after-free). A concurrent session reaper that evicts
+        # this session between this line and pipeline.ingest_file()
+        # returning would upsert into a deleted store. No reaper exists
+        # yet — when one is added, it MUST pin the session for the request
+        # duration at this site AND at _resolve_query_target AND at
+        # ingest_text below. Grep "use-after-free" to find all three.
         pipeline = IngestionPipeline(vector_store=record.store)
         actual_doc_id, chunk_count = await pipeline.ingest_file(tmp_path, metadata)
     except HTTPException:
@@ -642,7 +696,8 @@ async def ingest_text(
     try:
         # Per-request IngestionPipeline — see ingest_file() for the
         # __init__-is-cheap rationale and the session-reaper
-        # use-after-free invariant.
+        # use-after-free invariant. Same constraint applies at
+        # _resolve_query_target. Grep "use-after-free" to find all sites.
         pipeline = IngestionPipeline(vector_store=record.store)
         doc_id, chunk_count = await pipeline.ingest_text(body.text_content, body.metadata)
     except HTTPException:
@@ -692,22 +747,24 @@ async def delete_document(doc_id: str):
 # =============================================================================
 
 @app.post("/query", tags=["query"])
-async def query(request: QueryRequest):
+async def query(request: Request, body: QueryRequest):
     """
     Ask a question about your indexed documents.
 
-    The system automatically:
-    1. Classifies the query type (factual, analytical, multi-hop, etc.)
-    2. Selects the best retrieval strategy (hybrid, keyword, semantic)
-    3. Retrieves relevant document chunks
-    4. Reranks chunks by relevance
-    5. Generates a grounded, cited answer
+    Routing:
+      - With a valid X-Session-Id header: retrieval reads ONLY from that
+        session's store. The `corpus` body field is ignored.
+      - Without the header: retrieval reads from the public corpus selected
+        by `corpus` (defaults to the FiQA "default" corpus).
+      - With an unknown/expired X-Session-Id: 404. No silent fallback.
 
     Request body options:
         query           (required) — your question
         top_k           (optional) — how many chunks to retrieve (default from .env)
         metadata_filter (optional) — filter by doc type, author, etc.
         strategy_override (optional) — force a specific retrieval strategy
+        corpus          (optional) — public corpus name. IGNORED when
+                                     X-Session-Id resolves.
         stream          (optional) — use /query/stream endpoint instead for streaming
 
     Example:
@@ -715,14 +772,22 @@ async def query(request: QueryRequest):
              -H "Content-Type: application/json"
              -d '{"query": "What were the main findings in the Q3 report?"}'
     """
+    session_record = _resolve_query_target(request)
+    store_override: Optional[BaseVectorStore] = (
+        session_record.store if session_record else None
+    )
+    if session_record is None:
+        logger.info("query_routed", route="public", corpus=body.corpus)
+
     try:
         # Run the full RAG pipeline and return the complete answer
-        result = await orchestrator.query(request)
+        result = await orchestrator.query(body, store_override=store_override)
         return result
     except KeyError as ke:
-        # Raised by get_corpus() when request.corpus names an unregistered
+        # Raised by get_corpus() when body.corpus names an unregistered
         # corpus. Message is curated upstream and names the registered set
-        # so callers can spot a typo.
+        # so callers can spot a typo. Cannot fire on the session path —
+        # store_override bypasses get_corpus() entirely.
         raise HTTPException(status_code=400, detail=str(ke))
     except Exception as e:
         logger.error("query_failed", error=str(e), error_type=type(e).__name__, exc_info=True)
@@ -733,7 +798,7 @@ async def query(request: QueryRequest):
 
 
 @app.post("/retrieve", response_model=RetrievalOnlyResponse, tags=["query"])
-async def retrieve(request: QueryRequest):
+async def retrieve(request: Request, body: QueryRequest):
     """
     Retrieval-only endpoint: router → retrieve → rerank, NO generation.
 
@@ -744,13 +809,22 @@ async def retrieve(request: QueryRequest):
     retrieval_candidates, stage_timings (retrieve + rerank only),
     strategy_used, query_type, and a top_rerank_score convenience field.
 
+    Same session-routing contract as /query — see _resolve_query_target.
+
     Example:
         curl -X POST http://localhost:8000/retrieve
              -H "Content-Type: application/json"
              -d '{"query": "What is a 401k?", "corpus": "default"}'
     """
+    session_record = _resolve_query_target(request)
+    store_override: Optional[BaseVectorStore] = (
+        session_record.store if session_record else None
+    )
+    if session_record is None:
+        logger.info("retrieve_routed", route="public", corpus=body.corpus)
+
     try:
-        return await orchestrator.retrieve_only(request)
+        return await orchestrator.retrieve_only(body, store_override=store_override)
     except KeyError as ke:
         raise HTTPException(status_code=400, detail=str(ke))
     except Exception as e:
@@ -762,7 +836,7 @@ async def retrieve(request: QueryRequest):
 
 
 @app.post("/query/stream", tags=["query"])
-async def query_stream(request: QueryRequest):
+async def query_stream(request: Request, body: QueryRequest):
     """
     Ask a question with a streaming response (tokens appear as they generate).
 
@@ -787,18 +861,26 @@ async def query_stream(request: QueryRequest):
              -d '{"query": "Summarize the key points."}'
              --no-buffer
     """
-    # Pre-validate corpus membership before constructing the StreamingResponse:
-    # once streaming begins the HTTP status is committed as 200, so an
-    # unknown-corpus KeyError raised mid-stream can only be surfaced as an
-    # in-band [ERROR] event, not as the 400 the caller deserves. /query and
-    # /query/stream therefore differ here by HTTP-semantic necessity, not by
-    # an accidental inconsistency — /query catches KeyError post-hoc; this
-    # endpoint must check up front.
-    if request.corpus != "default" and request.corpus not in list_corpora():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unknown corpus: {request.corpus!r}. Registered: {sorted(list_corpora())}",
-        )
+    # Resolve session BEFORE the StreamingResponse is constructed. An unknown
+    # X-Session-Id raises 404 here — committed as the HTTP status, not
+    # surfaced as an in-band SSE [ERROR] event after a 200 has shipped. Same
+    # ordering rationale as the public-corpus pre-check below.
+    session_record = _resolve_query_target(request)
+    store_override: Optional[BaseVectorStore] = (
+        session_record.store if session_record else None
+    )
+
+    # Pre-validate corpus membership ONLY on the public path. On the session
+    # path body.corpus is ignored entirely by routing (precedence rule); a
+    # 400 for an "unknown corpus" in a session request would mislead callers
+    # into thinking the corpus mattered.
+    if session_record is None:
+        logger.info("query_routed", route="public", corpus=body.corpus)
+        if body.corpus != "default" and body.corpus not in list_corpora():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown corpus: {body.corpus!r}. Registered: {sorted(list_corpora())}",
+            )
 
     async def event_stream() -> AsyncIterator[str]:
         """
@@ -807,7 +889,9 @@ async def query_stream(request: QueryRequest):
         """
         try:
             # Call the streaming version of the RAG pipeline
-            async for token in orchestrator.stream_query(request):
+            async for token in orchestrator.stream_query(
+                body, store_override=store_override,
+            ):
                 # Format as Server-Sent Event
                 yield f"data: {token}\n\n"
 

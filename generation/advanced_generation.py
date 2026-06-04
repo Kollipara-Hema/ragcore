@@ -126,6 +126,8 @@ Context:
         prompt_builder,           # PromptBuilder instance
         retrieval_executor,       # RetrievalExecutor for additional retrieval
         llm_service,              # GenerationService for LLM calls
+        *,
+        store_override=None,      # BaseVectorStore; pin re-retrieval to a specific store
     ) -> SelfRAGResult:
         """
         Run the Self-RAG pipeline.
@@ -200,7 +202,15 @@ Context:
                         fallback_strategy=RetrievalStrategy.SEMANTIC,
                         expanded_queries=[unsupported_claim],  # Search for the claim
                     )
-                    extra_result = await retrieval_executor.execute(decision, top_k=5)
+                    # Pin re-retrieval to the same store the orchestrator used
+                    # for initial retrieval. Without this, a session-scoped
+                    # query that opts into Self-RAG would fetch additional
+                    # chunks from the public default corpus — a silent
+                    # isolation leak. store_override=None preserves today's
+                    # behavior for non-session callers.
+                    extra_result = await retrieval_executor.execute(
+                        decision, top_k=5, store_override=store_override,
+                    )
                     all_chunks.extend(extra_result.chunks)
                     additional_retrievals += 1
 
@@ -409,9 +419,21 @@ class FLAREGenerator:
             tokens.add(f"${int(m.group(1)) * 1000:,}")
         return tokens
 
-    async def generate(self, query: str, initial_chunks) -> FLAREResult:
+    async def generate(
+        self,
+        query: str,
+        initial_chunks,
+        *,
+        store_override=None,
+    ) -> FLAREResult:
         """
         Generate an answer with iterative retrieval triggered by dollar-token novelty.
+
+        store_override pins iterative re-retrieval to a specific store. Without
+        it, a session-scoped query under generation_strategy='flare' would
+        pull additional chunks from the public default corpus mid-generation,
+        leaking past the session-isolation boundary established by the API
+        handler. None preserves today's behavior for non-session callers.
         """
         from utils.models import QueryType, RetrievalStrategy
         from retrieval.router.query_router import RoutingDecision
@@ -457,7 +479,9 @@ class FLAREGenerator:
                 fallback_strategy=RetrievalStrategy.SEMANTIC,
                 expanded_queries=[re_query],
             )
-            extra = await self._retrieval.execute(decision, top_k=5)
+            extra = await self._retrieval.execute(
+                decision, top_k=5, store_override=store_override,
+            )
 
             existing_ids = {str(c.chunk.chunk_id) for c in all_chunks}
             new_chunks = [
@@ -641,6 +665,10 @@ RULES:
                         fallback_strategy=RetrievalStrategy.SEMANTIC,
                         expanded_queries=[search_query],
                     )
+                    # ISOLATION: routes to public corpus (store_override defaults None). If this
+                    # is ever wired to a user-reachable path that can carry an X-Session-Id, it
+                    # MUST thread store_override or it leaks public chunks into a session context.
+                    # See _resolve_query_target.
                     result = await self.retrieval_executor.execute(decision, top_k=5)
 
                     # Format retrieved chunks as text for the agent to read

@@ -51,6 +51,7 @@ from reranking.reranker import get_reranker                    # Step 3
 from generation.prompts.prompt_builder import PromptBuilder    # Step 4
 from generation.llm_service import GenerationService, get_generation_service  # Step 5
 from monitoring.tracer import get_tracer                       # Observability
+from vectorstore.vector_store import BaseVectorStore           # For store_override type
 
 # Set up logger for this file — messages appear in console as "orchestrator: ..."
 logger = structlog.get_logger(__name__)
@@ -222,13 +223,22 @@ class RAGOrchestrator:
         self,
         request: QueryRequest,
         trace_id: str,
+        *,
+        store_override: Optional[BaseVectorStore] = None,
     ) -> _RetrieveStageResult:
         """Stages 1-3 of the RAG pipeline: route → retrieve → rerank. Shared
         by query() and retrieve_only() so the orchestration logic isn't
         duplicated. Empty retrieval is reported via ``chunks_were_found=False``
         rather than an early return, because the two callers wrap empty
         results in different response types (QueryResponse vs
-        RetrievalOnlyResponse)."""
+        RetrievalOnlyResponse).
+
+        store_override, when set, bypasses request.corpus and pins retrieval
+        to the provided store. Used by the session-aware API path so that
+        the corpus body field cannot reach the session store under any
+        input. Orchestrator does not know whether the store is a public or
+        session corpus — it sees only an opaque BaseVectorStore reference.
+        """
         # STEP 1: ROUTE
         decision = await self._router.route(
             query=request.query,
@@ -242,6 +252,7 @@ class RAGOrchestrator:
         top_k = request.top_k or settings.retrieval_top_k
         retrieval_result = await self._executor.execute(
             decision, top_k=top_k, corpus=request.corpus,
+            store_override=store_override,
         )
         t_retrieve = time.perf_counter()
         await self._tracer.log_retrieval(trace_id, retrieval_result)
@@ -295,7 +306,12 @@ class RAGOrchestrator:
             t_rerank=t_rerank,
         )
 
-    async def query(self, request: QueryRequest) -> QueryResponse:
+    async def query(
+        self,
+        request: QueryRequest,
+        *,
+        store_override: Optional[BaseVectorStore] = None,
+    ) -> QueryResponse:
         """
         Process a user's query through the full RAG pipeline.
 
@@ -304,6 +320,8 @@ class RAGOrchestrator:
 
         Args:
             request: QueryRequest object with the user's question and options
+            store_override: When set, retrieval reads from THIS store and
+                request.corpus is ignored. Used by the session-aware API path.
 
         Returns:
             QueryResponse with answer text, citations, timing, and metadata
@@ -323,7 +341,9 @@ class RAGOrchestrator:
             # ─────────────────────────────────────────────────────────────────
             # STAGES 1-3: route → retrieve → rerank (shared with /retrieve)
             # ─────────────────────────────────────────────────────────────────
-            stage_result = await self._retrieve_and_rerank(request, trace_id)
+            stage_result = await self._retrieve_and_rerank(
+                request, trace_id, store_override=store_override,
+            )
             decision   = stage_result.decision
             t_router   = stage_result.t_router
             t_retrieve = stage_result.t_retrieve
@@ -374,6 +394,7 @@ class RAGOrchestrator:
                     prompt_builder=self._prompt_builder,
                     retrieval_executor=self._executor,
                     llm_service=self._generation,
+                    store_override=store_override,
                 )
                 gen_answer = self_rag_result.answer
                 gen_citations = prompt.citations  # Built from reranked chunks in Step 4
@@ -398,6 +419,7 @@ class RAGOrchestrator:
                 flare_result = await flare_gen.generate(
                     query=request.query,
                     initial_chunks=reranked,
+                    store_override=store_override,
                 )
                 logger.info(
                     "flare_complete",
@@ -535,18 +557,28 @@ class RAGOrchestrator:
             attributed_spans=attributed_spans if attributed_spans else None,
         )
 
-    async def retrieve_only(self, request: QueryRequest) -> RetrievalOnlyResponse:
+    async def retrieve_only(
+        self,
+        request: QueryRequest,
+        *,
+        store_override: Optional[BaseVectorStore] = None,
+    ) -> RetrievalOnlyResponse:
         """Run router → retrieve → rerank, skip generation. Same tracing and
         metrics as query(); consumes ZERO LLM tokens. Used by the chunker
         comparison view and any caller that only needs to inspect what chunks
         the pipeline would surface for a query.
+
+        store_override, when set, bypasses request.corpus and pins retrieval
+        to the provided store — same isolation contract as query().
         """
         start = time.monotonic()
         t0 = time.perf_counter()
         trace_id = await self._tracer.start_trace(request.query)
 
         try:
-            stage_result = await self._retrieve_and_rerank(request, trace_id)
+            stage_result = await self._retrieve_and_rerank(
+                request, trace_id, store_override=store_override,
+            )
         except Exception as e:
             logger.error("retrieve_only_failed: %s", e, exc_info=True)
             await self._tracer.log_error(trace_id, str(e))
@@ -610,6 +642,8 @@ class RAGOrchestrator:
     async def stream_query(
         self,
         request: QueryRequest,
+        *,
+        store_override: Optional[BaseVectorStore] = None,
     ) -> AsyncIterator[str]:
         """
         Streaming version of query() — answer words appear as they are generated.
@@ -621,6 +655,8 @@ class RAGOrchestrator:
 
         Args:
             request: Same QueryRequest as query()
+            store_override: Same isolation contract as query(). When set,
+                request.corpus is ignored and retrieval reads from this store.
 
         Yields:
             str: Individual text tokens as they stream from the LLM
@@ -632,7 +668,9 @@ class RAGOrchestrator:
             metadata_filter=request.metadata_filter,
         )
 
-        retrieval_result = await self._executor.execute(decision, corpus=request.corpus)
+        retrieval_result = await self._executor.execute(
+            decision, corpus=request.corpus, store_override=store_override,
+        )
 
         # If nothing found, yield a single explanation message and stop
         if not retrieval_result.chunks:
