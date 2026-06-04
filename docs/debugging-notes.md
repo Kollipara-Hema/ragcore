@@ -1529,7 +1529,7 @@ During the corpus-aware UI work, the new sidebar dropdown made the six Apple cor
 
 ### Initial hypothesis (wrong)
 
-Suspected a regression from the same session's edits to `_render_assistant_message` (added `corpus` kwarg, gated follow-up chips). Audit ruled it out: no edits in this session touched `_render_answer_with_spans`, the `unsafe_allow_html=True` flag, the answer-rendering CSS, or any selector reaching the answer body. The function's HTML-building loop and final `st.markdown(final_html, unsafe_allow_html=True)` were byte-identical to the pre-session version.
+Suspected a regression from the same change-set to `_render_assistant_message` (added `corpus` kwarg, gated follow-up chips). Audit ruled it out: no edits in this change-set touched `_render_answer_with_spans`, the `unsafe_allow_html=True` flag, the answer-rendering CSS, or any selector reaching the answer body. The function's HTML-building loop and final `st.markdown(final_html, unsafe_allow_html=True)` were byte-identical to the prior version.
 
 ### What the data showed
 
@@ -1598,7 +1598,7 @@ The `_md_escape` helper introduced in this commit hardens only the answer body �
 
 Observed-not-diagnosed. The suspected mechanism above is inferred from symptom shape and the obvious asymmetry in escaping coverage between the two render paths; not yet confirmed by inspecting the actual chunk content or stepping through `_sources_grid`. The retrieved chunk text itself is presumed correct — the issue is rendering, not retrieval.
 
-### Likely fix (not applied this session)
+### Likely fix (not yet applied)
 
 Route source-card excerpts through the same `_md_escape` (or a sources-grid-specific equivalent covering the same markdown-trigger token set). The answer body now has a documented escape contract; source-card excerpts should match. Out of scope for the corpus-aware UI commit — observation only, deferred.
 

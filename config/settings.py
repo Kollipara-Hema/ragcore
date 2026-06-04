@@ -134,8 +134,8 @@ class Settings(BaseSettings):
     cohere_api_key: Optional[str] = None
 
     # Chunking
-    # Original: fixed | semantic | hierarchical | sentence
-    # Phase 1:  propositional | table_aware | structure
+    # Basic:    fixed | semantic | hierarchical | sentence
+    # Advanced: propositional | table_aware | structure
     chunk_size: int = 512
     chunk_overlap: int = 64
     chunking_strategy: str = "semantic"
@@ -149,7 +149,7 @@ class Settings(BaseSettings):
     max_expanded_queries: int = 3
     hybrid_alpha: float = 0.7
 
-    # Generation Strategy — Phase 5
+    # Generation Strategy
     # basic    = standard RAG (fast, cheapest)                         ← start here
     # self_rag = verify claims after generation (2-3x cost, better accuracy)
     # flare    = retrieve mid-generation when uncertain (best for long answers)

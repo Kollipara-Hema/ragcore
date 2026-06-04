@@ -114,8 +114,8 @@ def test_reset_vector_store_only_clears_default():
 
 def test_get_vector_store_returns_explicitly_registered_default():
     """If someone has pre-registered "default", the shim returns it instead of
-    lazy-constructing. Required for tests and for the Day 3 lifespan that
-    registers FAISS-as-default explicitly."""
+    lazy-constructing. Required for tests and for the lifespan registration
+    in api/main.py that registers FAISS-as-default explicitly."""
     store = _DummyStore()
     register_corpus("default", store)
     assert get_vector_store() is store
