@@ -288,7 +288,7 @@ class TestFLAREOrchestration:
 
         captured_decisions: list[RoutingDecision] = []
 
-        async def capture_execute(decision, top_k=5):
+        async def capture_execute(decision, top_k=5, *, store_override=None):
             captured_decisions.append(decision)
             return _make_retrieval_result(chunks=[
                 _make_chunk(chunk_id="chunk-002", content="Catch-up is $1,000.")

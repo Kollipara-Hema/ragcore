@@ -45,7 +45,7 @@ class _FakeOrchestratorRaisingKeyError:
     /query handler's translation can be tested without standing up the
     real orchestrator (which loads ML models at construction time)."""
 
-    async def query(self, request):
+    async def query(self, request, *, store_override=None):
         raise KeyError(
             f"Unknown corpus: {request.corpus!r}. Registered: ['default']"
         )
@@ -75,7 +75,7 @@ def test_query_known_corpus_does_not_translate_keyerror(
     called = {"value": False}
 
     class _DefaultOnlyOrch:
-        async def query(self, request):
+        async def query(self, request, *, store_override=None):
             called["value"] = True
             # Real orchestrator would return a QueryResponse-shaped dict.
             return {
@@ -116,7 +116,7 @@ def test_query_stream_default_corpus_passes_precheck(client_with_only_default, m
     monkeypatch.setattr("api.main.list_corpora", lambda: [])
 
     class _NoOpStream:
-        async def stream_query(self, request):
+        async def stream_query(self, request, *, store_override=None):
             yield "hello"
 
     monkeypatch.setattr("api.main.orchestrator", _NoOpStream())

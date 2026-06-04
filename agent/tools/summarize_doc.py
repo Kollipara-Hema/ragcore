@@ -38,6 +38,10 @@ async def summarize_doc(doc_id: str, max_chunks: int = 10) -> dict:
         expanded_queries=["document summary"],
         reasoning="",
     )
+    # ISOLATION: routes to public corpus (store_override defaults None). If this
+    # is ever wired to a user-reachable path that can carry an X-Session-Id, it
+    # MUST thread store_override or it leaks public chunks into a session context.
+    # See _resolve_query_target.
     result = await _get_executor().execute(decision, top_k=max_chunks)
     chunks = result.chunks
     if not chunks:

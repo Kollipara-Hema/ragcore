@@ -35,6 +35,10 @@ async def retriever_node(state: AgentState) -> dict:
             expanded_queries=state.get("expanded_queries", [state["query"]]),
             reasoning=state.get("routing_reasoning", ""),
         )
+        # ISOLATION: routes to public corpus (store_override defaults None). If this
+        # is ever wired to a user-reachable path that can carry an X-Session-Id, it
+        # MUST thread store_override or it leaks public chunks into a session context.
+        # See _resolve_query_target.
         result = await _get_executor().execute(decision, top_k=state.get("top_k", 20))
         chunks = [
             {

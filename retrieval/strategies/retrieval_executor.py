@@ -11,6 +11,8 @@ import structlog
 
 import numpy as np
 
+from typing import Optional
+
 from embeddings.embedder import get_embedder
 from retrieval.router.query_router import RoutingDecision
 from utils.models import RetrievalRequest, RetrievalResult, RetrievedChunk, RetrievalStrategy
@@ -38,11 +40,23 @@ class RetrievalExecutor:
         decision: RoutingDecision,
         top_k: int = 5,
         corpus: str = "default",
+        *,
+        store_override: Optional[BaseVectorStore] = None,
     ) -> RetrievalResult:
-        # Resolve the store BEFORE the try/except so an unknown corpus surfaces
-        # as a clean KeyError rather than getting swallowed by the fallback path
-        # and producing a misleading "no results" response.
-        store = get_vector_store() if corpus == "default" else get_corpus(corpus)
+        # Store resolution order:
+        #   1. store_override (set by the API handler when the request carries a
+        #      valid X-Session-Id). When present, `corpus` is unused — the
+        #      override wins. This is what keeps session routing structurally
+        #      separate from the public corpus string: a session token CANNOT
+        #      reach get_corpus() through this path.
+        #   2. Public registry, keyed by `corpus`. Resolved BEFORE the try/except
+        #      so an unknown corpus surfaces as a clean KeyError rather than
+        #      getting swallowed by the fallback path and producing a misleading
+        #      "no results" response.
+        if store_override is not None:
+            store = store_override
+        else:
+            store = get_vector_store() if corpus == "default" else get_corpus(corpus)
 
         start = time.monotonic()
         try:
