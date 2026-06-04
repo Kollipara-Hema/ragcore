@@ -95,6 +95,12 @@ class Settings(BaseSettings):
         default=10 * 1024 * 1024,
         description="Hard ceiling on /ingest/* request body size. Returns 413 above this.",
     )
+    ragcore_session_root: str = Field(
+        default="./data/sessions",
+        description="Root directory for per-session corpora. SEPARATE from "
+                    "faiss_data_dir and chroma_persist_dir so session cleanup "
+                    "can never touch curated corpora.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE
