@@ -234,3 +234,5 @@ chainlit.md
 
 # Local project history reconstruction (not shared)
 history/
+/data/chroma_collections/chroma.sqlite3
+/data/chroma_collections/*.bin
