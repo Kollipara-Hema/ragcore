@@ -80,7 +80,8 @@ logger = logging.getLogger(__name__)
 # UUID → FiQA-ID translation (same workaround as stage_b_sanity.py)
 # The ingestion pipeline assigns new UUIDs; FiQA corpus IDs are stored in
 # metadata["custom"]["doc_id"]. Without this mapping every retrieval metric
-# would be 0.0. See Commit 4 TODO for the right long-term fix.
+# would be 0.0. TODO: preserve corpus-supplied IDs through ingestion so this
+# UUID-to-FiQA-ID translation layer is no longer needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_uuid_to_fiqa_id(metadata_pkl: Path) -> dict[str, str]:

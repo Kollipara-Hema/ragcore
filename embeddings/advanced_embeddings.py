@@ -1,6 +1,6 @@
 """
 =============================================================================
-embeddings/advanced_embeddings.py  —  Phase 2: Advanced Embeddings
+embeddings/advanced_embeddings.py  —  Advanced Embeddings
 =============================================================================
 WHAT THIS FILE ADDS:
     1. MatryoshkaEmbedder

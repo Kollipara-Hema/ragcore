@@ -1,6 +1,6 @@
 """
 =============================================================================
-retrieval/hybrid_tuner.py  —  Phase 3: Hybrid Search Tuning
+retrieval/hybrid_tuner.py  —  Hybrid Search Tuning
 =============================================================================
 WHAT THIS FILE DOES:
     Improves the hybrid search (vector + keyword) combination by:

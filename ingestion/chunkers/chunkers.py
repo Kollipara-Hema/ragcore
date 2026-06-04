@@ -292,7 +292,7 @@ class SentenceWindowChunker(BaseChunker):
 
 
 # =============================================================================
-# 5. PropositionalChunker  (Phase 1)
+# 5. PropositionalChunker
 # =============================================================================
 
 class PropositionalChunker(BaseChunker):
@@ -415,7 +415,7 @@ Example: ["The company was founded in 1995.", "Revenue grew 15% in Q3."]"""
 
 
 # =============================================================================
-# 6. TableAwareChunker  (Phase 1)
+# 6. TableAwareChunker
 # =============================================================================
 
 class TableAwareChunker(BaseChunker):
@@ -559,7 +559,7 @@ class TableAwareChunker(BaseChunker):
 
 
 # =============================================================================
-# 7. DocumentStructureChunker  (Phase 1)
+# 7. DocumentStructureChunker
 # =============================================================================
 
 class DocumentStructureChunker(BaseChunker):
@@ -697,7 +697,7 @@ def get_chunker(strategy: str = None) -> BaseChunker:
         "semantic":       SemanticChunker,
         "hierarchical":   HierarchicalChunker,
         "sentence":       SentenceWindowChunker,
-        # Phase 1 advanced strategies
+        # Advanced strategies
         "propositional":  PropositionalChunker,
         "table_aware":    TableAwareChunker,
         "structure":      DocumentStructureChunker,

@@ -1,6 +1,6 @@
 """
 =============================================================================
-reranking/advanced_reranker.py  —  Phase 4: Advanced Reranking
+reranking/advanced_reranker.py  —  Advanced Reranking
 =============================================================================
 WHAT RERANKING DOES (recap):
     After the vector store retrieves the top-20 candidate chunks,

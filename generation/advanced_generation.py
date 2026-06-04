@@ -1,6 +1,6 @@
 """
 =============================================================================
-generation/advanced_generation.py  —  Phase 5: Advanced Generation
+generation/advanced_generation.py  —  Advanced Generation
 =============================================================================
 WHAT THIS FILE ADDS:
     Three advanced generation strategies that go beyond basic RAG:
