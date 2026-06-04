@@ -85,7 +85,15 @@ from vectorstore.vector_store import (
     register_corpus,
 )
 from vectorstore.chroma_store import ChromaVectorStore
-from vectorstore.session_store import SessionStore, SessionRecord, SessionCapacityError
+from vectorstore.session_store import (
+    SessionStore,
+    SessionRecord,
+    SessionCapacityError,
+    reaper_loop,
+)
+
+# Standard library — added for the reaper task and boot cleanup
+import asyncio
 
 # Apple multi-corpus demo configuration
 from config.corpora import CORPORA_CONFIG
@@ -201,6 +209,70 @@ def _seed_apple_collections() -> None:
 
 
 # =============================================================================
+# Boot-cleanup helpers — session-root isolation + orphaned-dir purge
+# =============================================================================
+
+def _assert_session_root_isolated() -> None:
+    """Refuse to boot when the session root overlaps any curated-corpus path.
+
+    `_purge_orphaned_session_dirs` rmtrees children of `session_root` at
+    every startup. If a misconfiguration ever pointed `RAGCORE_SESSION_ROOT`
+    at a path that contains (or is contained by) `faiss_data_dir` or
+    `chroma_persist_dir`, that startup purge would silently delete the
+    Apple seed corpora or FiQA index. Belt-and-suspenders: refuse to boot
+    rather than risk it. The settings docstring at config/settings.py:100
+    states the separation as a design contract; this assert enforces it
+    at runtime.
+    """
+    session = Path(settings.ragcore_session_root).resolve()
+    forbidden = {
+        "faiss_data_dir": Path(settings.faiss_data_dir).resolve(),
+        "chroma_persist_dir": Path(settings.chroma_persist_dir).resolve(),
+    }
+    for name, other in forbidden.items():
+        # Overlap = same path, OR one contains the other. Path.is_relative_to
+        # returns True for equal paths too (a path is relative to itself), so
+        # both directions catch all overlap cases.
+        if session == other or session.is_relative_to(other) or other.is_relative_to(session):
+            raise RuntimeError(
+                f"ragcore_session_root ({session}) overlaps with {name} "
+                f"({other}). Refusing to boot — boot cleanup would delete "
+                f"curated corpus data."
+            )
+
+
+def _purge_orphaned_session_dirs(root: Path) -> int:
+    """Wipe every direct child directory of `root`. At boot, the in-memory
+    SessionStore._records is empty — every on-disk per-token dir is an
+    orphan from the previous process and useless (the in-memory token is
+    gone; no client can address it).
+
+    Safety: caller MUST have run _assert_session_root_isolated() first.
+    This function trusts `root` is not a curated-corpus path. Returns the
+    count of dirs removed for telemetry.
+    """
+    if not root.exists():
+        return 0
+    removed = 0
+    for child in root.iterdir():
+        if not child.is_dir():
+            continue
+        try:
+            shutil.rmtree(child)
+            removed += 1
+        except Exception as exc:
+            logger.warning(
+                "boot_orphan_purge_failed for %s: %s", child, exc,
+            )
+    return removed
+
+
+# Reaper task handle — set in lifespan startup, cancelled in shutdown. Module-
+# level so the shutdown side of lifespan can find it.
+_reaper_task: Optional[asyncio.Task] = None
+
+
+# =============================================================================
 # LIFESPAN — Startup and Shutdown Logic
 # =============================================================================
 
@@ -215,10 +287,16 @@ async def lifespan(app: FastAPI):
     - Creating database connections
     - Setting up the orchestrator
     """
-    global orchestrator, ingestion_pipeline, session_store
+    global orchestrator, ingestion_pipeline, session_store, _reaper_task
 
     configure_logging()
     logger.info("Starting RAG system...")
+
+    # Refuse-to-boot if session_root overlaps any curated-corpus path. Runs
+    # BEFORE any other boot step, including seeding — a misconfigured
+    # session_root that points at chroma_persist_dir would otherwise let
+    # _purge_orphaned_session_dirs delete the Apple seeds.
+    _assert_session_root_isolated()
 
     # Register the FAISS-backed "default" corpus (FiQA). Unconditional —
     # /query requests omitting `corpus` route here via the get_vector_store
@@ -267,8 +345,29 @@ async def lifespan(app: FastAPI):
     # Construct the per-session vector store registry. The session root is
     # intentionally a SEPARATE filesystem subtree from the FAISS/Chroma
     # curated-corpus dirs (see settings docstring) so session cleanup
-    # cannot touch curated data.
+    # cannot touch curated data — enforced at boot by
+    # _assert_session_root_isolated above.
     session_store = SessionStore(root=settings.ragcore_session_root)
+
+    # Wipe orphaned per-token dirs from prior processes. _records is empty
+    # at boot, so every on-disk dir is unreachable (no in-memory token can
+    # address it). Runs BEFORE the reaper task starts to avoid racing with
+    # the first sweep.
+    purged = _purge_orphaned_session_dirs(Path(settings.ragcore_session_root))
+    if purged:
+        logger.info("boot_orphan_purge_complete", purged_dirs=purged)
+
+    # Spawn the reaper background task. Single-worker uvicorn means one
+    # reaper per process — no cross-worker coordination needed. Cancelled
+    # on shutdown below.
+    _reaper_task = asyncio.create_task(
+        reaper_loop(
+            session_store,
+            ttl_seconds=settings.ragcore_session_idle_ttl_seconds,
+            sweep_interval_seconds=settings.ragcore_session_sweep_interval_seconds,
+        ),
+        name="session_reaper",
+    )
 
     logger.info("RAG system ready. Visit http://localhost:8000/docs")
 
@@ -276,6 +375,13 @@ async def lifespan(app: FastAPI):
 
     # Cleanup on shutdown (close connections, etc.)
     logger.info("Shutting down RAG system...")
+    if _reaper_task is not None:
+        _reaper_task.cancel()
+        try:
+            await _reaper_task
+        except asyncio.CancelledError:
+            pass
+        _reaper_task = None
 
 
 # =============================================================================
@@ -459,19 +565,27 @@ def _resolve_or_mint_session(request: Request) -> SessionRecord:
     """Resolve an existing session from the X-Session-Id request header, or
     mint a new server-generated session if the header is missing OR names a
     session this process no longer holds (e.g. after a restart, or after
-    the session reaper evicts it once TTL eviction is implemented).
+    the session reaper evicted it).
+
+    Returns a PINNED record (in_flight bumped atomically with the get/create
+    under the SessionStore lock). The caller MUST call session_store.unpin
+    in a finally block; otherwise the session is leaked from eviction
+    forever. Pinning here closes the use-after-free window between resolve
+    and the long-running ingest — the reaper cannot evict between the lock
+    release inside get/create and the handler's downstream operations.
 
     Raises HTTPException(503) when minting would exceed
     ragcore_session_max_concurrent. Get-or-create on an existing token does
     not pay the concurrency check (read paths don't shed load)."""
     token = request.headers.get("X-Session-Id")
     if token:
-        existing = session_store.get(token)
+        existing = session_store.get(token, pin=True)
         if existing is not None:
             return existing
     try:
         return session_store.create(
             max_concurrent=settings.ragcore_session_max_concurrent,
+            pin=True,
         )
     except SessionCapacityError:
         raise HTTPException(
@@ -550,18 +664,19 @@ def _resolve_query_target(request: Request) -> Optional[SessionRecord]:
     responses.
 
     INVARIANT (use-after-free, mirrors ingest sites):
-      record.store is captured here for the lifetime of the query. A
-      concurrent session reaper that evicts this session between this
-      resolve and the orchestrator returning would read from a deleted
-      store. No reaper exists yet — when one is added (Commit 7), it MUST
-      update BOTH this site and the ingest sites (ingest_file, ingest_text)
-      consistently. Grep "use-after-free" to find all three.
+      record.store is captured here for the lifetime of the query. The
+      returned record is PINNED (in_flight bumped) atomically with the
+      get() under the SessionStore lock, so the reaper cannot evict
+      between resolve and the orchestrator returning. The caller MUST
+      unpin in a finally; query_stream pins synchronously and unpins
+      inside the generator's finally to span the StreamingResponse
+      consumption. Grep "use-after-free" to find all three sites.
     """
     token = request.headers.get("X-Session-Id")
     if token is None:
         return None
 
-    existing = session_store.get(token)
+    existing = session_store.get(token, pin=True)
     if existing is not None:
         logger.info(
             "query_routed",
@@ -637,7 +752,7 @@ async def ingest_file(
             ),
         )
 
-    record = _resolve_or_mint_session(request)
+    record = _resolve_or_mint_session(request)  # PINNED — unpin in finally below
 
     # Reserve a file slot atomically. If two parallel uploads to one session
     # race the cap, only N succeed; the (N+1)th gets 409 here without the
@@ -645,6 +760,7 @@ async def ingest_file(
     if not session_store.try_reserve_file(
         record.token, max_files=settings.ragcore_session_max_files,
     ):
+        session_store.unpin(record.token)
         raise HTTPException(
             status_code=409,
             detail=(
@@ -729,6 +845,9 @@ async def ingest_file(
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
+        # Unpin AFTER the pipeline has fully returned. Until this point the
+        # reaper cannot evict this session — record.store is safe to use.
+        session_store.unpin(record.token)
 
     session_store.record_bytes(record.token, len(content))
     response.headers["X-Session-Id"] = record.token
@@ -764,11 +883,12 @@ async def ingest_text(
             ),
         )
 
-    record = _resolve_or_mint_session(request)
+    record = _resolve_or_mint_session(request)  # PINNED — unpin in finally below
 
     if not session_store.try_reserve_file(
         record.token, max_files=settings.ragcore_session_max_files,
     ):
+        session_store.unpin(record.token)
         raise HTTPException(
             status_code=409,
             detail=(
@@ -792,6 +912,8 @@ async def ingest_text(
         session_store.release_file_reservation(record.token)
         logger.error("Session ingest_text failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session_store.unpin(record.token)
 
     session_store.record_bytes(record.token, len(content_bytes))
     response.headers["X-Session-Id"] = record.token
@@ -857,7 +979,7 @@ async def query(request: Request, body: QueryRequest):
              -H "Content-Type: application/json"
              -d '{"query": "What were the main findings in the Q3 report?"}'
     """
-    session_record = _resolve_query_target(request)
+    session_record = _resolve_query_target(request)  # PINNED if non-None
     store_override: Optional[BaseVectorStore] = (
         session_record.store if session_record else None
     )
@@ -880,6 +1002,9 @@ async def query(request: Request, body: QueryRequest):
             status_code=500,
             detail=f"Query processing failed: {str(e)}"
         )
+    finally:
+        if session_record is not None:
+            session_store.unpin(session_record.token)
 
 
 @app.post("/retrieve", response_model=RetrievalOnlyResponse, tags=["query"])
@@ -901,7 +1026,7 @@ async def retrieve(request: Request, body: QueryRequest):
              -H "Content-Type: application/json"
              -d '{"query": "What is a 401k?", "corpus": "default"}'
     """
-    session_record = _resolve_query_target(request)
+    session_record = _resolve_query_target(request)  # PINNED if non-None
     store_override: Optional[BaseVectorStore] = (
         session_record.store if session_record else None
     )
@@ -918,6 +1043,9 @@ async def retrieve(request: Request, body: QueryRequest):
             status_code=500,
             detail=f"Retrieval processing failed: {str(e)}"
         )
+    finally:
+        if session_record is not None:
+            session_store.unpin(session_record.token)
 
 
 @app.post("/query/stream", tags=["query"])
@@ -950,6 +1078,14 @@ async def query_stream(request: Request, body: QueryRequest):
     # X-Session-Id raises 404 here — committed as the HTTP status, not
     # surfaced as an in-band SSE [ERROR] event after a 200 has shipped. Same
     # ordering rationale as the public-corpus pre-check below.
+    #
+    # PIN: _resolve_query_target returns a PINNED record (in_flight bumped)
+    # synchronously here, BEFORE we return StreamingResponse to the client.
+    # That closes the use-after-free window across the entire stream
+    # consumption. The matching unpin lives inside event_stream's finally
+    # because the generator runs AFTER this function returns — a normal
+    # try/finally around `return StreamingResponse(...)` would unpin before
+    # the stream is consumed.
     session_record = _resolve_query_target(request)
     store_override: Optional[BaseVectorStore] = (
         session_record.store if session_record else None
@@ -986,6 +1122,12 @@ async def query_stream(request: Request, body: QueryRequest):
         except Exception as e:
             # Send error message to client then close stream
             yield f"data: [ERROR] {str(e)}\n\n"
+        finally:
+            # Unpin AFTER the stream is fully consumed (or errored). Until
+            # this point the reaper cannot evict — record.store remains
+            # valid for orchestrator.stream_query's retrieval calls.
+            if session_record is not None:
+                session_store.unpin(session_record.token)
 
     return StreamingResponse(
         event_stream(),
