@@ -242,7 +242,7 @@ class CorporaListResponse(BaseModel):
 
 class IngestRequest(BaseModel):
     source_url: Optional[str] = None
-    text_content: Optional[str] = None
+    text_content: Optional[str] = PField(default=None, max_length=1_000_000)
     metadata: dict[str, Any] = PField(default_factory=dict)
 
 
