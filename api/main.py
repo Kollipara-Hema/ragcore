@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import AsyncIterator, Optional
 
 # --- FastAPI framework ---
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 # FastAPI     = the web framework
 # File        = marks a parameter as a file upload
 # Form        = marks a parameter as a form field
@@ -84,6 +84,7 @@ from vectorstore.vector_store import (
     register_corpus,
 )
 from vectorstore.chroma_store import ChromaVectorStore
+from vectorstore.session_store import SessionStore, SessionRecord, SessionCapacityError
 
 # Apple multi-corpus demo configuration
 from config.corpora import CORPORA_CONFIG
@@ -123,6 +124,7 @@ logger = structlog.get_logger(__name__)
 
 orchestrator: Optional[RAGOrchestrator] = None    # The RAG pipeline
 ingestion_pipeline: Optional[IngestionPipeline] = None  # Document indexing
+session_store: Optional[SessionStore] = None      # Per-session vector stores
 
 
 # =============================================================================
@@ -212,7 +214,7 @@ async def lifespan(app: FastAPI):
     - Creating database connections
     - Setting up the orchestrator
     """
-    global orchestrator, ingestion_pipeline
+    global orchestrator, ingestion_pipeline, session_store
 
     configure_logging()
     logger.info("Starting RAG system...")
@@ -261,6 +263,12 @@ async def lifespan(app: FastAPI):
     # Create the ingestion pipeline — used for synchronous file processing
     ingestion_pipeline = IngestionPipeline()
 
+    # Construct the per-session vector store registry. The session root is
+    # intentionally a SEPARATE filesystem subtree from the FAISS/Chroma
+    # curated-corpus dirs (see settings docstring) so session cleanup
+    # cannot touch curated data.
+    session_store = SessionStore(root=settings.ragcore_session_root)
+
     logger.info("RAG system ready. Visit http://localhost:8000/docs")
 
     yield  # Server is now running — handle requests
@@ -294,7 +302,12 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-Request-Id", "X-API-Key"],
+    allow_headers=["Content-Type", "X-Request-Id", "X-API-Key", "X-Session-Id"],
+    # expose_headers is REQUIRED so browsers can read X-Session-Id off the
+    # response cross-origin. Without it, the header is delivered by FastAPI
+    # but stripped from JavaScript's view of the response — clients would
+    # have no way to capture the minted session token.
+    expose_headers=["X-Session-Id", "X-Request-Id"],
 )
 
 # API Key Authentication Middleware — only registered when auth is enabled.
@@ -441,114 +454,213 @@ async def health_ready():
 # INGESTION ENDPOINTS — For uploading and indexing documents
 # =============================================================================
 
+def _resolve_or_mint_session(request: Request) -> SessionRecord:
+    """Resolve an existing session from the X-Session-Id request header, or
+    mint a new server-generated session if the header is missing OR names a
+    session this process no longer holds (e.g. after a restart, or after
+    the session reaper evicts it once TTL eviction is implemented).
+
+    Raises HTTPException(503) when minting would exceed
+    ragcore_session_max_concurrent. Get-or-create on an existing token does
+    not pay the concurrency check (read paths don't shed load)."""
+    token = request.headers.get("X-Session-Id")
+    if token:
+        existing = session_store.get(token)
+        if existing is not None:
+            return existing
+    try:
+        return session_store.create(
+            max_concurrent=settings.ragcore_session_max_concurrent,
+        )
+    except SessionCapacityError:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Server at session capacity "
+                f"({settings.ragcore_session_max_concurrent}). "
+                f"Try again later."
+            ),
+        )
+
+
 @app.post("/ingest/file", response_model=IngestResponse, tags=["ingestion"])
 async def ingest_file(
+    request: Request,
+    response: Response,
     file: UploadFile = File(...),               # The uploaded file — REQUIRED
     title: Optional[str] = Form(None),          # Optional document title
     tags: Optional[str] = Form(None),           # Optional comma-separated tags
 ):
     """
-    Upload a document file to be indexed.
+    Upload a document file to be indexed into the caller's per-session
+    corpus. The session is identified by an X-Session-Id request header;
+    if absent, a server-generated token is minted and returned in the
+    X-Session-Id RESPONSE header. The default FiQA store is NEVER touched
+    by this endpoint.
 
-    Supported file types: PDF, TXT, MD, DOCX, HTML, CSV
+    Supported file types: PDF, TXT, MD, DOCX, HTML, CSV.
 
-    Blocks until indexing is complete before responding. May take 10-60
-    seconds for large files.
+    Blocks until indexing is complete. May take 10-60 seconds for large files.
 
     Example:
         curl -X POST http://localhost:8000/ingest/file
              -F "file=@report.pdf"
              -F "title=Q3 Report"
+             -i  # show the X-Session-Id response header on first call
     """
-
-    # List of allowed MIME types — reject anything else
-    # MIME types are the official file type identifiers
     allowed_types = {
-        "application/pdf",          # PDF files
-        "text/plain",               # .txt files
-        "text/markdown",            # .md files
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
-        "text/html",                # .html files
-        "text/csv",                 # .csv files
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/html",
+        "text/csv",
     }
-
-    # Check if the uploaded file type is allowed
     if file.content_type not in allowed_types:
-        # Return 400 Bad Request with a descriptive error message
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type: {file.content_type}. "
-                   f"Allowed: PDF, TXT, MD, DOCX, HTML, CSV"
+                   f"Allowed: PDF, TXT, MD, DOCX, HTML, CSV",
         )
 
-    # Save the uploaded file to a temporary location on disk
-    # We need a physical file path because our loaders read from disk
-    suffix = os.path.splitext(file.filename or "upload")[1]  # e.g. ".pdf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        content = await file.read()   # Read all bytes from the upload
-        tmp.write(content)            # Write to temp file
-        tmp_path = tmp.name           # Save the temp file path
+    content = await file.read()
 
-    # Build metadata dict from the form fields
+    # Per-file size guard — tighter than the outer 10 MB body cap. Body cap
+    # is transport protection; this one is per-session abuse protection.
+    if len(content) > settings.ragcore_session_max_file_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"File exceeds per-file limit "
+                f"({settings.ragcore_session_max_file_bytes} bytes)."
+            ),
+        )
+
+    record = _resolve_or_mint_session(request)
+
+    # Reserve a file slot atomically. If two parallel uploads to one session
+    # race the cap, only N succeed; the (N+1)th gets 409 here without the
+    # ingest pipeline running.
+    if not session_store.try_reserve_file(
+        record.token, max_files=settings.ragcore_session_max_files,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Session file limit reached "
+                f"({settings.ragcore_session_max_files}). "
+                f"Start a new session to upload more."
+            ),
+        )
+
+    # Save the bytes to disk — loaders read from a file path.
+    suffix = os.path.splitext(file.filename or "upload")[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
     metadata = {
-        "title": title or file.filename,  # Use provided title or filename
-        "tags": [t.strip() for t in (tags or "").split(",") if t.strip()],  # Parse tags
-        "original_filename": file.filename,  # Keep the original name for reference
+        "title": title or file.filename,
+        "tags": [t.strip() for t in (tags or "").split(",") if t.strip()],
+        "original_filename": file.filename,
     }
 
     try:
-        actual_doc_id, chunk_count = await ingestion_pipeline.ingest_file(
-            tmp_path, metadata
-        )
-        return IngestResponse(
-            job_id="sync",              # No background job
-            doc_id=actual_doc_id,       # Real doc_id from the pipeline
-            status=DocumentStatus.INDEXED,  # Fully indexed
-            message=f"Successfully indexed {chunk_count} chunks.",
-        )
+        # Per-request IngestionPipeline bound to THIS session's store.
+        # __init__ is cheap (chunker is a factory call with no ML state,
+        # embedder is the module-level singleton — see pipeline.py:78-86
+        # and embedder.py:199-230), so allocating one per request is fine.
+        #
+        # INVARIANT: record.store is captured here for the duration of the
+        # ingest. A concurrent session reaper that evicts this session
+        # between this line and pipeline.ingest_file() returning would
+        # upsert into a deleted store (use-after-free). No reaper exists
+        # yet — when one is added, it must either pin the session for the
+        # ingest duration or surface a retry path. Do not introduce one
+        # before resolving this.
+        pipeline = IngestionPipeline(vector_store=record.store)
+        actual_doc_id, chunk_count = await pipeline.ingest_file(tmp_path, metadata)
+    except HTTPException:
+        session_store.release_file_reservation(record.token)
+        raise
     except Exception as e:
-        logger.error("Synchronous ingestion failed: %s", e)
+        session_store.release_file_reservation(record.token)
+        logger.error("Session ingest_file failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
     finally:
-        # Always delete the temp file, even if ingestion failed
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
+    session_store.record_bytes(record.token, len(content))
+    response.headers["X-Session-Id"] = record.token
+    return IngestResponse(
+        job_id="sync",
+        doc_id=actual_doc_id,
+        status=DocumentStatus.INDEXED,
+        message=f"Successfully indexed {chunk_count} chunks.",
+    )
+
 
 @app.post("/ingest/text", response_model=IngestResponse, tags=["ingestion"])
-async def ingest_text(request: IngestRequest):
+async def ingest_text(
+    request: Request,
+    response: Response,
+    body: IngestRequest,
+):
     """
-    Index raw text content directly without uploading a file.
-
-    Useful for:
-    - Indexing text extracted from your own data sources
-    - Testing the system without preparing files
-    - Indexing dynamic content (web scrapes, database records)
-
-    Example:
-        curl -X POST http://localhost:8000/ingest/text
-             -H "Content-Type: application/json"
-             -d '{"text_content": "Your document text here...",
-                  "metadata": {"title": "My Document", "tags": ["test"]}}'
+    Index raw text into the caller's per-session corpus. Same session
+    contract as /ingest/file — X-Session-Id request header in, X-Session-Id
+    response header out. The default FiQA store is NEVER touched.
     """
-    # Validate that text_content was actually provided
-    if not request.text_content:
+    if not body.text_content:
         raise HTTPException(status_code=400, detail="text_content is required")
 
+    content_bytes = body.text_content.encode("utf-8")
+    if len(content_bytes) > settings.ragcore_session_max_file_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Text payload exceeds per-file limit "
+                f"({settings.ragcore_session_max_file_bytes} bytes)."
+            ),
+        )
+
+    record = _resolve_or_mint_session(request)
+
+    if not session_store.try_reserve_file(
+        record.token, max_files=settings.ragcore_session_max_files,
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Session file limit reached "
+                f"({settings.ragcore_session_max_files}). "
+                f"Start a new session to upload more."
+            ),
+        )
+
     try:
-        # Run ingestion pipeline directly on the text string
-        doc_id, chunk_count = await ingestion_pipeline.ingest_text(
-            request.text_content,
-            request.metadata  # Any extra metadata (title, author, tags, etc.)
-        )
-        return IngestResponse(
-            job_id="sync",
-            doc_id=doc_id,
-            status=DocumentStatus.INDEXED,
-            message=f"Successfully indexed {chunk_count} chunks.",
-        )
+        # Per-request IngestionPipeline — see ingest_file() for the
+        # __init__-is-cheap rationale and the session-reaper
+        # use-after-free invariant.
+        pipeline = IngestionPipeline(vector_store=record.store)
+        doc_id, chunk_count = await pipeline.ingest_text(body.text_content, body.metadata)
+    except HTTPException:
+        session_store.release_file_reservation(record.token)
+        raise
     except Exception as e:
+        session_store.release_file_reservation(record.token)
+        logger.error("Session ingest_text failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+    session_store.record_bytes(record.token, len(content_bytes))
+    response.headers["X-Session-Id"] = record.token
+    return IngestResponse(
+        job_id="sync",
+        doc_id=doc_id,
+        status=DocumentStatus.INDEXED,
+        message=f"Successfully indexed {chunk_count} chunks.",
+    )
 
 
 @app.delete("/documents/{doc_id}", tags=["ingestion"])

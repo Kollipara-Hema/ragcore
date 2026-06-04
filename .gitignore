@@ -218,6 +218,10 @@ faiss/
 faiss_index.idx
 faiss_metadata.pkl
 
+# Per-session corpora — created at runtime by SessionStore, never tracked.
+# Default settings.ragcore_session_root is ./data/sessions/.
+data/sessions/
+
 ui_chainlit/.files/
 
 # Virtual environment

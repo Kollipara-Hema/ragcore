@@ -24,7 +24,11 @@ _CAP = settings.ragcore_ingest_max_body_bytes
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    # Enter the TestClient context so lifespan fires — the ingest handlers
+    # reference the lifespan-constructed session_store and would
+    # AttributeError on None otherwise.
+    with TestClient(app) as c:
+        yield c
 
 
 def test_oversized_body_does_not_reach_pipeline(client):

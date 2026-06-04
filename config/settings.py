@@ -101,6 +101,23 @@ class Settings(BaseSettings):
                     "faiss_data_dir and chroma_persist_dir so session cleanup "
                     "can never touch curated corpora.",
     )
+    # The three caps below are scaffolding shaped for the 2 GB Render box.
+    # HF migration bumps these via env vars (RAGCORE_SESSION_MAX_*), not by
+    # editing this file — keep values out of code.
+    ragcore_session_max_file_bytes: int = Field(
+        default=1 * 1024 * 1024,
+        description="Per-file size cap inside a session ingest. Tighter than "
+                    "ragcore_ingest_max_body_bytes (which guards transport). "
+                    "Returns 413 above this.",
+    )
+    ragcore_session_max_files: int = Field(
+        default=3,
+        description="Max files per session. Returns 409 above this.",
+    )
+    ragcore_session_max_concurrent: int = Field(
+        default=3,
+        description="Max concurrent sessions per process. Returns 503 above this.",
+    )
 
     # Embedding
     embedding_provider: EmbeddingProvider = EmbeddingProvider.BGE
