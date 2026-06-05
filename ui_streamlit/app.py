@@ -295,6 +295,32 @@ if "prompt_prefill" not in st.session_state:
     st.session_state.prompt_prefill = ""
 if "verify_claims" not in st.session_state:
     st.session_state.verify_claims = False
+if "session_id" not in st.session_state:
+    # X-Session-Id minted by the backend on first /ingest. None = public-
+    # corpus mode. Written ONLY by _call_api (CONTRACT 1), the "Start new
+    # session" button, and the 404-on-query handler. Grep "session_id =" to
+    # find every site that touches it; anything outside those three is a
+    # regression.
+    st.session_state.session_id = None
+if "uploaded_file_keys" not in st.session_state:
+    # Dedup set for the file_uploader's rerun loop. st.file_uploader
+    # retains its value across reruns, so without this guard a single
+    # file selection would POST on every rerun and burn the session's
+    # 3-file cap immediately.
+    st.session_state.uploaded_file_keys = set()
+if "upload_409_active" not in st.session_state:
+    # Raised by _handle_upload on 409 so the sidebar can prominent the
+    # "Start new session" button. Cleared when the button is clicked.
+    st.session_state.upload_409_active = False
+if "uploader_nonce" not in st.session_state:
+    # Counter baked into st.file_uploader's `key=` so that incrementing it
+    # forces Streamlit to render a fresh widget identity — guaranteed empty,
+    # no carry-over of a retained UploadedFile. This is the only reliable
+    # way to clear a file_uploader from code: pop()-ing the widget key is
+    # allowed but the runtime can resurrect the UploadedFile via internal
+    # file_id storage. Bumped by the "Start new session" button and the
+    # 404-on-query handler.
+    st.session_state.uploader_nonce = 0
 
 # ─── Backend helpers (verbatim) ───────────────────────────────────────────────
 @st.cache_data(ttl=30)
@@ -306,23 +332,75 @@ def _check_backend_cached(url: str) -> bool:
         return False
 
 
-def ask_question(query: str, strategy: str, verify_claims: bool = False, corpus: str = "default") -> dict:
+def _call_api(
+    method: str,
+    path: str,
+    *,
+    json: Optional[dict] = None,
+    files: Optional[dict] = None,
+    timeout: float = 60,
+) -> tuple[int, dict, dict]:
+    """Single-seam HTTP wrapper. Returns (status_code, body_dict, response_headers).
+
+    Outbound: adds X-Session-Id from st.session_state when set, plus _auth_headers().
+    Inbound (CONTRACT 1): if the response carries X-Session-Id, it overwrites
+    st.session_state.session_id. This is the ONLY place that writes the
+    session_id from a response — an expired token gets replaced by the fresh
+    one the server mints, so TTL eviction or restart doesn't strand the
+    client.
+
+    Transport failures map to status_code=0 with detail in body — callers
+    use a single status-based branching pattern for both HTTP errors and
+    network failures.
+    """
+    headers = {**_auth_headers()}
+    if st.session_state.session_id:
+        headers["X-Session-Id"] = st.session_state.session_id
+    if json is not None and files is None:
+        headers["Content-Type"] = "application/json"
+
     try:
-        payload = {
-            "query": query,
-            "strategy_override": strategy if strategy != "auto" else None,
-            "verify_claims": verify_claims,
-            "corpus": corpus,
-        }
-        r = requests.post(
-            f"{BACKEND_URL}/query",
-            json=payload,
-            headers={"Content-Type": "application/json", **_auth_headers()},
-            timeout=90,
+        r = requests.request(
+            method, f"{BACKEND_URL}{path}",
+            json=json, files=files, headers=headers, timeout=timeout,
         )
-        return r.json()
-    except Exception as e:
-        return {"error": str(e)}
+    except requests.RequestException as exc:
+        return 0, {"detail": str(exc)}, {}
+
+    # CONTRACT 1: capture the server-minted (or echoed) token from EVERY
+    # response that carries it. Backend currently emits it from the ingest
+    # endpoints; if future endpoints emit it too, this code already handles
+    # them.
+    minted = r.headers.get("X-Session-Id")
+    if minted:
+        st.session_state.session_id = minted
+
+    try:
+        body = r.json()
+    except ValueError:
+        body = {"detail": r.text or "no response body"}
+    return r.status_code, body, dict(r.headers)
+
+
+def ask_question(query: str, strategy: str, verify_claims: bool = False, corpus: str = "default") -> tuple[int, dict]:
+    """POST /query. Returns (status_code, body). The caller branches on
+    status — 200/404/400/5xx all have distinct UX paths.
+
+    DECISION: when a session is active, the `corpus` field is OMITTED from
+    the payload entirely. The backend ignores it on the session path
+    (Commit 5 isolation), but omitting is defense-in-depth: a future
+    routing-precedence bug that consulted `corpus` on the session path
+    would yield a clean error rather than a silent public-corpus answer.
+    """
+    payload: dict = {
+        "query": query,
+        "strategy_override": strategy if strategy != "auto" else None,
+        "verify_claims": verify_claims,
+    }
+    if st.session_state.session_id is None:
+        payload["corpus"] = corpus
+    status, body, _ = _call_api("POST", "/query", json=payload, timeout=90)
+    return status, body
 
 
 # Human-readable labels for the corpus dropdown. Machine names returned by
@@ -388,7 +466,12 @@ def _corpus_source_label(name: str, fallback_src: str) -> str:
 
 @st.cache_data(ttl=60)
 def _fetch_corpora(url: str) -> list[dict]:
-    """GET /corpora; returns [] on any failure so the caller can fall back."""
+    """GET /corpora; returns [] on any failure so the caller can fall back.
+
+    Stays on direct requests (not _call_api) because @st.cache_data wraps
+    this function — the cached body never sees a session header on warm
+    hits, which is the right behavior for a public-corpus listing.
+    """
     try:
         r = requests.get(f"{url}/corpora", headers=_auth_headers(), timeout=5)
         if r.status_code == 200:
@@ -435,13 +518,68 @@ def _strategy_label(strategy: Optional[str]) -> Optional[str]:
     return RETRIEVAL_STRATEGY_LABELS.get(strategy, strategy)
 
 
-def upload_document(file) -> dict:
-    try:
-        files = {"file": (file.name, file.getvalue(), file.type or "application/octet-stream")}
-        r = requests.post(f"{BACKEND_URL}/ingest/file", files=files, headers=_auth_headers(), timeout=120)
-        return r.json()
-    except Exception as e:
-        return {"error": str(e)}
+def _file_dedup_key(file) -> str:
+    """Stable key for an UploadedFile used to skip already-processed uploads
+    across reruns. Streamlit's `file_id` is its internal handle for a single
+    upload session — equal across reruns for the same file selection, new
+    on a fresh selection. The name+size fallback is a defense in case the
+    private attribute disappears in a future Streamlit version."""
+    fid = getattr(file, "file_id", None)
+    if fid:
+        return fid
+    return f"{file.name}:{file.size}"
+
+
+def _handle_upload(file) -> None:
+    """Single-fire upload handler. Dedups against
+    st.session_state.uploaded_file_keys so a file selected once doesn't
+    re-POST on every rerun (which would burn the 3-file session cap
+    instantly). Maps every backend status to a readable UI message."""
+    key = _file_dedup_key(file)
+    if key in st.session_state.uploaded_file_keys:
+        return
+    # Mark BEFORE the request so even an exception inside doesn't loop on
+    # reruns — the user can clear and retry deliberately if they want.
+    st.session_state.uploaded_file_keys.add(key)
+
+    with st.spinner(f"Uploading {file.name}…"):
+        status, body = upload_document(file)
+    detail = body.get("detail") or body.get("message") or "no detail"
+
+    if status == 200:
+        msg = body.get("message", f"Indexed {file.name}.")
+        st.success(msg)
+    elif status == 413:
+        st.error(detail)
+    elif status == 415:
+        st.error(detail)
+    elif status == 409:
+        # CONTRACT 2: surface the limit message; the "Start new session"
+        # button below the indicator gives the user the means to recover.
+        st.error(detail)
+        st.session_state.upload_409_active = True
+    elif status == 503:
+        st.warning(f"{detail} Try again in a moment.")
+    elif status == 0:
+        st.error(f"Upload failed: {detail}")
+    else:
+        st.error(f"Upload failed ({status}): {detail}")
+
+
+def upload_document(file) -> tuple[int, dict]:
+    """POST /ingest/file. Returns (status_code, body). The caller maps
+    status codes to UI messages:
+      200 → success, X-Session-Id was captured by _call_api
+      413 → file size or PDF page-count exceeded
+      415 → unsupported file type (bytes-sniff rejected)
+      409 → session file-count limit reached → "Start new session"
+      503 → server at concurrent-session capacity
+    """
+    files = {"file": (file.name, file.getvalue(), file.type or "application/octet-stream")}
+    status, body, _ = _call_api(
+        "POST", "/ingest/file", files=files, timeout=120,
+    )
+    return status, body
 
 
 # ─── compute_confidence (verbatim from commit 98f0f8e) ───────────────────────
@@ -991,10 +1129,14 @@ def _render_assistant_message(
         _sources_grid(citations)
         # 2b stopgap pending backend fix: the follow-up generator returns
         # FiQA-domain questions regardless of which corpus was queried, so
-        # for Apple corpora the chips are off-topic noise. Suppress the
-        # entire block — header included — until the backend conditions
-        # follow-ups on the corpus.
-        if corpus == "default":
+        # for Apple corpora the chips are off-topic noise. The session-mode
+        # exclusion is the same bug exposed on a different path — the LLM
+        # generates finance-flavored follow-ups even when the answer came
+        # from the user's uploaded doc, and the corpus dropdown typically
+        # still reads "default" while the session header drives routing.
+        # Suppress the entire block — header included — until the backend
+        # conditions follow-ups on the actual answered content.
+        if corpus == "default" and st.session_state.session_id is None:
             _follow_up_chips(follow_up_questions, message_idx)
 
     # Per-answer retrieval strategy that actually ran. Reflects Auto's
@@ -1093,6 +1235,11 @@ with st.sidebar:
     )
     if not corpora_ok:
         st.caption("⚠ Could not load corpus list — using default")
+    if st.session_state.session_id:
+        # When a session is active, the backend ignores this field
+        # (Commit 5 routing) — make that visible rather than letting the
+        # user wonder why flipping corpora doesn't change behavior.
+        st.caption("Ignored while a session is active — uploaded docs take precedence.")
     selected_info = corpora_by_name.get(selected_corpus, {})
 
     st.divider()
@@ -1168,12 +1315,48 @@ with st.sidebar:
         )
     st.divider()
 
-    # S5. Doc upload note
-    st.markdown(
-        f'<p style="font-size:11px;color:{TEXT_MUTED};font-style:italic;margin-top:16px">'
-        f'Document upload available when running locally — see README.</p>',
-        unsafe_allow_html=True,
+    # S5. Your documents — file uploader + active session indicator
+    st.markdown('<span class="sec-label">Your documents</span>', unsafe_allow_html=True)
+    # key includes uploader_nonce — incrementing it forces a fresh widget
+    # identity, which is how the "Start new session" button clears a
+    # retained UploadedFile without relying on pop()-ing widget state.
+    uploaded = st.file_uploader(
+        "Upload PDF, TXT, or MD",
+        type=["pdf", "txt", "md"],
+        accept_multiple_files=False,
+        label_visibility="collapsed",
+        key=f"file_uploader_{st.session_state.uploader_nonce}",
     )
+    # CRITICAL: file_uploader retains its value across reruns. _handle_upload
+    # dedups by file_id, so this call is safe to fire on every rerun — only
+    # the first POSTs.
+    if uploaded is not None:
+        _handle_upload(uploaded)
+
+    if st.session_state.session_id:
+        prefix = st.session_state.session_id[:6]
+        n_files = len(st.session_state.uploaded_file_keys)
+        st.caption(f"Session: {prefix}… · {n_files} file(s)")
+
+        # CONTRACT 2: "Start new session" affordance. Promoted to primary
+        # styling after a 409 so it's the obvious next step.
+        btn_type = "primary" if st.session_state.upload_409_active else "secondary"
+        if st.button("Start new session", use_container_width=True, type=btn_type):
+            st.session_state.session_id = None
+            st.session_state.uploaded_file_keys = set()
+            st.session_state.upload_409_active = False
+            # Bump nonce so the file_uploader renders with a fresh key on
+            # the next rerun → no retained UploadedFile → _handle_upload
+            # does NOT fire → no auto-mint of a new session. Without this
+            # bump, the retained file would re-upload immediately after the
+            # rerun and resurrect the session we just cleared.
+            st.session_state.uploader_nonce += 1
+            # Don't clear messages — past chat history remains visible.
+            st.rerun()
+    else:
+        st.caption("No session — upload a file to start one.")
+
+    st.divider()
 
     # S6. Clear chat button
     if st.button("Clear chat", use_container_width=True):
@@ -1314,32 +1497,40 @@ else:
             unsafe_allow_html=True,
         )
 
-# M3. Try asking label
-st.markdown(
-    f'<p style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;'
-    f'color:{TEXT_MUTED};margin-top:32px;margin-bottom:12px">'
-    f'Try asking — or write your own</p>',
-    unsafe_allow_html=True,
-)
+# M3 + M4. Starter prompts — corpus-aware FiQA/Apple curated lists.
+# Suppressed entirely in session mode: PROMPT_STARTERS has no "session" key
+# and the FiQA fallback would prime users with finance questions above a
+# chat that's actually querying their uploaded doc. Same justification as
+# the follow-up chip suppression below — static FiQA noise on a non-FiQA
+# session. The label and cards are wrapped together so we don't leave an
+# orphan "Try asking" heading with no buttons beneath it.
+if st.session_state.session_id is None:
+    # M3. Try asking label
+    st.markdown(
+        f'<p style="font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;'
+        f'color:{TEXT_MUTED};margin-top:32px;margin-bottom:12px">'
+        f'Try asking — or write your own</p>',
+        unsafe_allow_html=True,
+    )
 
-# M4. Prompt cards — corpus-aware. Falls back to the FiQA set if the
-# selected corpus has no curated starters. Button keys include the corpus
-# name to avoid collisions when categories repeat across corpora
-# (e.g. REVENUE for both apple_10k_* and apple_financial_csvs).
-active_starters = PROMPT_STARTERS.get(selected_corpus, PROMPT_STARTERS["default"])
-_pc1, _pc2, _pc3 = st.columns(3, gap="small")
-for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], active_starters):
-    with col:
-        st.markdown(
-            f'<span style="color:{color};font-size:10px;font-weight:600;'
-            f'letter-spacing:0.5px;text-transform:uppercase;'
-            f'display:block;margin-bottom:4px">{cat}</span>',
-            unsafe_allow_html=True,
-        )
-        if st.button(question, key=f"pc_{selected_corpus}_{cat.lower().replace(' ', '_')}",
-                     use_container_width=True):
-            st.session_state.prompt_prefill = question
-            st.rerun()
+    # M4. Prompt cards — corpus-aware. Falls back to the FiQA set if the
+    # selected corpus has no curated starters. Button keys include the corpus
+    # name to avoid collisions when categories repeat across corpora
+    # (e.g. REVENUE for both apple_10k_* and apple_financial_csvs).
+    active_starters = PROMPT_STARTERS.get(selected_corpus, PROMPT_STARTERS["default"])
+    _pc1, _pc2, _pc3 = st.columns(3, gap="small")
+    for col, (cat, color, question) in zip([_pc1, _pc2, _pc3], active_starters):
+        with col:
+            st.markdown(
+                f'<span style="color:{color};font-size:10px;font-weight:600;'
+                f'letter-spacing:0.5px;text-transform:uppercase;'
+                f'display:block;margin-bottom:4px">{cat}</span>',
+                unsafe_allow_html=True,
+            )
+            if st.button(question, key=f"pc_{selected_corpus}_{cat.lower().replace(' ', '_')}",
+                         use_container_width=True):
+                st.session_state.prompt_prefill = question
+                st.rerun()
 
 # M5. Stack subtitle
 st.markdown(
@@ -1371,6 +1562,23 @@ prefill = st.session_state.get("prompt_prefill", "")
 if prefill:
     del st.session_state["prompt_prefill"]
 
+# Mode indicator: visible signal of whether the next query routes to the
+# user's uploaded docs (session header) or to the public corpus dropdown.
+# Without this, a user who uploaded a file and then flipped the corpus
+# dropdown would have no signal that their dropdown change is ignored.
+if st.session_state.session_id:
+    prefix = st.session_state.session_id[:6]
+    st.markdown(
+        f'<div style="background:{ACCENT_TINT};border:1px solid {ACCENT};'
+        f'border-radius:8px;padding:8px 14px;margin:0 0 8px 0;font-size:13px;'
+        f'color:{TEXT_PRIMARY}">'
+        f'<strong>Querying your uploaded document(s)</strong> '
+        f'<span style="color:{TEXT_SECONDARY}">· session {prefix}…</span></div>',
+        unsafe_allow_html=True,
+    )
+else:
+    st.caption(f"Querying: {_corpus_label(selected_corpus)}")
+
 placeholder = (
     "Ask a follow-up..." if st.session_state.messages
     else "Ask about IRAs, 401k, mortgages, investing…"
@@ -1391,6 +1599,7 @@ if active_prompt:
                     "If this is the Render demo, wait ~30 s and retry."
                 )
             }
+            status = 0
         else:
             verify = st.session_state.get("verify_claims", False)
             spinner_text = (
@@ -1399,10 +1608,44 @@ if active_prompt:
                 "Searching corpus and generating answer…"
             )
             with st.spinner(spinner_text):
-                result = ask_question(
+                status, body = ask_question(
                     active_prompt, strategy,
                     verify_claims=verify, corpus=selected_corpus,
                 )
+            if status == 200:
+                result = body
+            elif status == 404 and st.session_state.session_id:
+                # CRITICAL — session expired / unknown on the backend. Do
+                # NOT silently re-issue this query against the public
+                # corpus: the user asked about their private doc, and
+                # answering from FiQA would violate the isolation trust
+                # we built in Commit 5. Clear the session so the NEXT
+                # query is public-mode, warn this turn, then stop.
+                st.session_state.session_id = None
+                st.session_state.uploaded_file_keys = set()
+                # Bump nonce — same rationale as the "Start new session"
+                # button. Without this, the file_uploader's retained
+                # UploadedFile would auto-reupload on the next rerun and
+                # silently mint a fresh session. We want the user to
+                # deliberately re-upload, not have it happen invisibly.
+                st.session_state.uploader_nonce += 1
+                st.warning(
+                    "Your session expired on the server. Re-upload your "
+                    "document(s) to continue, or ask a new question against "
+                    "the public corpus."
+                )
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "[Session expired — please re-upload to continue.]",
+                    "result": {"error": "session_expired"},
+                    "corpus": "session",
+                })
+                st.rerun()
+                # st.rerun() never returns; the guard below is defensive.
+                result = {"error": "session_expired"}
+            else:
+                detail = body.get("detail") or body.get("error") or "no detail"
+                result = {"error": f"Query failed ({status}): {detail}"}
 
         _render_assistant_message(
             result, show_retry=True,
