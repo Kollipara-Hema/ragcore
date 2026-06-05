@@ -115,7 +115,7 @@ default-judge run preserved as evidence.
 ```mermaid
 flowchart TD
     subgraph Ingestion
-        A([Documents<br/>PDF · DOCX · TXT · HTML]) --> B[Load & Clean]
+        A([Documents<br/>PDF · TXT · DOCX · HTML · CSV]) --> B[Load & Clean]
         B --> C[Chunk<br/>fixed · semantic · hierarchical · sentence]
         C --> D[Embed<br/>BGE · MiniLM]
         D --> E[(Hybrid Index)]
@@ -215,7 +215,9 @@ and falls back to FAISS.
 
 ### Full Stack with Docker Compose
 
-API, Celery workers, and Redis in one command.
+API, Redis, Prometheus, and Grafana in one command. The compose file also
+defines a Celery worker service from a removed async ingestion path; it
+starts but receives no jobs from the HTTP API and is queued for cleanup.
 
 ```bash
 cp .env.example .env
@@ -223,9 +225,10 @@ cp .env.example .env
 # Also set REDIS_PASSWORD and GF_ADMIN_PASSWORD before running — the stack will start without them but defaults to placeholder credentials
 
 docker-compose up --build
-# API:    http://localhost:8000
-# Docs:   http://localhost:8000/docs
-# Flower: http://localhost:5555
+# API:        http://localhost:8000
+# API docs:   http://localhost:8000/docs
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3000
 ```
 
 ### UI Frontends
@@ -254,21 +257,38 @@ Grafana is available at `http://localhost:3000`; log in with the `GF_ADMIN_PASSW
 
 ### Ingest
 
+Uploads land in a per-session corpus, gated by the `X-Session-Id` request header.
+The first call without that header mints a new session token, returned in the
+`X-Session-Id` response header; subsequent calls send the token back to add to
+the same session corpus. Indexing is synchronous and blocks until the file is
+embedded and persisted.
+
 ```bash
-# Async (default) — returns job_id immediately, processes in background via Celery
-curl -X POST http://localhost:8000/ingest/file \
+# First call — mints a session. -i prints headers so you can copy X-Session-Id.
+curl -i -X POST http://localhost:8000/ingest/file \
   -F "file=@report.pdf" \
   -F "title=Q3 Report 2024" \
   -F "tags=finance,quarterly"
 
-# Check job status
-curl http://localhost:8000/ingest/status/<job_id>
-
-# Synchronous — waits for completion (use for small files)
+# Subsequent uploads — reuse the token from the previous response.
 curl -X POST http://localhost:8000/ingest/file \
-  -F "file=@notes.txt" \
-  -F "async_processing=false"
+  -H "X-Session-Id: <token>" \
+  -F "file=@notes.txt"
+
+# Raw text into the same session.
+curl -X POST http://localhost:8000/ingest/text \
+  -H "X-Session-Id: <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text_content": "Q3 revenue was $4.2B...", "metadata": {"title": "Q3 highlights"}}'
 ```
+
+Accepted types: PDF (up to 100 pages by default) and plain text (TXT/MD). File
+type is decided by magic-byte sniff — the client's `Content-Type` and filename
+are ignored. Anything else returns 415. Per-session file/byte caps and an
+idle-TTL eviction loop bound storage on small deploys; an expired session token
+returns 404 on `/ingest/*` and `/query`. Queries that carry the same
+`X-Session-Id` are answered from that session's corpus instead of the public
+FiQA index.
 
 ### Query
 
@@ -316,7 +336,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 
 | Setting | Default | Options / Effect |
 |---------|---------|-----------------|
-| `LLM_PROVIDER` | `groq` | `groq` · `openai` · `anthropic` · `ollama` · `demo` |
+| `LLM_PROVIDER` | `groq` | `groq` and `anthropic` dispatch to dedicated clients in `GenerationService._build_llm()`; `openai` (and Azure OpenAI when `AZURE_OPENAI_ENDPOINT` is set) runs through the OpenAI client, which is also the fallthrough default for any unrecognized value. `ollama` and `demo` are accepted enum placeholders for planned providers — not yet wired to a dedicated client. |
 | `GROQ_API_KEY` | — | Required if `LLM_PROVIDER=groq` |
 | `OPENAI_API_KEY` | — | Required if `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | — | Required if `LLM_PROVIDER=anthropic` |
@@ -421,7 +441,7 @@ ragcore/
 │   └── scripts/            # run_benchmark.py · stage_b_sanity.py
 │
 ├── generation/
-│   ├── llm_service.py      # Provider switcher: Groq / OpenAI / Anthropic / Ollama
+│   ├── llm_service.py      # Provider switcher: Groq / OpenAI / Anthropic
 │   ├── advanced_generation.py  # SelfRAGGenerator · FLAREGenerator · AgenticRAG
 │   └── prompts/            # Prompt templates
 │
@@ -482,8 +502,15 @@ mock-target resolution bug in the test itself, unrelated to current work.
 
 ### Working end-to-end
 
-- Document ingestion: PDF, DOCX, text, HTML, web, GitHub via 8 loaders and 4
-  chunking strategies
+- Document ingestion (HTTP API): per-session uploads of PDF and plain text
+  (TXT/MD) via `/ingest/file` and `/ingest/text`. File type decided by
+  magic-byte sniff; client `Content-Type` and filename ignored. PDFs capped at
+  100 pages by default.
+- Document ingestion (offline scripts): PDF, DOCX, HTML, CSV, and plain text
+  via the loader registry — used by `scripts/ingest_apple_corpus.py` and
+  similar admin tooling to build the curated corpora (FiQA `default`, Apple
+  10-K family) that ship with the deploy. Same 4 chunking strategies as the
+  API path.
 - Hybrid retrieval: FAISS dense + BM25 sparse with configurable alpha fusion
 - Cross-encoder reranking
 - Query routing: heuristic regex + LLM fallback, dispatches to 5 of 6
@@ -597,6 +624,9 @@ For full commit history: `git log --oneline -30`
 
 - Wire Agentic RAG into the generation strategy dispatch (code exists in
   `advanced_generation.py`, not yet called by orchestrator)
+- Wire the Ollama provider for local inference (currently an accepted enum
+  placeholder; `GenerationService._build_llm()` has no `ollama` branch and
+  falls through to the OpenAI client)
 - Manual claim-level annotation on the 13 internal-accept/RAGAS-reject
   queries to determine whether they reflect real grounding errors or
   overzealous RAGAS rejection (per-claim analysis investigated the
