@@ -27,6 +27,7 @@ finding.
 - [Quick Start](#quick-start)
 - [Monitoring](#monitoring)
 - [API Reference](#api-reference)
+- [Per-session uploads](#per-session-uploads)
 - [Configuration](#configuration)
 - [Security](#security)
 - [Deployment](#deployment)
@@ -285,10 +286,15 @@ curl -X POST http://localhost:8000/ingest/text \
 Accepted types: PDF (up to 100 pages by default) and plain text (TXT/MD). File
 type is decided by magic-byte sniff — the client's `Content-Type` and filename
 are ignored. Anything else returns 415. Per-session file/byte caps and an
-idle-TTL eviction loop bound storage on small deploys; an expired session token
-returns 404 on `/ingest/*` and `/query`. Queries that carry the same
-`X-Session-Id` are answered from that session's corpus instead of the public
-FiQA index.
+idle-TTL eviction loop bound storage on small deploys. Stale-token behavior is
+asymmetric by design: `/query` and `/retrieve` return 404 on an unknown or
+expired session token because header presence commits the request to the
+session path and the read path must not silently fall back to public corpora
+(it would answer "what does my document say?" with chunks the user never
+uploaded). `/ingest/*` is permissive instead — an absent or unknown token
+mints a fresh session, because replacing a stale write-token leaks nothing.
+Queries that carry a valid `X-Session-Id` are answered from that session's
+corpus instead of the public FiQA index.
 
 ### Query
 
@@ -313,6 +319,109 @@ curl -X POST http://localhost:8000/query/stream \
   -d '{"query": "Summarize the main points."}' \
   --no-buffer
 ```
+
+### Retrieve
+
+`POST /retrieve` runs the router → retrieve → rerank pipeline without
+generation, returning the ranked chunks and their scores. Useful for comparing
+strategies, building custom downstream generators, or inspecting retrieval
+quality without LLM cost.
+
+```bash
+curl -X POST http://localhost:8000/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is the return policy?", "top_k": 5}'
+```
+
+### Corpora
+
+`GET /corpora` returns the registered corpus names and their `doc_count`
+values. Clients select a corpus by name via the `corpus` field on `/query`
+and `/retrieve`; the FiQA `default` corpus is selected when the field is
+omitted.
+
+```bash
+curl http://localhost:8000/corpora
+```
+
+### Other endpoints
+
+- `DELETE /documents/{doc_id}` — remove all chunks of a document from the
+  active corpus.
+- `GET /health`, `GET /health/live`, `GET /health/ready` — basic, liveness,
+  and readiness probes. The last runs a vector-store ping, an embedder
+  smoke test, and an LLM API-key presence check; returns 200 all-pass or
+  503 with per-check failure reasons.
+- `GET /metrics` — Prometheus scrape endpoint (5 custom `ragcore_*` metrics
+  plus RED metrics on every route; see [Monitoring](#monitoring)).
+- `POST /agent/query`, `GET /agent/trace/{trace_id}`, `GET /trace/{trace_id}` —
+  LangGraph agent path. Status PARTIAL per [AUDIT.md](AUDIT.md); the trace
+  endpoints have known security limitations documented there.
+
+---
+
+## Per-session uploads
+
+The `/ingest/file` and `/ingest/text` endpoints write into a private corpus
+scoped to a session token, not into the public FiQA index. The token is
+minted by the server on the first call (returned as the `X-Session-Id`
+response header) and supplied by the client on subsequent calls to add to
+the same corpus.
+
+### Isolation invariant
+
+A request that carries an `X-Session-Id` reads or writes ONLY that session's
+corpus. The body's `corpus` field is ignored on the session path. The same
+isolation contract is threaded through the Self-RAG and FLARE mid-generation
+re-retrieval paths so a verifier or iterative loop can't pull public-corpus
+chunks into a session answer (see the 2026-06-04 entries in
+[docs/debugging-notes.md](docs/debugging-notes.md)).
+
+Stale-token behavior is asymmetric by design. On the **read path** (`/query`,
+`/retrieve`), an unknown or expired token returns 404 — header presence
+commits the request to the session corpus, and silently falling back to the
+public FiQA index would answer "what does my document say?" with chunks the
+user never uploaded. On the **write path** (`/ingest/*`), an absent or
+unknown token mints a fresh session rather than 404ing — replacing a stale
+write-token leaks nothing, so the cheaper user-experience behavior (your
+upload always succeeds) is safe.
+
+### Per-session limits (defaults)
+
+| Setting | Default | Effect |
+|---|---|---|
+| `RAGCORE_SESSION_MAX_FILE_BYTES` | 1 MB | Per-file size cap; returns 413 above this. |
+| `RAGCORE_SESSION_MAX_FILES` | 3 | Max files per session; returns 409 above this. |
+| `RAGCORE_SESSION_MAX_CONCURRENT` | 3 | Max active sessions per process; returns 503 above this. |
+| `RAGCORE_PDF_MAX_PAGES` | 100 | Per-PDF page cap (probed before embedding); returns 413 above this. |
+| `RAGCORE_SESSION_IDLE_TTL_SECONDS` | 1800 | Sessions idle past this are evicted by the reaper. |
+| `RAGCORE_SESSION_SWEEP_INTERVAL_SECONDS` | 300 | Reaper sweep cadence; worst-case eviction lag = TTL + sweep. |
+| `RAGCORE_INGEST_MAX_BODY_BYTES` | 10 MB | Transport-level guard on `/ingest/*` request bodies; returns 413. |
+
+The caps are scaffolding shaped for a 2 GB box. On a larger deploy, lift
+them via env vars — don't edit the defaults. The TTL is idle-keyed, not
+absolute: every ingest or query bumps `last_access`, so an active user is
+never evicted mid-session. On eviction, the reaper drops the session's
+Chroma cache entry and (on Linux/glibc) calls `malloc_trim(0)` to return
+the freed pages to the OS.
+
+### Streamlit UI workflow
+
+The Streamlit demo (`ui_streamlit/app.py`) wires the session API into its
+chat surface:
+
+1. Upload a PDF or text file from the sidebar's "Your documents" panel.
+   The first upload mints a session token; subsequent uploads in the same
+   browser tab add to it up to the file/byte caps above.
+2. A mode pill at the top of the chat indicates whether the next query
+   will target the public FiQA corpus or the active session corpus.
+3. Ask questions about the uploaded documents. Queries automatically carry
+   the session token; answers cite only chunks from the session corpus.
+4. "Start new session" clears the token and the upload state, returning
+   the chat to public-corpus mode. The button bumps a nonce baked into
+   the `file_uploader`'s `key=` so a retained file can't silently re-mint
+   the cleared session — see the 2026-06-04 entry in
+   [docs/debugging-notes.md](docs/debugging-notes.md) for the trap.
 
 ---
 
@@ -426,10 +535,11 @@ ragcore/
 │   └── nodes/              # router · retriever · reranker · generator · evaluator
 │
 ├── api/                    # FastAPI application
-│   └── main.py             # /ingest · /query · /query/stream · /agent/query · /health
+│   └── main.py             # /ingest/* · /query · /retrieve · /query/stream · /corpora · /documents/* · /health/* · /metrics · /agent/*
 │
 ├── config/
-│   └── settings.py         # Pydantic settings — all env vars with defaults
+│   ├── settings.py         # Pydantic settings — all env vars with defaults
+│   └── corpora.py          # CORPORA_CONFIG — per-corpus Chroma persist_dir + chunker
 │
 ├── embeddings/             # BGEEmbedder · MiniLMEmbedder · embedder factory
 │
@@ -438,7 +548,7 @@ ragcore/
 │   ├── datasets/           # FiQA-2018 eval set (50 queries, seed=42)
 │   ├── notebooks/          # baseline_vs_selfrag.ipynb
 │   ├── results/            # Raw JSON benchmark output (basic_fiqa.json, self_rag_fiqa.json)
-│   └── scripts/            # run_benchmark.py · stage_b_sanity.py
+│   └── scripts/            # run_benchmark.py · stage_b_sanity.py · production_health_check.py
 │
 ├── generation/
 │   ├── llm_service.py      # Provider switcher: Groq / OpenAI / Anthropic
@@ -447,10 +557,12 @@ ragcore/
 │
 ├── ingestion/
 │   ├── chunkers/           # fixed · semantic · hierarchical · sentence
-│   └── loaders/            # PDF · DOCX · TXT · HTML · GitHub · web
+│   └── loaders/            # PDF · TXT · DOCX · HTML · CSV
 │
 ├── monitoring/
-│   └── tracer.py           # NoOpTracer (default) · LangfuseTracer (optional)
+│   ├── tracer.py           # NoOpTracer (default) · LangfuseTracer (optional)
+│   ├── metrics.py          # Prometheus metric definitions (5 custom ragcore_* + RED)
+│   └── logging_config.py   # structlog setup
 │
 ├── reranking/
 │   └── reranker.py         # CrossEncoderReranker · NoOpReranker
@@ -462,17 +574,20 @@ ragcore/
 │       └── retrieval_executor.py
 │
 ├── tests/
-│   ├── unit/               # 75 tests — no external services required
-│   └── integration/        # 25 tests — FAISS in-memory, mocked external services
+│   ├── unit/               # no external services required
+│   └── integration/        # FAISS in-memory, mocked external services
 │
 ├── docs/
 │   └── debugging-notes.md
 │
 ├── utils/
-│   └── models.py           # Shared types: Chunk · Document · RetrievedChunk
+│   └── models.py           # Shared types: Chunk · Document · RetrievedChunk · IngestRequest · QueryRequest
 │
 └── vectorstore/
-    └── vector_store.py     # FAISSVectorStore · get_vector_store() singleton
+    ├── vector_store.py     # FAISSVectorStore + per-corpus registry (register_corpus / get_corpus / list_corpora)
+    ├── chroma_store.py     # ChromaVectorStore — backs the Apple multi-corpus
+    ├── bm25_index.py       # BM25Index helper shared by FAISS and Chroma backends
+    └── session_store.py    # SessionStore — per-session corpora with TTL eviction and in-flight pin
 ```
 
 </details>
@@ -492,9 +607,12 @@ pytest tests/integration/ -v
 pytest tests/unit/ --cov=. --cov-report=html
 ```
 
-Current: 166 unit tests passing, 44 of 45 integration tests passing. One
-integration test (`test_agent_graph_with_tracing`) fails due to a pre-existing
-mock-target resolution bug in the test itself, unrelated to current work.
+The unit suite runs without external services; the integration suite uses
+in-memory FAISS and mocked external services. One integration test
+(`test_agent_graph_with_tracing`) is known to fail on a mock-target
+resolution bug in the test itself, unrelated to the graph it exercises.
+For current counts, run `pytest tests/unit/ --collect-only -q` and
+`pytest tests/integration/ --collect-only -q`.
 
 ---
 
@@ -607,6 +725,12 @@ mock-target resolution bug in the test itself, unrelated to current work.
 
 | Date | What changed |
 |---|---|
+| 2026-06-04 | Per-session document upload feature: synchronous `/ingest/file` and `/ingest/text` gated by `X-Session-Id`, per-session file/byte/concurrency caps, idle-TTL eviction with `malloc_trim` RAM reclamation, Streamlit upload UI |
+| 2026-06-03 | Removed the async/Celery `/ingest` path from the HTTP surface; added the session-scoped vector-store registry that the per-session feature builds on |
+| 2026-05-30 | Corpus-aware Streamlit UI (sidebar dropdown across 7 corpora); `POST /retrieve` endpoint (router → retrieve → rerank, no generation); chunker comparison panel |
+| 2026-05-28 | Apple multi-corpus shipped: 6 Chroma corpora alongside FiQA on FAISS; `GET /corpora` endpoint translates unknown-corpus errors to HTTP 400 |
+| 2026-05-27 | Per-corpus vector-store registry replaces the single-store singleton; PDF loader swapped from pdfplumber to pymupdf4llm |
+| 2026-05-13 | `delete_document` FAISS index-wipe bug fixed (embeddings persisted in metadata pickle, index rebuilt on delete); production health-check cron added |
 | 2026-05-08 | Grafana dashboard screenshot and Recent Updates section added |
 | 2026-05-07 | AUDIT and README refreshed to reflect the past week's batch |
 | 2026-05-06 | Per-claim faithfulness analysis: characterized RAGAS judge non-determinism (0.05-0.09 noise floor at n=50) and structural verifier disagreement (Pearson r ≈ -0.14 between Self-RAG verifier and RAGAS judge using the same model) |
