@@ -1489,7 +1489,7 @@ A deployed Apple-corpus query returned a correct grounded answer, but the inline
 
 ### Status
 
-Open. Not yet investigated. Generation/renderer layer.
+Open. Not yet investigated. Generation/renderer layer. Re-confirmed still open as of 2026-06-05 — no investigation since the original 2026-05-29 filing; per-session document work has been the focus.
 
 ### Cross-reference
 
@@ -1509,7 +1509,7 @@ A deployed Apple 10-K query returned `follow_up_questions` about IRAs, 401(k)s, 
 
 ### Status
 
-Open. Not yet investigated. Demo-visible — undercuts the multi-corpus story the Apple work was meant to demonstrate. Generation layer.
+Open. Not yet investigated. Demo-visible — undercuts the multi-corpus story the Apple work was meant to demonstrate. Generation layer. Re-confirmed still open as of 2026-06-05 — no investigation since the original 2026-05-29 filing; per-session document work has been the focus.
 
 ### Cross-reference
 
@@ -1612,6 +1612,229 @@ N/A — observed, not fixed.
 
 ---
 
+## 2026-06-04 — RAM-reclamation probe read ru_maxrss (PEAK RSS, structurally cannot decrease), reported "+0 MB everywhere," nearly killed the 2 GB session-TTL design
+
+### Symptom
+
+While building session TTL eviction (`fc0a4df`), the reaper's RAM-reclamation step needed verification: did removing chromadb's cached `System` actually return RSS pages to the OS, or was the process retaining them? A standalone probe (`scripts/rss_probe_linux.py` in an earlier draft) created a temp Chroma collection, upserted a synthetic embedding batch, called `_release_chroma_cache_for_path` + `del` + `gc.collect()` + `malloc_trim(0)`, and read process RSS before vs after. Every delta was +0 MB or +epsilon. Repeated across batch sizes, embedding dimensions, and trim points. The reading was consistent and damning: `malloc_trim` was reclaiming nothing, the chromadb cache eviction was freeing the handle but not the pages, the 2 GB Render box would OOM after a few dozen evict cycles, and the entire session-TTL design would have to be abandoned for a much heavier process-restart model.
+
+### Initial hypothesis (wrong)
+
+`malloc_trim(0)` doesn't reclaim Chroma/HNSW pages. The reasoning at the time: glibc's arena bookkeeping is documented to be conservative, HNSW's allocation pattern (many small graph nodes) fragments arenas in ways `malloc_trim` can't coalesce, and the measured "+0 MB" was direct evidence that whatever was being freed wasn't reaching the OS. Plausible, consistent with the data, and aligned with what's findable on the internet about HNSW + glibc. The hypothesis explained every datapoint the probe produced.
+
+It was wrong. The probe was reading the wrong field.
+
+### Actual root cause
+
+`resource.getrusage(RUSAGE_SELF).ru_maxrss` reports PEAK RSS over the process lifetime — it is monotonic non-decreasing by construction. It cannot show a drop even when the kernel has reclaimed every page. The "+0 MB delta" the probe printed was the peak holding steady; the actual current RSS may have dropped by hundreds of MB between the readings, and `ru_maxrss` is structurally blind to that. The hypothesis under test ("does `malloc_trim` reclaim?") was being measured by an instrument that can structurally never report "yes."
+
+The correct measurement on Linux is `/proc/self/status:VmRSS` — current resident pages, which DO decrease when the allocator returns memory. Re-ran the same probe reading `VmRSS`; deltas were −85% to −95% of the upsert footprint after `_release_chroma_cache_for_path + gc.collect() + malloc_trim(0)`. `malloc_trim` had been reclaiming the entire time. The session-TTL design survived.
+
+### Why the wrong measurement was so plausible
+
+`resource.getrusage` is the standard-library answer to "process RSS." Its documented field is `ru_maxrss`. The word "max" sits in the field name as a small flag, but the obvious-looking import path (`import resource`) and the obvious-looking field name frame the answer as "this is the RSS." Reading `/proc/self/status` is a more platform-specific move that the obvious path doesn't suggest. The wrong measurement was reachable in 3 lines of stdlib; the right one needed a file parse the stdlib doesn't surface.
+
+### Fix
+
+The probe and its docstring (`scripts/rss_probe_linux.py:14-24, 42-55`) now hard-document the trap: `ru_maxrss` is the PEAK and MUST NOT be used for before/after reclamation comparisons. The current-RSS helper reads `VmRSS` from `/proc/self/status` directly. The same warning is copied verbatim into the live regression test (`tests/integration/test_session_reaper.py:303-310`) so anyone editing that file sees the trap before they edit it.
+
+### Sub-finding: the corrected diagnostic is Linux/glibc-only
+
+`malloc_trim(0)` is a glibc-specific hook. macOS's allocator has no equivalent — the system allocator decides on its own when to return pages, and Python user code has no API to force it. The reaper's `_release_chroma_cache_for_path` still calls `malloc_trim` under a `try/except` so macOS development falls through cleanly (the reaper just frees the cache handle without the trim call), but the RSS-reclamation regression test is skipped on non-Linux (`tests/integration/test_session_reaper.py:315`).
+
+Production runs on Linux, so the guarantee covers production; macOS local development will see RAM accumulate across many evict cycles, which is fine for hours-of-development scale and would not be fine at production session volume. The platform-asymmetry note belongs alongside the measurement note: both shape what "RAM is reclaimed" means operationally. Two corrections — measure with `VmRSS` (not `ru_maxrss`), and the fix is glibc-only (macOS has no hook) — applied together get the right answer.
+
+### Regression tests
+
+`tests/integration/test_session_reaper.py::test_F1_rss_reclaimed_on_linux` exercises the full eviction path against a real Chroma collection and asserts RSS drops by ≥50% of the upserted footprint. Skipped on non-Linux. Reads `VmRSS`, not `ru_maxrss`. Pins both the measurement-tool correction and the `malloc_trim`-actually-works finding in one test, so a future "let's clean up the imports" refactor that puts `resource.getrusage` back can't silently re-introduce the wrong reading.
+
+### Lesson — primary
+
+A number is only as good as what it measures. "+0 MB delta" was a real number from a real syscall — it just wasn't the number that answered the question being asked. Before drawing a strong conclusion from a "the measurement says no" result, audit the measurement: what does the field actually mean? Current vs peak? Average vs sample? RSS vs virtual size? The temptation to treat the measurement layer as transparent grows with how obvious-looking the API is. `getrusage` + `ru_maxrss` is the textbook example of an obvious-looking API hiding the wrong-shape answer — the field name even labels the trap (`max`), and the trap still landed.
+
+### Lesson — secondary
+
+Linux exposes per-process state through `/proc` that the standard library doesn't surface idiomatically. When the standard-library answer to a Linux observability question feels wrong, `/proc/self/status` (and friends) usually has the right field two seconds away. Same applies to fd counts, thread counts, memory maps — `resource.getrusage` is rarely the final answer on a Linux box.
+
+### Cross-reference
+
+- The session-reaper work (`fc0a4df`) depended on this finding for correctness. Had the wrong conclusion stuck, the entire 2 GB session-TTL design would have been abandoned for a much heavier process-restart model — and the failure mode "feature was correct, the test of the feature wasn't" would never have been surfaced.
+- 2026-04-29 follow-up multi-array JSON: same shape of trap at a different layer. The obvious-looking parser call (`json.loads`) produced a real result, just not the right-shape result. "Looks correct" and "answers the right question" are independent properties at every layer — parser, measurement, render, audit.
+
+### Commit
+
+`fc0a4df` — Add session TTL eviction, in-flight pin, and boot cleanup (probe lives in `scripts/rss_probe_linux.py`; the live regression in `tests/integration/test_session_reaper.py`).
+
+---
+
+## 2026-06-04 — RetrievalExecutor.execute() isolation audit: Self-RAG and FLARE mid-generation re-retrieval would have leaked public-corpus chunks into a session answer
+
+### Symptom
+
+No symptom. Caught by code-reading during the per-session retrieval roll-out, before any production exposure. The `/query` → `/retrieve` → `/query/stream` session routing (`8fc597d`) threaded a `store_override: BaseVectorStore` parameter through the orchestrator so requests carrying an `X-Session-Id` retrieve from the session's private store instead of the public corpus. Initial retrieval was the obvious site to thread the override through; the question was whether that was the ONLY site, or whether other callers of `RetrievalExecutor.execute()` existed that would silently keep reading the public corpus mid-request.
+
+### Audit
+
+Grepped every production caller of `.execute(` against the executor:
+
+- `orchestrator.py:253` — initial retrieval (query path). Already threaded `store_override`.
+- `orchestrator.py:671` — initial retrieval (retrieve-only path). Already threaded `store_override`.
+- `generation/advanced_generation.py:211` — Self-RAG mid-generation re-retrieval on unsupported claims. **NOT threaded.** Would have fetched additional verification context from the public default corpus while the initial answer came from the session's private store.
+- `generation/advanced_generation.py:482` — FLARE mid-generation re-retrieval on novel-numeric-token detection. **NOT threaded.** Same mechanism — the session-scoped initial answer would be augmented with chunks from the public corpus on every novel-token trigger.
+- `generation/advanced_generation.py:672` — agentic search loop (LangGraph agent path). Not currently wired to any user-reachable session endpoint. Left unthreaded with an explicit warning comment.
+- `agent/tools/search_docs.py:59`, `agent/nodes/retriever.py:42`, `agent/tools/summarize_doc.py:45,75` — agent sub-tools. Same classification as the agentic search loop: not currently user-reachable for session requests; left unthreaded with the understanding that wiring an agent endpoint to session routing would have to thread the parameter through first.
+
+Nine production call sites in total. The commit message for `8fc597d` says "all ten `RetrievalExecutor.execute()` call sites"; the tenth audit surface it counts is the executor's own `async def execute` declaration at `retrieval/strategies/retrieval_executor.py:38` — the contract source, not a caller. Both numbers describe the same audit: nine call sites + one declaration = ten places where the `store_override` parameter has to be coherent.
+
+Two sites — Self-RAG and FLARE re-retrieval — would have leaked. The rest were safe by either threading or non-reachability.
+
+### What would have happened
+
+A user uploads a proprietary PDF into a session, asks a factual question, the orchestrator routes initial retrieval to the session store (correct), Self-RAG flags an unsupported claim, the verification step calls `retrieval_executor.execute()` without the override (bug), public FiQA chunks join the session's chunk set, and the final answer cites public-corpus chunks the user never uploaded — in the worst case quoting unrelated public content as if it were grounded in the user's private document. Same mechanism for FLARE. Neither would have produced a visible error: the answer would look fluent, the citations would resolve to real chunks, and the contamination would be invisible without inspecting `[Source N]` provenance against what was uploaded.
+
+### Fix
+
+Added `store_override: Optional[BaseVectorStore] = None` to both `SelfRAGGenerator.generate` and `FLAREGenerator.generate`, threaded it through to the re-retrieval `.execute(...)` calls (`advanced_generation.py:212` and `:483`), and updated the orchestrator sites that invoke Self-RAG (`orchestrator.py:397`) and FLARE (`orchestrator.py:422`) to pass through the same override they received. Defaulting to `None` preserves the behavior of every non-session caller exactly.
+
+The agentic search loop (`advanced_generation.py:668-672`) is the one production caller that stays at `store_override=None`. A comment at the site documents the contract explicitly: the loop is safe today ONLY because no user-reachable endpoint routes session traffic to it; wiring an agent endpoint to session traffic must thread the override first or it ships the leak.
+
+### Why this stayed hidden until the audit
+
+The leak is invisible without two preconditions: (1) a session exists, and (2) Self-RAG or FLARE fires its iterative re-retrieval branch on that session's query. Until the per-session retrieval work landed, condition (1) didn't exist — no caller had a "private" store to leak from. The bug was structurally latent from the moment session routing was introduced, and would have shipped with the session feature itself if the audit hadn't preceded the merge.
+
+### Regression tests
+
+The orchestrator-level session-routing tests assert that retrieval with `store_override` set never reads the public corpus. The Self-RAG and FLARE re-retrieval sites are now covered by the same contract because they accept and thread the same parameter; a leak would require the orchestrator to receive `store_override` and then call through to a generator that drops it on the floor — which would be a new bug rather than this one.
+
+### Lesson — primary
+
+A retrieval primitive's isolation is only as complete as its least-audited caller. The contract "session traffic stays in the session's store" is enforced at every `.execute(...)` site or it is enforced nowhere — one unthreaded caller is enough to leak. When a new isolation parameter is introduced on a primitive, the audit step that matters is `grep`, not type-checking: type-checking confirms each site COULD accept the parameter; only `grep` confirms each site DOES pass it. The discipline is "enumerate every caller, classify each as threaded / not-threaded / not-applicable, document why for the not-applicable ones in a comment at the call site."
+
+### Lesson — secondary
+
+When an isolation parameter is `Optional[X] = None`, the safe default is also the leak-prone default. Threading the parameter is opt-in; forgetting to thread it is silent. For isolation contracts specifically, the safer pattern would be a required parameter at the executor boundary so the type system enforces "every caller has thought about this" — but that's a larger refactor with churn across many call sites. The interim discipline is the audit comment at each not-threaded site explaining why it's safe to omit; future edits that wire those sites to user-reachable session paths then have to address the comment, which makes the contract enforceable by code review.
+
+### Cross-reference
+
+- 2026-05-13 `delete_document` FAISS wipe (AUDIT #22): same texture — bug found by code-reading during a different investigation (there, cleanup-duplicates investigation; here, per-session retrieval roll-out). Both are "the call site looks reasonable in isolation; what's wrong is what the call site doesn't do." Both were caught before production exposure because the surrounding work surfaced the relevant code. Two instances of this pattern now in the file — promoted to "Patterns I've noticed."
+
+### Commit
+
+`8fc597d` — Route `/query`, `/retrieve`, `/query/stream` to per-session stores when X-Session-Id present (orchestrator and `advanced_generation.py` changes shipped together).
+
+---
+
+## 2026-06-04 — chromadb declared as optional [chroma] extra but a hard runtime dep; CI red, masked for weeks by the Dockerfile's hand-install
+
+### Symptom
+
+CI's `unit-tests` job started failing on the per-session work with `ModuleNotFoundError: No module named 'chromadb'`. The traceback pointed at the FastAPI lifespan: the per-session `SessionRegistry` constructed a `ChromaVectorStore` per registered corpus on startup, which failed at import time. Locally the same code ran fine; the Docker build produced a working image; only CI's `pip install -e ".[test]"` install path was red.
+
+### Root cause
+
+Three install surfaces, two in sync and one drifted:
+
+- `pyproject.toml` listed `chromadb>=0.4.24,<0.5` under `[project.optional-dependencies.chroma]`, not under `[project.dependencies]`. A bare `pip install -e .` did not pull chromadb.
+- The `Dockerfile` hand-installed `chromadb==0.4.24` in its `RUN pip install` block (line 38). Production and any local Docker build picked it up.
+- CI's `unit-tests` job runs `pip install -e ".[test]"`. The `[test]` extra did not depend on `[chroma]`. CI installed a chromadb-less environment.
+
+The reason CI wasn't red earlier: prior CI never exercised a code path that imported chromadb. As long as `ChromaVectorStore` was only constructed inside opt-in tests (and the default FAISS-backed orchestrator was the lifespan's only vector store), the unit-test job could run without chromadb in scope. The per-session work moved Chroma into the startup-required path — every test that triggers the FastAPI lifespan now imports chromadb — and the misdeclaration became visible the moment a test first hit the lifespan.
+
+### Why this stayed hidden so long
+
+The Dockerfile install masked the misdeclaration for the entire window between when chromadb was first introduced and when it became startup-required. Production deploys were fine because the image had chromadb. Local development was fine if developers had ever run `pip install -e ".[chroma]"` or used the Docker image, which everyone had. The only environment that would have surfaced it is a fresh checkout running `pip install -e .` with no extras and then trying to boot the API — a path nobody had run.
+
+This is a near-mirror of the 2026-05-28 Dockerfile/pymupdf4llm entry with the directions reversed. There, the Dockerfile was missing a pyproject-declared package; here, pyproject was missing a Dockerfile-installed package. Both shipped because no environment crossed both surfaces.
+
+### Fix
+
+Moved `chromadb==0.4.24` from `[project.optional-dependencies.chroma]` to `[project.dependencies]`. Removed the now-redundant `[chroma]` extra. Local `pip install -e .` and CI's `pip install -e ".[test]"` both pull it now; the Dockerfile's hand-install line is kept as a belt-and-braces pin and to preserve the build-layer cache.
+
+### Why the pin is exact (==0.4.24), not >=
+
+The session-store cache eviction reaches into a chromadb internal: `SharedSystemClient._identifer_to_system` (note the upstream typo — "identifer", not "identifier"). On a session evict, we walk that dict, find the cached `System` entry matching the session's persist directory, call `system.stop()`, and `pop` the key. Without this, chromadb retains the cached `System` indefinitely and the session-handle never frees — RSS climbs (see the 2026-06-04 `ru_maxrss` entry for the diagnostic that made this measurable in the first place).
+
+The reach is fragile by construction: a private attribute, with a typo in the upstream name. A higher 0.4.x release that fixes the typo (or refactors the cache) would silently change the attribute name. Our code already guards with `getattr(SharedSystemClient, "_identifer_to_system", None)` and falls back to a logged warning if the cache layout is unexpected (`scripts/rss_probe_linux.py:66-69` and the matching helper in `vectorstore/session_store.py`) — which means a chromadb minor bump would NOT raise. It would log "cache layout unexpected" and the session-handle would leak silently. RSS would climb for a few dozen evict cycles, OOM, restart.
+
+Pinning `==0.4.24` is therefore not "we like this version"; it's "we are reaching into this version's internals and any change to them fails silent." Bumping the pin requires re-verifying the attribute name (or refactoring to a public API if chromadb ever adds one). The pin's docstring at the declaration site says exactly this so a future developer can't bump it to `0.4.25` thinking "patch version, safe."
+
+### Regression detection
+
+The `pip install -e ".[test]"` failure that surfaced this is itself the regression detection: a bare-install path that exercises the lifespan now fails at install rather than at boot, which is the correct shape. Going forward, any future hard runtime dependency that gets misdeclared as optional will reproduce the same shape on the unit-tests job within one CI run.
+
+### Lesson — primary
+
+A dependency that is present in production only by transitive accident — Docker installs it, the platform image happens to ship it, an unrelated `[extra]` pulls it — is structurally undeclared. The declared dependency set is whatever a bare `pip install -e .` on a clean Python pulls; anything beyond that is environmental luck. The right surface to declare a hard runtime dependency is `[project.dependencies]`, not an extra and not the Dockerfile alone. CI should install from the declared set, exercise the startup path, and fail if anything is missing — which is the shape that surfaced this bug, but the underlying setup was "got lucky" until the per-session work forced the lifespan to import chromadb.
+
+### Lesson — secondary
+
+When code reaches into a library's private attributes, pinning the exact version and documenting the reach at the declaration site is the discipline that prevents silent-fail upgrades. The pin alone is insufficient: `chromadb==0.4.24` doesn't tell a future reader anything about why it's exact. A comment at the pin documenting "reaches into `SharedSystemClient._identifer_to_system`, a 0.4.24 internal" raises the question at the declaration site rather than at the silent-failure site three months later.
+
+### Cross-reference
+
+- 2026-05-28 Dockerfile/pymupdf4llm: same dependency-drift family, opposite direction. Both belong in the "green deploy + healthy status signals + feature actually broken" pattern. Both required the live integration path to surface them. Together with this entry, that pattern now has its fourth confirmed instance — annotated below in "Patterns I've noticed."
+- 2026-04-26 PARTIAL audit pattern: the `[chroma]` extra was effectively a PARTIAL declaration — the package was wired, but never proven to be the actual install path. PARTIAL declarations on a dependency manifest are the same risk class as PARTIAL modules in source code: they look correct until something forces them to be exercised.
+
+### Commit
+
+`a0052bd` — Fix red CI: declare chromadb as a runtime dep and drop the dead async job.
+
+---
+
+## 2026-06-04 — Streamlit "Start new session" cleared the token but the file_uploader's retained file re-uploaded on next rerun and silently re-minted the session
+
+### Symptom
+
+In the per-session-upload UI work, the "Start new session" button was meant to invalidate the current session: clear the `session_state` token, drop the deduplication set, restore the public-corpus mode pill. End-to-end test: upload a PDF, ask a question (answer is grounded in the upload), click "Start new session." The mode pill flipped back to public-corpus mode for exactly one frame, then a new session token appeared in `session_state`, the mode pill flipped back to session mode, and the uploaded document was queryable again — under a fresh server-minted `X-Session-Id` the user never asked for. The "new session" button was, in practice, a "re-upload the same file under a fresh session" button.
+
+### Initial hypothesis (wrong)
+
+The button handler missed a `session_state` key — probably the dedup set, or the mode pill's cached value. Audit: the handler cleared the token, cleared the dedup set, cleared the mode cache. Every state key that the upload path read at boot was reset to its empty value. The reset was correct; the resurrection happened anyway.
+
+### Actual root cause
+
+`st.file_uploader` retains its own state independent of `st.session_state`. The selected file persists across reruns keyed on the widget's `key=` identity, not on any application-level state. The "Start new session" button cleared the session token and the dedup set within the application state, then Streamlit re-ran the script — and the `file_uploader`, still keyed the same way, still held the file. The post-rerun upload-handler block saw a file present, checked the dedup set (now empty — the button cleared it), didn't recognize the file, posted it to `/ingest/file`, captured the new `X-Session-Id`, and persisted it to `session_state`.
+
+The two state layers — application state in `session_state`, and widget-internal retained state inside `st.file_uploader` — were being managed independently and could not be reset together through any application-level operation. The button's handler was correct as written; the framework's widget state was ignoring it by design.
+
+### Fix
+
+Nonce-keyed widget key. An integer counter `uploader_nonce` lives in `session_state` (`ui_streamlit/app.py:315-323`), starts at 0, and is baked into the widget's `key=`:
+
+```python
+key=f"file_uploader_{st.session_state.uploader_nonce}"
+```
+
+Incrementing the nonce changes the widget's identity. The next rerun renders a NEW `file_uploader` from Streamlit's perspective, with no retained file. "Start new session" (`ui_streamlit/app.py:1344-1353`) and the 404-expired-session recovery path (`ui_streamlit/app.py:1626-1631`) both bump the nonce. The application can now clear widget state from code, which is otherwise not exposed.
+
+Inline comments at the bump sites preserve the trap: "Without this, the file_uploader's retained value silently re-mints the session — the dedup guard is cleared by the same button, so the next rerun re-posts the file under a fresh session."
+
+### Why this stayed hidden until end-to-end testing
+
+The application-state side of the reset (token cleared, dedup set cleared, mode pill restored) looked correct in isolation and was correct in isolation. The widget-state side was invisible from any application-level inspection: `print(st.session_state)` showed all the cleared keys; the persisted file was inside the widget, not in `session_state`, and there was no programmatic surface to see it. Only running the full "upload → answer → reset → wait one frame" sequence surfaced the resurrection — the kind of sequence that ad-hoc manual testing might skip if the button looked plausible.
+
+### Regression tests
+
+Manual: upload a PDF, click "Start new session," confirm the mode pill stays on public-corpus for the subsequent rerun, the `file_uploader` renders empty, and a public-corpus query returns public answers. Automated: not added; Streamlit's widget-retained state is not straightforward to exercise from headless code paths. Tracked as a manual regression item on every UI release.
+
+### Lesson — primary
+
+Clearing application state is not enough when a widget holds its own retained state. Reactive frameworks frequently maintain a second state layer at the widget level that survives re-renders by design — the framework's reset operation is not the application's reset operation. When an "application reset" button needs to also reset framework-level widget state, the only reliable mechanism is to change the widget's identity (its `key=`), which forces the framework to discard its retained state and render a fresh widget. Same shape applies to React's `key` prop, Vue's `key`, and any other framework with identity-keyed component state.
+
+### Lesson — secondary
+
+When an application-level reset looks correct in isolation but the symptom recurs, the next question is "what state survives my reset that I'm not seeing?" — and the answer is often framework-internal. Application state is the state I can `print`; framework state is the state the framework decides to keep on my behalf. The two are not the same set, and an inspection of one says nothing about the other.
+
+### Cross-reference
+
+- 2026-04-29 Streamlit content-hash widget key collision: same area (Streamlit widget state), distinct mechanism. There, the hazard was content-derived `key=` values colliding across re-renders of multi-turn chat history; the fix was position-based keys for uniqueness. Here, the hazard is widget-retained state outliving application-level resets; the fix is nonce-based keys for forced widget-identity changes. Two confirmed Streamlit widget-state hazards now in the file — generalized in "Patterns I've noticed."
+
+### Commit
+
+`2ff6796` — Add Streamlit upload UI for per-session document query.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
@@ -1637,3 +1860,9 @@ The 2026-04-30 FLARE `[UNCERTAIN]` investigation is the second instance of the R
 The 2026-04-30 regex-asymmetry bug introduces a pattern distinct from the PARTIAL-module and RLHF-prior themes: asymmetric set-difference in heuristics. The `$18k` vs `$18,000` case is the archetype — two sets extracted from text that passed through different formatting conventions, compared as if normalized to the same space. The heuristic fired every round not because it was wrong about what it was measuring, but because the measure was applied inconsistently across the two sides of the comparison. Before treating a set-difference as meaningful, verify that both sets were produced by extraction paths that normalize to the same format. When a heuristic fires without converging across multiple rounds with no change in the underlying data, asymmetric normalization is the first thing to check. Generalizes beyond regex: any time two collections pass through separate extraction or formatting paths before being compared, the difference may be measuring format divergence rather than semantic novelty.
 
 The 2026-05-29 metadata-hint trap is the third confirmed instance of "green deploy + healthy status signals + every query returns empty," after the 2026-05-12 missing FiQA corpus and the 2026-05-28 missing pymupdf4llm dependency. The mechanism differs each time — missing data, missing dependency, query-time filter — but the observability gap is identical: no standard signal (deploy status, `/health`, `/health/ready`, `/corpora`, `count()`) exercises the actual retrieve → generate path with a real query against the real corpus. Each layer reports healthy in isolation, and the integration silently returns empty. The 2026-05-12 entry's standing lesson is therefore now triply confirmed and worth promoting from suggestion to standing operating procedure: **after any change to a deployment — env var, disk path, Dockerfile, start command, routing code, or a forced redeploy from any cause — run one real `/query` against production with a known-good question for each corpus, and verify a grounded answer with citations.** Ten seconds per corpus. Catches the entire class.
+
+The 2026-06-04 chromadb-misdeclaration entry is the fourth confirmed instance of the same family, with a new wrinkle: declared-vs-installed surface drift, not just code or data drift. Production was healthy for weeks because the Dockerfile hand-installed `chromadb` alongside the pyproject manifest that marked it `[optional]`; CI failed only when the per-session work moved Chroma into the startup-required path, and even then it failed at install (CI) rather than at deploy (Render). The mechanism generalizes the family from "the deployment shipped without a thing it needed" to "the deployment shipped because the deployment surface installs a thing the declared dependency manifest doesn't require." Both shapes are invisible to standard health signals. The standing-operating-procedure remedy still applies — run one real `/query` after any deployment change — and adds a sibling: **the declared dependency set is whatever a bare `pip install -e .` on a clean Python pulls. Anything beyond that, including everything the Dockerfile hand-installs, is environmental luck and must be re-declared in pyproject the moment any non-Docker environment (CI, fresh checkout, alternate platform) needs to boot the app.** Same observability gap, sister discipline.
+
+The 2026-06-04 `RetrievalExecutor` isolation-audit entry is the second confirmed instance of "latent bug discovered by code-reading while implementing the feature that would have exposed it," after the 2026-05-13 `delete_document` FAISS wipe (AUDIT #22). Both bugs would have surfaced as silent wrong-shape behavior in production — `delete_document` would wipe the entire FAISS index on first call, the executor isolation gap would mix public-corpus chunks into session answers — and neither produced an exception, log line, or health-check anomaly. Both were found because the surrounding work brought the relevant code into reading distance: in May, an investigation into duplicate Roth IRA chunks pulled `delete_document` into view; in June, the per-session retrieval roll-out forced an audit of every `.execute(...)` caller. The pattern: **when implementing a feature that introduces a new contract (deletion semantics, isolation semantics), the audit is not "does the new code uphold the contract?" — it is "does every existing caller of the affected primitive uphold the contract?" `grep` the primitive, classify every caller, and write the not-applicable cases down at the call site.** Two instances of this pattern is enough to promote it from coincidence to discipline; the discipline is to schedule the grep before the merge, not after the symptom.
+
+The 2026-06-04 Streamlit `file_uploader` resurrection entry is the second confirmed Streamlit widget-state hazard, after the 2026-04-29 content-hash key collision. The two mechanisms are different — the April bug was about widget keys colliding across re-renders, the June bug was about widget state outliving an application-level reset — but the common surface is `st.<widget>(key=...)`, and the common failure mode is "the `key=` parameter does more than identify the widget; it controls the framework's state-lifecycle hooks for that widget, and the application's understanding of the widget's lifecycle is not the framework's understanding by default." Generalizes: **every Streamlit widget that retains state across reruns needs a `key=` strategy that maps the application's intended state lifecycle, not just the widget's visual identity. Position-based keys (April fix) and nonce-based keys (June fix) are both expressions of "we are now using `key=` as a state-control lever, not a label."** The trap is treating `key=` as a cosmetic; the discipline is treating it as the application's only programmatic handle on framework-internal widget state. Worth assuming for every widget that holds state (`file_uploader`, `text_input`, `selectbox`, `data_editor` — anything whose value persists across reruns) until proven otherwise.
