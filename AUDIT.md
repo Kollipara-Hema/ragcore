@@ -4,6 +4,7 @@
 **Updated:** 2026-05-06 to reflect the 9-commit batch (be22906..c2e70a1).
 **Updated:** 2026-05-12 to reflect the 5-commit security pass (6416224..this commit): CORS allowlist, API key auth, rate-limit hardening, docker-compose secrets, and docs.
 **Updated:** 2026-05-13 to reflect delete_document FAISS index fix (`cddc032`) and production health check cron (`579592e`).
+**Snapshot note (2026-06-05):** This document is a point-in-time snapshot as of the dates above. Items resolved or superseded since (notably: async ingestion HTTP path removed, per-corpus registry replacing the single-store singleton, per-session document upload feature with TTL eviction) are tracked in `docs/debugging-notes.md` rather than retroactively folded here. Treat module-state rows below as accurate to their snapshot date, not to current `main`.
 **Auditor:** Hema Kollipara
 **Scope:** Post-citation-spans state — attributed_spans backend parser, attributed_spans
 frontend rendering, follow-up question generation, hallucination verifier toggle, confidence
@@ -293,6 +294,15 @@ agent API models. Accurate enough not to mislead; worth noting.
    at import time so chromadb 0.4.24 imports cleanly under NumPy ≥ 2.0.
    No-op in production (Docker pins numpy 1.26.4). Upgrading chromadb to
    0.5.x removes the shim but requires API migration.
+
+   **2026-06-04 update:** the pin tightened from `>=0.4.24,<0.5` to exact
+   `==0.4.24` when the per-session feature shipped (commit `a0052bd`) —
+   session-store cache eviction reaches into
+   `SharedSystemClient._identifer_to_system` (a 0.4.24 internal, typo'd
+   in upstream source), so a minor bump within 0.4.x could rename it
+   and silently fall back to a logged warning plus RAM leak. See the
+   2026-06-04 entry in `docs/debugging-notes.md` and the inline comment
+   at `pyproject.toml:32-35`.
 
 7. **Follow-up prompt is domain-specific.** `FOLLOWUP_TEMPLATE` hardcodes
    "personal-finance topics (IRAs, 401k, taxes, investing, mortgages, similar)."
