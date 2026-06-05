@@ -927,7 +927,7 @@ rendering failure) and `TypeError` (None response) without reading the source.
 
 ### Commit
 
-_(pending — fix not yet committed)_
+`679315e` — Fix Self-RAG verifier exception handler to fail closed.
 
 ---
 
@@ -1041,7 +1041,7 @@ that the input was empty, verify with `repr` before drawing that conclusion.
 
 ### Commit
 
-_(pending — fix not yet committed)_
+`6af0589` — Strip markdown fences before parsing Self-RAG JSON responses.
 
 ---
 
@@ -1149,7 +1149,7 @@ The 2026-05-30 math-parser entry is the closing entry for this bug.
 
 ### Commit
 
-Pending — same corpus-aware UI commit as the 2026-05-30 math-parser entry (hash filled at commit time).
+`2ceacea` — Make the single-corpus UI corpus-aware (same commit as the 2026-05-30 math-parser entry; that commit's `_md_escape` helper closed this bug, per the math-parser entry's verification re-run).
 
 ---
 
@@ -1580,7 +1580,7 @@ Second — markdown-it has a non-obvious set of plugins enabled by default in St
 
 ### Commit
 
-Pending — included in the corpus-aware UI commit that introduced the dropdown and surfaced this bug.
+`2ceacea` — Make the single-corpus UI corpus-aware (the same commit that introduced the corpus dropdown also added the `_md_escape` helper that fixes this bug).
 
 ---
 
