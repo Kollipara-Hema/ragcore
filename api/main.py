@@ -440,6 +440,7 @@ app.add_middleware(
     max_requests=settings.ragcore_rate_limit_max_requests,
     window_seconds=settings.ragcore_rate_limit_window_seconds,
     trust_proxy_headers=settings.ragcore_trust_proxy_headers,
+    proxy_hop_count=settings.ragcore_proxy_hop_count,
 )
 
 # Request-ID Middleware — assigns a request_id and binds it to structlog

@@ -91,6 +91,19 @@ class Settings(BaseSettings):
         default=False,
         description="Trust X-Forwarded-For for client IP. Only enable behind a trusted reverse proxy.",
     )
+    ragcore_proxy_hop_count: int = Field(
+        default=1,
+        description=(
+            "Number of trusted proxy hops in front of the app, consulted only "
+            "when ragcore_trust_proxy_headers=true. The XFF parser picks "
+            "segments[-hop_count] — the IP added by the outermost trusted "
+            "proxy as the request entered the trusted chain (i.e. the real "
+            "client). Default 1 = single trusted proxy. Set 2 for chains like "
+            "Cloudflare → HF gateway → app. Calibrate empirically against the "
+            "deployed platform; a wrong value falls into a sentinel bucket "
+            "and logs a structured warning."
+        ),
+    )
     ragcore_ingest_max_body_bytes: int = Field(
         default=10 * 1024 * 1024,
         description="Hard ceiling on /ingest/* request body size. Returns 413 above this.",
