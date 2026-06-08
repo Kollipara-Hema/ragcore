@@ -107,7 +107,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # A non-global address at the trusted-hop position usually means
         # hop_count is wrong (we resolved to an internal proxy, not the real
-        # client). Calibration alarm — independent of the Phase 3 two-IP check.
+        # client). Calibration alarm.
         if not addr.is_global:
             self._warn_once(
                 candidate,
