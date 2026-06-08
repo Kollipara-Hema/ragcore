@@ -36,10 +36,15 @@ class ChromaVectorStore:
 
     def __init__(self, persist_dir: str = None, collection_name: str = None) -> None:
         # chromadb 0.4.24 uses numpy 1.x aliases (np.float_, np.int_, np.NaN, etc.)
-        # that were removed in NumPy 2.0.  The Docker image pins numpy==1.26.4 so
-        # this shim is a no-op in production; local environments running NumPy 2.x
-        # need it to import chromadb without AttributeError.  Bumping chromadb to
-        # 0.5.x (which targets NumPy 2.0) removes the need for this shim entirely.
+        # removed in NumPy 2.0. REAL protection: the numpy==1.26.4 pin in the
+        # Dockerfile — under numpy 1.x this shim is a no-op (the aliases still
+        # exist; the hasattr guard skips every patch). Under numpy 2.x the shim
+        # only takes effect if this __init__ runs BEFORE any other code in the
+        # process imports chromadb; a bare top-level `import chromadb` fails
+        # because chromadb's own api/types.py hits np.float_ during module load,
+        # before this patch can run. The Dockerfile numpy pin must never be
+        # dropped — pyproject's open `numpy>=1.26` does NOT enforce it. Bumping
+        # chromadb to 0.5.x (which targets NumPy 2.0) removes the shim entirely.
         import numpy as _np
         for _attr, _alias in (
             ("float_", "float64"), ("int_", "intp"),

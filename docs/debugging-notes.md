@@ -1835,6 +1835,71 @@ When an application-level reset looks correct in isolation but the symptom recur
 
 ---
 
+## 2026-06-08 — chroma_store numpy-2.x shim runs too late to defend; the comment asserted a guarantee the code structurally couldn't provide
+
+### Symptom
+
+During the M4 audit (evaluating a Dockerfile `pip install -e .` swap as a Phase 1 prerequisite for the HF Spaces migration), `pip install --dry-run -e .` against the local venv resolved numpy to 2.4.6. A follow-up bare `import chromadb` in that venv raised:
+
+```
+File "venv311/lib/python3.11/site-packages/chromadb/api/types.py", line 102
+    ImageDType = Union[np.uint, np.int_, np.float_]
+AttributeError: `np.float_` was removed in the NumPy 2.0 release. Use `np.float64` instead.
+```
+
+This directly contradicted the comment at `vectorstore/chroma_store.py:38-42`, which claimed "local environments running NumPy 2.x need it to import chromadb without AttributeError." The shim, in fact, does not enable a bare `import chromadb` under numpy 2.x.
+
+### Root cause
+
+The shim lives inside `ChromaVectorStore.__init__`, executing just before its local `import chromadb`. The patching logic (`setattr(_np, "float_", _np.float64)` etc.) only takes effect if this `__init__` runs BEFORE the process's first import of chromadb.
+
+In any environment where chromadb is imported first — a REPL session, a bare script, a test file with a top-level `from chromadb.api.client import SharedSystemClient` (which both `tests/unit/test_session_store.py:89` and `tests/integration/test_session_reaper.py:257` have), or any module higher in the import graph that pulls chromadb transitively — the shim runs too late: chromadb's `chromadb.api.types` hits `np.float_` during its own load, before `ChromaVectorStore.__init__` is ever called, and the import fails.
+
+The comment claimed a protection ("import chromadb without AttributeError") that the code's POSITION in the call graph structurally could not deliver. The shim is correct as patches; what's wrong is the runtime ordering it implicitly depends on, and the absence of that dependency from the documentation.
+
+### Why this never broke production
+
+The Docker image pins `numpy==1.26.4` ([Dockerfile:28](../Dockerfile#L28)). Under numpy 1.x the aliases the shim patches are still present; the `if not hasattr(_np, _attr)` guard makes every patch a no-op. Production has never run on numpy 2.x. The shim's "protection under numpy 2.x" branch has never actually protected anything in a deploy — it's load-bearing for an environment we don't have. The dead-code state was invisible until an audit forced an install path that would have created a numpy-2.x deploy.
+
+### What the audit also revealed
+
+The numpy 1.x ceiling lives ONLY in the Dockerfile, not in `pyproject.toml`. pyproject.toml line 54 is `numpy>=1.26` — open-ended. Any install via `pip install -e .` (the M4 work would have made this the production install path) pulls numpy 2.4.6 today, and chromadb 0.4.24 fails at boot import. The Dockerfile chain is the only thing holding numpy to 1.x; the shim cannot substitute for that pin.
+
+### Fix
+
+Rewrote the comment at `vectorstore/chroma_store.py:38-47` to state the actual protection model:
+- The `numpy==1.26.4` Dockerfile pin is the real defense.
+- Under numpy 1.x the shim is a no-op (hasattr guard skips every patch).
+- Under numpy 2.x the shim only takes effect if this `__init__` runs before any other chromadb import in the process — verified failing for bare `import chromadb`.
+- The Dockerfile numpy pin must never be dropped; pyproject's open `numpy>=1.26` does NOT enforce it.
+
+The patch logic itself was left intact. It correctly patches the aliases when it runs in time; the bug was in the comment, not the patches. The pyproject pin-tightening is deferred to the M4 lockfile project (see [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) Phase 1A intro for the M4-pulled rationale).
+
+### Why not "fix" the shim by hoisting it to module-level
+
+Tempting: hoist the patches to top-of-file in `vectorstore/chroma_store.py` so they run on first import of THIS module. That would broaden the working window — but not close it. The tests and `scripts/rss_probe_linux.py` import chromadb without ever importing `vectorstore/chroma_store.py`, so hoisting wouldn't help them. It would also signal a guarantee that's still false in those cases. The honest fix is the comment: the numpy 1.x pin is the protection; the shim is a partial belt-and-braces inside its narrow runtime window.
+
+### Lesson — primary
+
+Defensive code that runs too late to defend is worse than no defense: a no-op is silent and gives no false confidence; a too-late patch with a confident comment asserts a guarantee that the code's position in the call graph cannot provide. The reader trusts the comment, doesn't audit the import ordering, and the next deploy off a `pip install -e .` path silently regresses.
+
+When defensive code depends on RUNTIME ORDER — when it must execute before some other code path — the comment must name the order it depends on AND the limits of what it protects when the order isn't met. "This shim runs before this `import chromadb`" is precise; "this shim lets local NumPy 2.x environments import chromadb" is not, and that imprecision is what survived unchecked into the audit.
+
+### Lesson — secondary
+
+A dependency pin in only one of N install surfaces (here, Dockerfile but not pyproject) is a pin that holds by accident of which install path is exercised. The chromadb runtime-dep entry from 2026-06-04 documents the same shape in reverse (pyproject-declared, Dockerfile-installed). Both are PARTIAL declarations in the dependency-manifest sense. The matching discipline is: pins consumed by the runtime live in pyproject; the Dockerfile reads from pyproject. M4 is the project that achieves this; it is now scoped as a lockfile-based post-migration task, NOT as a hand-tightening of pyproject pins (the audit showed Shape A re-implements a lockfile by hand and carries the same drift risk).
+
+### Cross-reference
+
+- 2026-06-04 chromadb-declared-as-optional-extra: same dependency-surface drift family, opposite direction. Together they bound the problem — pins in only ONE surface (whichever one) leak silently into deploys that happen to exercise the other surface.
+- M4 deferral and lockfile-shape decision: [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) Phase 1A intro.
+
+### Commit
+
+Pending — will be filled when the shim-comment fix lands.
+
+---
+
 ## Patterns I've noticed
 
 Across the bugs documented in this file, a recurring pattern: code in the repo's audit "PARTIAL" list consistently produces silent failures when first exercised against real data end-to-end. The singleton bug, the UUID mismatch, the NDCG/recall dedup, the `RetrievalEvaluator` never-called-in-anger, and the Self-RAG verification parser all lived in modules the audit flagged as "not fully wired" or "never called." Each was invisible until a smoke test or benchmark forced them to execute.
