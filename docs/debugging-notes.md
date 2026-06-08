@@ -1839,7 +1839,7 @@ When an application-level reset looks correct in isolation but the symptom recur
 
 ### Symptom
 
-During the M4 audit (evaluating a Dockerfile `pip install -e .` swap as a Phase 1 prerequisite for the HF Spaces migration), `pip install --dry-run -e .` against the local venv resolved numpy to 2.4.6. A follow-up bare `import chromadb` in that venv raised:
+During the M4 audit (evaluating a Dockerfile `pip install -e .` swap during HF Spaces migration prep), `pip install --dry-run -e .` against the local venv resolved numpy to 2.4.6. A follow-up bare `import chromadb` in that venv raised:
 
 ```
 File "venv311/lib/python3.11/site-packages/chromadb/api/types.py", line 102
@@ -1873,7 +1873,7 @@ Rewrote the comment at `vectorstore/chroma_store.py:38-47` to state the actual p
 - Under numpy 2.x the shim only takes effect if this `__init__` runs before any other chromadb import in the process — verified failing for bare `import chromadb`.
 - The Dockerfile numpy pin must never be dropped; pyproject's open `numpy>=1.26` does NOT enforce it.
 
-The patch logic itself was left intact. It correctly patches the aliases when it runs in time; the bug was in the comment, not the patches. The pyproject pin-tightening is deferred to the M4 lockfile project (see [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) Phase 1A intro for the M4-pulled rationale).
+The patch logic itself was left intact. It correctly patches the aliases when it runs in time; the bug was in the comment, not the patches. The pyproject pin-tightening is deferred to the M4 lockfile project (see [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) for the M4-pulled rationale).
 
 ### Why not "fix" the shim by hoisting it to module-level
 
@@ -1892,7 +1892,7 @@ A dependency pin in only one of N install surfaces (here, Dockerfile but not pyp
 ### Cross-reference
 
 - 2026-06-04 chromadb-declared-as-optional-extra: same dependency-surface drift family, opposite direction. Together they bound the problem — pins in only ONE surface (whichever one) leak silently into deploys that happen to exercise the other surface.
-- M4 deferral and lockfile-shape decision: [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) Phase 1A intro.
+- M4 deferral and lockfile-shape decision: [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md).
 
 ### Commit
 
