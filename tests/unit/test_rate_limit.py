@@ -5,13 +5,19 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.middleware.rate_limit import RateLimitMiddleware, EXEMPT_PATHS
+from api.middleware.rate_limit import (
+    EXEMPT_PATHS,
+    MALFORMED_XFF_BUCKET,
+    NO_XFF_BUCKET,
+    RateLimitMiddleware,
+)
 
 
 def _make_client(
     max_requests: int,
     window_seconds: int,
     trust_proxy_headers: bool = False,
+    proxy_hop_count: int = 1,
 ) -> TestClient:
     """Minimal FastAPI app with RateLimitMiddleware for isolated testing."""
     test_app = FastAPI()
@@ -33,8 +39,22 @@ def _make_client(
         max_requests=max_requests,
         window_seconds=window_seconds,
         trust_proxy_headers=trust_proxy_headers,
+        proxy_hop_count=proxy_hop_count,
     )
     return TestClient(test_app)
+
+
+def _get_middleware(client: TestClient) -> RateLimitMiddleware:
+    """Reach into Starlette's middleware stack to grab the limiter instance —
+    needed for asserting against the internal warning-dedup set."""
+    app = client.app
+    # Traverse the middleware stack until we find the RateLimitMiddleware.
+    current = app.middleware_stack
+    while current is not None:
+        if isinstance(current, RateLimitMiddleware):
+            return current
+        current = getattr(current, "app", None)
+    raise AssertionError("RateLimitMiddleware not found in stack")
 
 
 def test_configurable_limits_applied():
@@ -56,16 +76,139 @@ def test_retry_after_present_and_positive_integer():
     assert int(retry_after) >= 1
 
 
-def test_proxy_header_respected_when_enabled():
-    """X-Forwarded-For first IP is used for bucketing when trust_proxy_headers=True."""
-    client = _make_client(max_requests=2, window_seconds=60, trust_proxy_headers=True)
-    xff = "1.2.3.4, 5.6.7.8"
-    assert client.get("/query", headers={"X-Forwarded-For": xff}).status_code == 200
-    assert client.get("/query", headers={"X-Forwarded-For": xff}).status_code == 200
-    # 1.2.3.4 bucket is now full
-    assert client.get("/query", headers={"X-Forwarded-For": xff}).status_code == 429
-    # Request without XFF falls into testclient bucket — still allowed
+def test_spoofed_leftmost_does_not_change_bucket_under_trust():
+    """The fix in action. Under the OLD leftmost parser, each spoofed leftmost
+    is its own bucket key — an attacker rotates spoofed leftmosts to evade
+    the limiter. Under the fixed rightmost-N parser, all three requests share
+    bucket 1.2.3.4 (the rightmost = real client per the trusted proxy), so
+    the third request hits the configured cap. This test was the leftmost
+    parser's regression marker — it cannot pass against that implementation."""
+    client = _make_client(
+        max_requests=2, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    # All three requests share rightmost=1.2.3.4 but rotate the spoofed leftmost.
+    assert client.get("/query", headers={"X-Forwarded-For": "7.7.7.7, 1.2.3.4"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "8.8.8.8, 1.2.3.4"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "9.9.9.9, 1.2.3.4"}).status_code == 429
+
+
+def test_single_hop_single_segment_xff():
+    """hop_count=1 with one XFF segment — basic case, real client is the only segment."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    assert client.get("/query", headers={"X-Forwarded-For": "1.2.3.4"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "1.2.3.4"}).status_code == 429
+    # Different IP, fresh bucket.
+    assert client.get("/query", headers={"X-Forwarded-For": "5.6.7.8"}).status_code == 200
+
+
+def test_two_hop_three_segment_xff():
+    """hop_count=2 (e.g. CDN + HF gateway). With XFF `<spoof>, <real>, <cdn>`,
+    the real client is segments[-2] = the middle segment."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=2,
+    )
+    # Both requests share real-client segments[-2]=1.2.3.4; spoofed leftmost varies.
+    assert client.get("/query", headers={"X-Forwarded-For": "7.7.7.7, 1.2.3.4, 9.9.9.9"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "8.8.8.8, 1.2.3.4, 9.9.9.9"}).status_code == 429
+    # Different real client, fresh bucket.
+    assert client.get("/query", headers={"X-Forwarded-For": "8.8.8.8, 5.6.7.8, 9.9.9.9"}).status_code == 200
+
+
+def test_hop_count_exceeds_segments_yields_malformed_sentinel():
+    """hop_count=2 but only one XFF segment — calibration mismatch.
+    Falls into the malformed-XFF sentinel bucket."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=2,
+    )
+    assert client.get("/query", headers={"X-Forwarded-For": "1.2.3.4"}).status_code == 200
+    # Different XFF, same sentinel bucket → second request blocked.
+    assert client.get("/query", headers={"X-Forwarded-For": "5.6.7.8"}).status_code == 429
+    middleware = _get_middleware(client)
+    assert MALFORMED_XFF_BUCKET in middleware._buckets
+
+
+def test_no_xff_under_trust_yields_no_xff_sentinel():
+    """trust=true + missing XFF → all such requests share the no-xff sentinel
+    bucket. Distinct from the malformed sentinel so logs/dashboards can tell
+    them apart."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
     assert client.get("/query").status_code == 200
+    assert client.get("/query").status_code == 429
+    middleware = _get_middleware(client)
+    assert NO_XFF_BUCKET in middleware._buckets
+    assert MALFORMED_XFF_BUCKET not in middleware._buckets
+
+
+def test_malformed_xff_invalid_ip_yields_malformed_sentinel():
+    """trust=true + non-IP at the trusted-hop position → malformed sentinel."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    assert client.get("/query", headers={"X-Forwarded-For": "not-an-ip"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "also-not-an-ip"}).status_code == 429
+    middleware = _get_middleware(client)
+    assert MALFORMED_XFF_BUCKET in middleware._buckets
+
+
+def test_ipv6_xff_accepted():
+    """IPv6 addresses parse and bucket correctly."""
+    client = _make_client(
+        max_requests=1, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    assert client.get("/query", headers={"X-Forwarded-For": "2001:db8::1"}).status_code == 200
+    assert client.get("/query", headers={"X-Forwarded-For": "2001:db8::1"}).status_code == 429
+    # Different IPv6, fresh bucket.
+    assert client.get("/query", headers={"X-Forwarded-For": "2001:db8::2"}).status_code == 200
+
+
+def test_calibration_warning_on_private_ip_under_trust():
+    """Non-global resolved IP fires the 'hop_count may be miscalibrated'
+    warning. Asserts via the dedup set, since the warning is the operational
+    signal the user requested."""
+    client = _make_client(
+        max_requests=10, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    # 10.0.0.5 is RFC1918 private → not is_global → warning fires.
+    client.get("/query", headers={"X-Forwarded-For": "10.0.0.5"})
+    middleware = _get_middleware(client)
+    assert "10.0.0.5" in middleware._warned
+
+
+def test_calibration_warning_dedupes_per_key():
+    """The same suspicious key only logs once per process — without dedup,
+    a misconfigured deploy would flood logs."""
+    client = _make_client(
+        max_requests=10, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    for _ in range(5):
+        client.get("/query", headers={"X-Forwarded-For": "10.0.0.5"})
+    middleware = _get_middleware(client)
+    # One distinct warned key for the private IP, regardless of repeat hits.
+    assert middleware._warned == {"10.0.0.5"}
+
+
+def test_global_ipv4_does_not_trigger_calibration_warning():
+    """Public IPs are the expected case under correct calibration; no warning."""
+    client = _make_client(
+        max_requests=10, window_seconds=60,
+        trust_proxy_headers=True, proxy_hop_count=1,
+    )
+    client.get("/query", headers={"X-Forwarded-For": "8.8.8.8"})
+    middleware = _get_middleware(client)
+    assert middleware._warned == set()
 
 
 def test_proxy_header_ignored_when_disabled():
@@ -125,6 +268,19 @@ def test_env_var_trust_proxy_headers(monkeypatch):
 
     fresh = Settings()
     assert fresh.ragcore_trust_proxy_headers is True
+
+
+def test_env_var_proxy_hop_count(monkeypatch):
+    """RAGCORE_PROXY_HOP_COUNT is read by Settings; default is 1."""
+    monkeypatch.setenv("RAGCORE_PROXY_HOP_COUNT", "2")
+    from config.settings import Settings
+
+    fresh = Settings()
+    assert fresh.ragcore_proxy_hop_count == 2
+
+    monkeypatch.delenv("RAGCORE_PROXY_HOP_COUNT")
+    default = Settings()
+    assert default.ragcore_proxy_hop_count == 1
 
 
 def test_exempt_paths_frozenset_contains_health_endpoints():
