@@ -149,6 +149,9 @@ session_store: Optional[SessionStore] = None      # Per-session vector stores
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _REPO_CHROMA_SOURCE = _REPO_ROOT / "data" / "chroma_collections"
+_REPO_FAISS_SOURCE = _REPO_ROOT / "data" / "faiss_seed"
+_FAISS_INDEX_FILE = "faiss_index.idx"
+_FAISS_METADATA_FILE = "faiss_metadata.pkl"
 
 
 def _seed_apple_collections() -> None:
@@ -206,6 +209,98 @@ def _seed_apple_collections() -> None:
             if tmp.exists():
                 shutil.rmtree(tmp, ignore_errors=True)
             continue
+
+
+def _seed_faiss_default() -> None:
+    """Seed the bundled FiQA FAISS artifacts onto FAISS_DATA_DIR before the
+    default corpus is registered. Idempotent (skip if dest index exists),
+    atomic per-file (tmp + os.replace, index written LAST so the marker only
+    appears when both files are in place).
+
+    Idempotency boundary: PRESENCE, not CORRECTNESS. A stale or corrupt
+    pre-existing dest index is SKIPPED, not validated. Validating existing
+    state is the readiness-probe doc_count check's job (deferred).
+
+    DIVERGES from _seed_apple_collections: any failure here raises
+    RuntimeError, NOT a logged warning. The default corpus is what every
+    unscoped /query hits; an empty default that boots silently serves empty
+    answers and /health/ready keeps passing — the documented silent-outage
+    mode (debugging-notes 2026-05-12). The Apple seed soft-fallbacks because
+    losing one explicit-name corpus degrades gracefully; the default cannot.
+    Do not unify.
+
+    This is the LIFESPAN contract for the default corpus. The lazy
+    get_vector_store() shim constructs a FAISSVectorStore directly from
+    settings.faiss_data_dir without going through this seed — tests that
+    bypass the lifespan are responsible for their own state setup.
+    """
+    source_dir = _REPO_FAISS_SOURCE
+    source_index = source_dir / _FAISS_INDEX_FILE
+    source_metadata = source_dir / _FAISS_METADATA_FILE
+    dest_dir = Path(settings.faiss_data_dir)
+    dest_index = dest_dir / _FAISS_INDEX_FILE
+    dest_metadata = dest_dir / _FAISS_METADATA_FILE
+
+    if source_dir.resolve() == dest_dir.resolve():
+        # Warning, not info — source==dest in prod is a misconfiguration.
+        logger.warning("faiss_seed_skipped_source_eq_dest", path=str(source_dir))
+        return
+
+    if dest_index.is_file():
+        logger.info("faiss_seed_skipped_already_seeded", dest=str(dest_dir))
+        return
+
+    if not source_index.is_file():
+        raise RuntimeError(
+            f"Default-corpus seed failed: source index missing at {source_index}. "
+            f"Refusing to boot — an empty-but-serving default is the documented "
+            f"silent-outage mode."
+        )
+    if not source_metadata.is_file():
+        raise RuntimeError(
+            f"Default-corpus seed failed: source metadata missing at {source_metadata}. "
+            f"Refusing to boot — an empty-but-serving default is the documented "
+            f"silent-outage mode."
+        )
+
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Default-corpus seed failed: cannot create dest dir {dest_dir} ({exc}). "
+            f"Refusing to boot — an empty-but-serving default is the documented "
+            f"silent-outage mode."
+        ) from exc
+
+    tmp_index = dest_dir / f"{_FAISS_INDEX_FILE}.seed-tmp"
+    tmp_metadata = dest_dir / f"{_FAISS_METADATA_FILE}.seed-tmp"
+
+    # Pre-cleanup leftover tmps from a prior crashed seed so copy2 has clean targets.
+    for stale in (tmp_index, tmp_metadata):
+        stale.unlink(missing_ok=True)
+
+    logger.info("faiss_seed_starting", source=str(source_dir), dest=str(dest_dir))
+    try:
+        shutil.copy2(source_index, tmp_index)
+        shutil.copy2(source_metadata, tmp_metadata)
+        # Metadata first, index LAST. Idempotency keys off index existence;
+        # writing it last ensures a crash between replaces leaves index missing
+        # (next boot re-seeds) — never a half-state that looks complete.
+        os.replace(tmp_metadata, dest_metadata)
+        os.replace(tmp_index, dest_index)
+    except Exception as exc:
+        for stale in (tmp_index, tmp_metadata):
+            try:
+                stale.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise RuntimeError(
+            f"Default-corpus seed failed during copy: {exc}. "
+            f"Refusing to boot — an empty-but-serving default is the documented "
+            f"silent-outage mode."
+        ) from exc
+
+    logger.info("faiss_seed_complete", dest=str(dest_dir))
 
 
 # =============================================================================
@@ -297,6 +392,10 @@ async def lifespan(app: FastAPI):
     # session_root that points at chroma_persist_dir would otherwise let
     # _purge_orphaned_session_dirs delete the Apple seeds.
     _assert_session_root_isolated()
+
+    # Seed FiQA before constructing the FAISS store — the store reads the
+    # index on construction, and a fail-hard seed prevents empty-but-serving.
+    _seed_faiss_default()
 
     # Register the FAISS-backed "default" corpus (FiQA). Unconditional —
     # /query requests omitting `corpus` route here via the get_vector_store
