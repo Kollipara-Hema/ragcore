@@ -1839,7 +1839,7 @@ When an application-level reset looks correct in isolation but the symptom recur
 
 ### Symptom
 
-During the M4 audit (evaluating a Dockerfile `pip install -e .` swap during HF Spaces migration prep), `pip install --dry-run -e .` against the local venv resolved numpy to 2.4.6. A follow-up bare `import chromadb` in that venv raised:
+During the Dockerfile-pyproject install audit (evaluating a `pip install -e .` swap during HF Spaces migration prep), `pip install --dry-run -e .` against the local venv resolved numpy to 2.4.6. A follow-up bare `import chromadb` in that venv raised:
 
 ```
 File "venv311/lib/python3.11/site-packages/chromadb/api/types.py", line 102
@@ -1863,7 +1863,7 @@ The Docker image pins `numpy==1.26.4` ([Dockerfile:28](../Dockerfile#L28)). Unde
 
 ### What the audit also revealed
 
-The numpy 1.x ceiling lives ONLY in the Dockerfile, not in `pyproject.toml`. pyproject.toml line 54 is `numpy>=1.26` — open-ended. Any install via `pip install -e .` (the M4 work would have made this the production install path) pulls numpy 2.4.6 today, and chromadb 0.4.24 fails at boot import. The Dockerfile chain is the only thing holding numpy to 1.x; the shim cannot substitute for that pin.
+The numpy 1.x ceiling lives ONLY in the Dockerfile, not in `pyproject.toml`. pyproject.toml line 54 is `numpy>=1.26` — open-ended. Any install via `pip install -e .` (which the proposed swap would have made the production install path) pulls numpy 2.4.6 today, and chromadb 0.4.24 fails at boot import. The Dockerfile chain is the only thing holding numpy to 1.x; the shim cannot substitute for that pin.
 
 ### Fix
 
@@ -1873,7 +1873,7 @@ Rewrote the comment at `vectorstore/chroma_store.py:38-47` to state the actual p
 - Under numpy 2.x the shim only takes effect if this `__init__` runs before any other chromadb import in the process — verified failing for bare `import chromadb`.
 - The Dockerfile numpy pin must never be dropped; pyproject's open `numpy>=1.26` does NOT enforce it.
 
-The patch logic itself was left intact. It correctly patches the aliases when it runs in time; the bug was in the comment, not the patches. The pyproject pin-tightening is deferred to the M4 lockfile project (see [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) for the M4-pulled rationale).
+The patch logic itself was left intact. It correctly patches the aliases when it runs in time; the bug was in the comment, not the patches. The pyproject pin-tightening is deferred to a standalone lockfile project (see [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md) for the deferral rationale).
 
 ### Why not "fix" the shim by hoisting it to module-level
 
@@ -1887,12 +1887,12 @@ When defensive code depends on RUNTIME ORDER — when it must execute before som
 
 ### Lesson — secondary
 
-A dependency pin in only one of N install surfaces (here, Dockerfile but not pyproject) is a pin that holds by accident of which install path is exercised. The chromadb runtime-dep entry from 2026-06-04 documents the same shape in reverse (pyproject-declared, Dockerfile-installed). Both are PARTIAL declarations in the dependency-manifest sense. The matching discipline is: pins consumed by the runtime live in pyproject; the Dockerfile reads from pyproject. M4 is the project that achieves this; it is now scoped as a lockfile-based post-migration task, NOT as a hand-tightening of pyproject pins (the audit showed Shape A re-implements a lockfile by hand and carries the same drift risk).
+A dependency pin in only one of N install surfaces (here, Dockerfile but not pyproject) is a pin that holds by accident of which install path is exercised. The chromadb runtime-dep entry from 2026-06-04 documents the same shape in reverse (pyproject-declared, Dockerfile-installed). Both are PARTIAL declarations in the dependency-manifest sense. The matching discipline is: pins consumed by the runtime live in pyproject; the Dockerfile reads from pyproject. That discipline becomes a standalone lockfile-based post-migration task, NOT a hand-tightening of pyproject pins (the audit showed Shape A re-implements a lockfile by hand and carries the same drift risk).
 
 ### Cross-reference
 
 - 2026-06-04 chromadb-declared-as-optional-extra: same dependency-surface drift family, opposite direction. Together they bound the problem — pins in only ONE surface (whichever one) leak silently into deploys that happen to exercise the other surface.
-- M4 deferral and lockfile-shape decision: [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md).
+- Deferral rationale and lockfile-shape decision: [hf-migration-phase1-plan-2026-06-08.md](hf-migration-phase1-plan-2026-06-08.md).
 
 ### Commit
 
