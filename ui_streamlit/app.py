@@ -587,8 +587,8 @@ def compute_confidence(retrieval_candidates: Optional[list]) -> str:
     """
     Confidence = f(score gap between top-1 and median pre-rerank candidate).
 
-    Thresholds calibrated 2026-04-29 against 10 queries on deployed backend
-    (https://ragcore-api.onrender.com) using live pre-rerank hybrid
+    Thresholds calibrated 2026-04-29 against 10 queries on the deployed
+    backend using live pre-rerank hybrid
     (FAISS+BM25) scores from retrieval_candidates. All 10 queries returned
     non-empty candidates (n=20 each). Hybrid scores are unbounded and may
     include negatives — range is wider than the previous cross-encoder proxy.
@@ -1380,7 +1380,7 @@ with st.sidebar:
         repo = _repo_url()
         if repo:
             st.markdown(f"[GitHub repo]({repo})")
-        st.markdown("[API docs](https://ragcore-api.onrender.com/docs)")
+        st.markdown(f"[API docs]({BACKEND_URL}/docs)")
 
 
 # ─── Main area ────────────────────────────────────────────────────────────────
