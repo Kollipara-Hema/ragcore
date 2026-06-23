@@ -29,7 +29,7 @@ def run_query(endpoint: str, headers: dict[str, str]) -> requests.Response:
     payload = {"query": HEALTH_QUERY, "top_k": TOP_K}
     resp = requests.post(endpoint, json=payload, headers=headers, timeout=TIMEOUT)
     if resp.status_code == 502:
-        print(f"  502 received — waiting {COLD_START_SLEEP}s for Render cold start, retrying...")
+        print(f"  502 received — waiting {COLD_START_SLEEP}s for backend cold start, retrying...")
         time.sleep(COLD_START_SLEEP)
         resp = requests.post(endpoint, json=payload, headers=headers, timeout=TIMEOUT)
     return resp
