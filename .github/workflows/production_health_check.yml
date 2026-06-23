@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TARGET_URL: https://ragcore-api.onrender.com
+      TARGET_URL: https://kollipara-hema-ragcore.hf.space
       API_KEY: ${{ secrets.RAGCORE_API_KEY }}
 
     steps:

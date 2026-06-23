@@ -6,7 +6,7 @@ if any of five signals indicate an empty index or degraded retrieval.
 
 Environment:
     TARGET_URL  Base URL of the RAGCore API
-                (default: https://ragcore-api.onrender.com)
+                (default: https://kollipara-hema-ragcore.hf.space)
     API_KEY     Value for X-API-Key header; omitted when empty
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ import time
 
 import requests
 
-DEFAULT_TARGET_URL = "https://ragcore-api.onrender.com"
+DEFAULT_TARGET_URL = "https://kollipara-hema-ragcore.hf.space"
 HEALTH_QUERY = "What is a Roth IRA?"
 TOP_K = 5
 TIMEOUT = 90
