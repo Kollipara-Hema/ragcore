@@ -44,12 +44,13 @@ logger = logging.getLogger("ingest_apple_corpus")
 
 
 def _sources_for(config: dict) -> list[str]:
-    """Return the list of source files for a corpus entry. Supports both
-    single-file entries (`source: str`) and the multi-file
-    apple_financial_csvs entry (`sources: list[str]`)."""
-    if "sources" in config:
-        return list(config["sources"])
-    return [config["source"]]
+    """Return the list of local ingest paths for a corpus entry. Supports both
+    single-file entries (`ingest_path: str`) and the multi-file
+    apple_financial_csvs entry (`ingest_paths: list[str]`). The `source` field
+    is a provenance label for GET /corpora, NOT a path — do not read it here."""
+    if "ingest_paths" in config:
+        return list(config["ingest_paths"])
+    return [config["ingest_path"]]
 
 
 async def _ingest_one_corpus(corpus_name: str, config: dict) -> tuple[int, float]:
