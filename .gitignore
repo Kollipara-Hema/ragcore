@@ -236,3 +236,8 @@ chainlit.md
 history/
 /data/chroma_collections/chroma.sqlite3
 /data/chroma_collections/*.bin
+
+# Re-ingestion source removed from the HF-deployed branch only (>10MB, HF
+# requires Git LFS; runtime-unneeded — image excludes data/apple_demo via
+# .dockerignore, Apple corpora seed from bundled chroma_collections).
+data/apple_demo/apple__corporate__environmental_progress_report__2025.pdf
