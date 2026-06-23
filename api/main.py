@@ -1248,10 +1248,10 @@ async def list_registered_corpora():
     """
     List corpora registered at startup with static metadata and live counts.
 
-    `source` and `chunker` are populated for corpora that have a config entry
-    in `config/corpora.py` (the six Apple corpora). The `default` corpus is
-    runtime-bound to a FAISS-backed FiQA collection and has no config record,
-    so its `source` and `chunker` are null.
+    `source` (a human-readable provenance label) and `chunker` are populated
+    for corpora that have a config entry in `config/corpora.py` (the six Apple
+    corpora). The `default` corpus is runtime-bound to a FAISS-backed FiQA
+    collection and has no config record, so its `source` and `chunker` are null.
 
     `doc_count` is read live from each registered store via its count()
     method — for FAISS this is index.ntotal, for Chroma it is the
@@ -1261,18 +1261,13 @@ async def list_registered_corpora():
     for name in list_corpora():
         cfg = CORPORA_CONFIG.get(name)
         store = get_vector_store() if name == "default" else get_corpus(name)
-        # Some CORPORA_CONFIG entries (apple_financial_csvs) use a list of
-        # `sources` rather than a single `source`. Serialise as a CSV string
-        # so the response field stays scalar.
-        if cfg is None:
-            source = None
-        elif "sources" in cfg:
-            source = ", ".join(cfg["sources"])
-        else:
-            source = cfg.get("source")
+        # `source` is a human-readable provenance label (see config/corpora.py),
+        # not a path into the image, so it is safe to advertise verbatim. The
+        # local ingest paths live in `ingest_path`/`ingest_paths` and are never
+        # exposed here.
         items.append(CorpusInfo(
             name=name,
-            source=source,
+            source=cfg.get("source") if cfg else None,
             chunker=cfg.get("chunker") if cfg else None,
             doc_count=store.count(),
         ))

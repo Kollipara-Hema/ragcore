@@ -41,12 +41,14 @@ def client_with_corpora(tmp_path, monkeypatch):
     # CORPORA_CONFIG is read by /corpora to populate static metadata.
     fake_config = {
         "apple_alpha": {
-            "source": "data/apple_demo/alpha.pdf",
+            "source": "Test source — Apple alpha (2025)",
+            "ingest_path": "data/apple_demo/alpha.pdf",
             "chunker": "fixed",
             "persist_dir": str(tmp_path / "apple_alpha"),
         },
         "apple_csvs": {
-            "sources": [
+            "source": "Test source — Apple CSVs (quarterly + annual)",
+            "ingest_paths": [
                 "data/apple_demo/q.csv",
                 "data/apple_demo/a.csv",
             ],
@@ -90,11 +92,11 @@ def test_corpora_returns_correct_doc_counts(client_with_corpora):
 def test_corpora_returns_source_and_chunker_for_apple_entries(client_with_corpora):
     resp = client_with_corpora.get("/corpora")
     by_name = {item["name"]: item for item in resp.json()["corpora"]}
-    assert by_name["apple_alpha"]["source"] == "data/apple_demo/alpha.pdf"
+    assert by_name["apple_alpha"]["source"] == "Test source — Apple alpha (2025)"
     assert by_name["apple_alpha"]["chunker"] == "fixed"
-    # Multi-source entries are serialised as a comma-separated string so the
-    # response field stays scalar.
-    assert by_name["apple_csvs"]["source"] == "data/apple_demo/q.csv, data/apple_demo/a.csv"
+    # `source` is a single provenance label even for multi-file corpora; the
+    # per-file local paths live in `ingest_paths` and are not exposed here.
+    assert by_name["apple_csvs"]["source"] == "Test source — Apple CSVs (quarterly + annual)"
     assert by_name["apple_csvs"]["chunker"] == "fixed"
 
 

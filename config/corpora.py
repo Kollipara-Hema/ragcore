@@ -1,10 +1,11 @@
 """
-Static registry of the Apple multi-corpus demo: source file, chunking
-strategy, and Chroma persist_dir for each corpus.
+Static registry of the Apple multi-corpus demo: provenance label, offline
+ingest path, chunking strategy, and Chroma persist_dir for each corpus.
 
 Consumed by:
   - scripts/ingest_apple_corpus.py — builds a ChromaVectorStore + an
-    IngestionPipeline per entry and runs ingest_file() against `source`.
+    IngestionPipeline per entry and runs ingest_file() against `ingest_path`
+    (or each path in `ingest_paths`). Offline regeneration only.
   - api/main.py lifespan — for each entry whose persist_dir exists on disk,
     constructs a ChromaVectorStore(persist_dir=..., collection_name=<key>)
     and calls register_corpus(<key>, store). Missing persist_dirs are
@@ -14,7 +15,14 @@ FiQA (the "default" corpus) is intentionally NOT in this dict — it lives on
 FAISS and is registered separately in lifespan.
 
 Per-entry schema:
-    source:      path to the file passed to IngestionPipeline.ingest_file()
+    source:      human-readable provenance label advertised verbatim by
+                 GET /corpora. NOT a path into the image — deployed corpora
+                 are served from the bundled `persist_dir`, so the source
+                 documents need not exist at runtime.
+    ingest_path: local path to the file passed to ingest_file() by the
+                 offline scripts/ingest_apple_corpus.py. Never read on a live
+                 request path. apple_financial_csvs uses `ingest_paths` (a
+                 list) instead, ingesting two CSVs into one collection.
     chunker:     the factory key for ingestion.chunkers.chunkers.get_chunker
     persist_dir: per-corpus Chroma directory. Distinct per corpus because
                  the BM25 sidecar (bm25_state.pkl) lives at persist_dir
@@ -39,7 +47,8 @@ _CHROMA_ROOT = settings.chroma_persist_dir
 
 CORPORA_CONFIG: dict[str, dict] = {
     "apple_10k_fixed": {
-        "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
+        "source": "SEC EDGAR — Apple FY2025 Form 10-K",
+        "ingest_path": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "fixed",
         "persist_dir": f"{_CHROMA_ROOT}/apple_10k_fixed",
     },
@@ -51,31 +60,36 @@ CORPORA_CONFIG: dict[str, dict] = {
     # corpus (256-char windows, 32-char overlap). Wiring real parent-
     # child retrieval is a deferred follow-up.
     "apple_10k_hierarchical": {
-        "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
+        "source": "SEC EDGAR — Apple FY2025 Form 10-K",
+        "ingest_path": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "hierarchical",
         "persist_dir": f"{_CHROMA_ROOT}/apple_10k_hierarchical",
     },
     "apple_10k_document_structure": {
-        "source": "data/apple_demo/apple__sec__form_10k__2025.pdf",
+        "source": "SEC EDGAR — Apple FY2025 Form 10-K",
+        "ingest_path": "data/apple_demo/apple__sec__form_10k__2025.pdf",
         "chunker": "structure",
         "persist_dir": f"{_CHROMA_ROOT}/apple_10k_document_structure",
     },
     "apple_environmental": {
-        "source": "data/apple_demo/apple__corporate__environmental_progress_report__2025.pdf",
+        "source": "Apple.com Environment — Apple 2025 Environmental Progress Report",
+        "ingest_path": "data/apple_demo/apple__corporate__environmental_progress_report__2025.pdf",
         "chunker": "structure",
         "persist_dir": f"{_CHROMA_ROOT}/apple_environmental",
     },
     "apple_earnings_html": {
-        "source": "data/apple_demo/apple__sec__q4_earnings_release__2025.html",
+        "source": "SEC EDGAR — Apple FY2025 Q4 earnings release (8-K exhibit)",
+        "ingest_path": "data/apple_demo/apple__sec__q4_earnings_release__2025.html",
         "chunker": "fixed",
         "persist_dir": f"{_CHROMA_ROOT}/apple_earnings_html",
     },
     # Two CSVs, one corpus. The ingest script special-cases this entry by
-    # iterating `sources` instead of using `source` directly, so the same
-    # ChromaVectorStore + IngestionPipeline absorbs both files into a
+    # iterating `ingest_paths` instead of using `ingest_path` directly, so the
+    # same ChromaVectorStore + IngestionPipeline absorbs both files into a
     # single collection (each CSV gets its own doc_id).
     "apple_financial_csvs": {
-        "sources": [
+        "source": "SEC companyfacts XBRL — Apple financial metrics (quarterly + annual)",
+        "ingest_paths": [
             "data/apple_demo/apple__sec__financial_metrics_quarterly__2026.csv",
             "data/apple_demo/apple__sec__financial_metrics_annual__2026.csv",
         ],
