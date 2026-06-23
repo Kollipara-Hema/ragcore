@@ -122,18 +122,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return candidate
 
     async def dispatch(self, request: Request, call_next):
-        # TEMP xff_calibration_probe — remove after reading HF Space logs (branch hf-migration).
-        # Gated on RAGCORE_XFF_PROBE=true so it's inert everywhere until enabled on the Space.
-        # Sits ABOVE the exempt check so a hit to /corpora fires it regardless of trust setting.
-        # Reads the header directly (not via _client_ip), so it does not depend on trust=true.
-        import os
-        if os.environ.get("RAGCORE_XFF_PROBE") == "true":
-            logger.info(
-                "xff_calibration_probe",
-                x_forwarded_for=request.headers.get("x-forwarded-for"),
-                client_host=request.client.host if request.client else None,
-            )
-
         if request.url.path in EXEMPT_PATHS:
             return await call_next(request)
 
