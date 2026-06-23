@@ -60,6 +60,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
     # pyproject.toml; remove this line when that structural fix is made.
     pip install --no-cache-dir "celery[redis]>=5.3"
 
+# Bake the model cache under /app so the non-root runtime user can read it.
+# Build runs as root; without HF_HOME the models cache to /root/.cache and
+# UID 1000 would re-download from HF Hub at boot, breaking the pre-baked
+# invariant (baseline §5 / Phase 3 §5). chown of /app/.cache (below) makes it
+# readable + lets hf_hub write its lock files at runtime.
+ENV HF_HOME=/app/.cache/huggingface
+
 # Pre-download ML models — eliminates HuggingFace Hub downloads at runtime
 RUN python -c "\
 from sentence_transformers import SentenceTransformer; \
@@ -67,7 +74,33 @@ SentenceTransformer('BAAI/bge-large-en-v1.5'); \
 from sentence_transformers import CrossEncoder; \
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
 
+# Confirm HF_HOME took effect for the pre-download — models must live under
+# /app/.cache/huggingface, not stranded under /root/.cache. Fail the build if
+# the cache is empty.
+RUN test -d /app/.cache/huggingface && ls -la /app/.cache/huggingface \
+    && [ -n "$(ls -A /app/.cache/huggingface)" ] || (echo "HF cache empty — HF_HOME did not take effect" && exit 1)
+
 COPY . .
+
+# HF Spaces requires non-root (UID 1000 convention). Named user via useradd -m
+# so /home/user exists as a real writable $HOME for any library that reaches
+# for it (torch ~/.cache, hf_hub token/lock files) beyond what HF_HOME covers.
+RUN useradd -m -u 1000 user
+
+# Absolute path defaults as siblings under /app/data so
+# _assert_session_root_isolated passes (no overlap). Also set as Space vars in
+# Phase 2 — both layers, reconciling the Phase-0/Phase-1 doc wording.
+ENV FAISS_DATA_DIR=/app/data/faiss \
+    CHROMA_PERSIST_DIR=/app/data/chroma_db \
+    RAGCORE_SESSION_ROOT=/app/data/sessions
+
+# Create the writable dests, then chown both the writable dirs AND the seed
+# SOURCES the runtime user reads (faiss_seed, chroma_collections — both under
+# /app/data) plus the model cache. Single recursive chown reaches all five.
+RUN mkdir -p /app/data/faiss /app/data/chroma_db /app/data/sessions \
+    && chown -R user:user /app/data /app/.cache
+
+USER user
 
 EXPOSE 8000
 

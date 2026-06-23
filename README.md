@@ -1,3 +1,13 @@
+---
+title: RAGCore API
+emoji: 🔍
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 8000
+pinned: false
+short_description: Multi-strategy RAG with rigorous evaluation
+---
 # RAGCore — rigorously evaluated multi-strategy RAG
 
 A retrieval-augmented generation system with hybrid FAISS + BM25 retrieval,
