@@ -10,7 +10,7 @@ Usage:
 
 Environment:
     TARGET_URL  Base URL of the RAGCore API
-                (default: https://ragcore-api.onrender.com)
+                (default: https://kollipara-hema-ragcore.hf.space)
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ REPO_ROOT = SCRIPT_DIR.parent.parent
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-DEFAULT_TARGET_URL = "https://ragcore-api.onrender.com"
+DEFAULT_TARGET_URL = "https://kollipara-hema-ragcore.hf.space"
 SLEEP_SECONDS = 1.1      # keeps throughput at ~54 req/min, under the 60/min limit
 PROGRESS_EVERY = 25
 
@@ -117,7 +117,7 @@ def main() -> None:
                     time.sleep(SLEEP_SECONDS)
                 continue
 
-        # One-time retry on gateway error (Render pod restart window)
+        # One-time retry on gateway error (HF Space cold-start / restart window)
         if resp.status_code == 502:
             logger.warning("doc %s → 502 gateway error, retrying after 5s", doc_id)
             time.sleep(5.0)
