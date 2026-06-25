@@ -210,9 +210,9 @@ uvicorn api.main:app --reload --port 8000
 # Docs: http://localhost:8000/docs
 ```
 
-Both FAISS and Chroma are verified end-to-end. Weaviate, Pinecone, and Qdrant
-configuration keys exist but are not implemented; selecting them logs a warning
-and falls back to FAISS.
+Both FAISS and Chroma are verified end-to-end and are the only supported vector
+stores. Weaviate, Pinecone, and Qdrant are not implemented and are not accepted
+config values — selecting one is rejected at startup with a configuration error.
 
 ### Full Stack with Docker Compose
 
@@ -468,7 +468,6 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 | Setting | Default | Effect |
 |---------|---------|--------|
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for Celery + long-term memory |
-| `WEAVIATE_URL` | `http://localhost:8080` | Weaviate host |
 | `CHROMA_PERSIST_DIR` | `./chroma_db` | Local Chroma persistence directory |
 | `FAISS_DATA_DIR` | `./faiss` | Directory for FAISS index and metadata files. On an ephemeral filesystem the index is re-seeded from the image on boot (the HF Space bakes `/app/data/faiss`). |
 | `ENABLE_TRACING` | `false` | Send traces to Langfuse |
@@ -675,8 +674,8 @@ For current counts, run `pytest tests/unit/ --collect-only -q` and
   instance. Prometheus and Grafana now wired and verified locally.
 - Multi-vector-store: FAISS and Chroma are both verified end-to-end with hybrid
   retrieval via the shared BM25Index helper, and both pass the same parity test
-  surface. Weaviate, Pinecone, and Qdrant remain config-only fall-throughs with
-  an explicit warning log; they are not documented options.
+  surface. Weaviate, Pinecone, and Qdrant are not supported — they are not
+  accepted config values and are rejected at startup.
 - Agentic RAG: code is in `generation/advanced_generation.py` but not wired to the orchestrator; `GENERATION_STRATEGY=agentic` is rejected at startup with a configuration error until it is wired
 - RAGAS evaluation runs end-to-end and produces the LLM-judged faithfulness
   numbers in the headline table. Word-overlap retained alongside RAGAS as the

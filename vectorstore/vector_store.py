@@ -277,11 +277,8 @@ def get_vector_store(provider: VectorStoreProvider = None) -> BaseVectorStore:
     if "default" in _corpus_registry:
         return _corpus_registry["default"]
     provider = provider or settings.vector_store_provider
-    if provider in (VectorStoreProvider.WEAVIATE, VectorStoreProvider.PINECONE, VectorStoreProvider.QDRANT):
-        logger.warning("%s provider selected but not implemented; falling back to FAISS", provider.value)
-        store: BaseVectorStore = FAISSVectorStore()
-    elif provider == VectorStoreProvider.CHROMA:
-        store = ChromaVectorStore()
+    if provider == VectorStoreProvider.CHROMA:
+        store: BaseVectorStore = ChromaVectorStore()
     else:
         store = FAISSVectorStore()
     _corpus_registry["default"] = store
