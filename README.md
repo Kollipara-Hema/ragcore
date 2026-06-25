@@ -677,7 +677,7 @@ For current counts, run `pytest tests/unit/ --collect-only -q` and
   retrieval via the shared BM25Index helper, and both pass the same parity test
   surface. Weaviate, Pinecone, and Qdrant remain config-only fall-throughs with
   an explicit warning log; they are not documented options.
-- Agentic RAG: code is in `generation/advanced_generation.py` but not wired to the orchestrator; `GENERATION_STRATEGY=agentic` falls through to basic generation
+- Agentic RAG: code is in `generation/advanced_generation.py` but not wired to the orchestrator; `GENERATION_STRATEGY=agentic` is rejected at startup with a configuration error until it is wired
 - RAGAS evaluation runs end-to-end and produces the LLM-judged faithfulness
   numbers in the headline table. Word-overlap retained alongside RAGAS as the
   displaceable historical metric — the headline finding is that the two metrics
