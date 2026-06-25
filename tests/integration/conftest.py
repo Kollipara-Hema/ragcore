@@ -5,6 +5,24 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _reset_tracer_singleton():
+    """
+    Reset the module-global tracer singleton before and after every test.
+
+    get_tracer() caches a tracer in monitoring.tracer._tracer_instance. A test
+    that initializes a real LangfuseTracer (e.g. test_evaluation's tracer-init
+    test) leaks it into later tests, where it tries to json.dumps() MagicMock
+    fields from mocked pipeline components, 500s the query, and breaks the
+    metrics test. Resetting suite-wide hardens against that ordering bleed —
+    mirrors the clean_singleton fixture in test_tracer_singleton.py.
+    """
+    from monitoring.tracer import reset_tracer
+    reset_tracer()
+    yield
+    reset_tracer()
+
+
+@pytest.fixture(autouse=True)
 def _use_faiss_for_get_vector_store():
     """
     Force FAISS provider when calling get_vector_store().
