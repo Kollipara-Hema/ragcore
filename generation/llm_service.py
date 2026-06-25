@@ -447,7 +447,9 @@ class GenerationService:
             return GroqLLM()
         elif provider == "anthropic":
             return AnthropicLLM()
-        return OpenAILLM()
+        elif provider == "openai":
+            return OpenAILLM()
+        raise ValueError(f"Unsupported LLM provider: {provider!r}")
 
     async def _get_redis(self):
         if self._redis is None:

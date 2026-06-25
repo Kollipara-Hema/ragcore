@@ -25,13 +25,6 @@ def test_resource_collector_registers_gauge_names():
     assert "ragcore_vector_store_disk_bytes" in names
 
 
-def test_disk_bytes_remote_backend_returns_zero():
-    from monitoring.metrics import _disk_bytes
-    assert _disk_bytes("weaviate") == 0.0
-    assert _disk_bytes("pinecone") == 0.0
-    assert _disk_bytes("qdrant") == 0.0
-
-
 def test_disk_bytes_missing_path_returns_zero(tmp_path, monkeypatch):
     from monitoring import metrics as m
     from config.settings import settings

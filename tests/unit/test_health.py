@@ -196,12 +196,3 @@ class TestCheckLlmConfig:
             mock_settings.groq_api_key = ""
             with pytest.raises(RuntimeError, match="GROQ_API_KEY is not set"):
                 _check_llm_config()
-
-    def test_raises_for_unconfigured_provider(self):
-        from api.main import _check_llm_config
-        from config.settings import LLMProvider
-
-        with patch("api.main.settings") as mock_settings:
-            mock_settings.llm_provider = LLMProvider.TOGETHER
-            with pytest.raises(RuntimeError, match="not fully configured"):
-                _check_llm_config()

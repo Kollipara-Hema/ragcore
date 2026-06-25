@@ -592,7 +592,6 @@ async def health():
 
 
 # Map each LLM provider to its settings field carrying the API key.
-# TOGETHER is defined in LLMProvider but has no key field in Settings — handled explicitly.
 _LLM_KEY_MAP: dict[LLMProvider, str] = {
     LLMProvider.OPENAI: "openai_api_key",
     LLMProvider.ANTHROPIC: "anthropic_api_key",

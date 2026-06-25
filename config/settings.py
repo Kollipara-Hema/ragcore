@@ -24,9 +24,6 @@ class EmbeddingProvider(str, Enum):
 
 
 class VectorStoreProvider(str, Enum):
-    WEAVIATE = "weaviate"   # Free self-hosted, best features
-    PINECONE = "pinecone"   # Paid managed cloud
-    QDRANT = "qdrant"       # Free self-hosted, fast
     CHROMA = "chroma"       # Free local (dev only)
     FAISS = "faiss"         # In-process local (deployed default)
 
@@ -34,7 +31,6 @@ class VectorStoreProvider(str, Enum):
 class LLMProvider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
-    TOGETHER = "together"
     GROQ = "groq"
 
 
@@ -167,12 +163,6 @@ class Settings(BaseSettings):
 
     # Vector Store
     vector_store_provider: VectorStoreProvider = VectorStoreProvider.FAISS
-    weaviate_url: str = "http://localhost:8080"
-    weaviate_api_key: Optional[str] = None
-    pinecone_api_key: Optional[str] = None
-    pinecone_environment: str = "us-east-1-aws"
-    pinecone_index_name: str = "docintel"
-    qdrant_url: str = "http://localhost:6333"
     chroma_persist_dir: str = "./data/chroma_collections"
     chroma_collection_name: str = "ragcore"
     faiss_data_dir: str = "./faiss"
