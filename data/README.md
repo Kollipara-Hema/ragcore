@@ -1,30 +1,40 @@
 # data/
 
-Local-first corpus assembly area. As of 2026-05-28 both `apple_demo/`
-(the source documents) and `chroma_collections/` (the built per-corpus
-Chroma persist dirs) are tracked in git and ship in the Docker image; the
-fetch script remains useful for re-materializing sources from an external
-staging directory on a fresh box.
+Local-first corpus assembly area. `apple_demo/` holds the source documents
+and `chroma_collections/` holds the built per-corpus Chroma persist dirs.
+Only `chroma_collections/` is bundled into the Docker image — the source
+documents are needed only for re-ingestion, never at runtime, so
+`apple_demo/` is excluded from the image via `.dockerignore`. Four of the
+source files are tracked in git; the 21.9 MB environmental report PDF is
+not (it is gitignored on the HF-deployed branch — over the 10 MB Git-LFS
+threshold and runtime-unneeded, with its corpus served from the bundled
+`apple_environmental` Chroma collection). The fetch script remains useful
+for re-materializing sources from an external staging directory on a fresh
+box.
 
 ## Re-materializing sources from an external staging dir
 
-The 5 source files originate from an external staging directory; the
+The 5 source files (4 tracked in git; the environmental PDF gitignored)
+originate from an external staging directory; the
 `scripts/fetch_apple_corpus.py` helper copies them deterministically into
-`apple_demo/`. The script is still the supported way to rebuild the source
-set on a fresh box or when the staging dir is the source of truth — even
-though `apple_demo/` is now tracked in the repo, the staging dir remains
-authoritative for provenance.
+`apple_demo/` (the 21.9 MB environmental report PDF lands locally but is
+gitignored — see below). The script is still the supported way to rebuild
+the source set on a fresh box or when the staging dir is the source of
+truth — even though `apple_demo/` is now tracked in the repo, the staging
+dir remains authoritative for provenance.
 
 ## Deployment posture
 
-The Apple corpora deploy to Render via Setup B: collections shipped in-repo,
-bundled into the Docker image, and seeded onto the persistent disk on first
-boot. See [README §Deployment](../README.md#deployment) for the mechanism.
+The Apple corpora deploy to the HuggingFace Space via Setup B: collections
+shipped in-repo, bundled into the Docker image, and seeded onto the
+persistent disk on first boot. (Render is the legacy backend, being
+decommissioned.) See [README §Deployment](../README.md#deployment) for the
+mechanism.
 
 ## apple_demo/
 
-The 5 files below populate `data/apple_demo/`. They come from the Apple
-corpus assembly directory; FY2025 is chosen for cross-source alignment
+The 4 tracked files below populate `data/apple_demo/`. They come from the
+Apple corpus assembly directory; FY2025 is chosen for cross-source alignment
 (10-K, earnings release, environmental report) and matches the financial
 metrics extracted from the SEC companyfacts JSON for the same fiscal year.
 
@@ -32,9 +42,17 @@ metrics extracted from the SEC companyfacts JSON for the same fiscal year.
 |---------------------------------------------------------|---------|----------------------------------------------------------------|
 | `apple__sec__form_10k__2025.pdf`                        | 2.5 MB  | SEC EDGAR — Apple FY2025 Form 10-K, printed from EDGAR HTML    |
 | `apple__sec__q4_earnings_release__2025.html`            | 194 KB  | SEC EDGAR — Apple FY2025 Q4 earnings release (8-K exhibit)     |
-| `apple__corporate__environmental_progress_report__2025.pdf` | 21.9 MB | apple.com/environment — 2025 Environmental Progress Report     |
 | `apple__sec__financial_metrics_quarterly__2026.csv`     | 1.4 KB  | Extracted from SEC companyfacts XBRL JSON (quarterly figures)  |
 | `apple__sec__financial_metrics_annual__2026.csv`        | 0.5 KB  | Extracted from SEC companyfacts XBRL JSON (annual figures)     |
+
+Served from Chroma, not tracked as a source file: the 2025 Environmental
+Progress Report (`apple__corporate__environmental_progress_report__2025.pdf`,
+21.9 MB, apple.com/environment) is part of the corpus but is gitignored on
+the HF-deployed branch — over the 10 MB Git-LFS threshold and runtime-
+unneeded. Its corpus is served from the bundled `apple_environmental` Chroma
+collection; the source PDF ships nowhere (excluded from the image with the
+rest of `apple_demo/`) and is re-materialized locally by
+`fetch_apple_corpus.py` only when re-ingesting.
 
 Explicitly excluded from the corpus:
 
