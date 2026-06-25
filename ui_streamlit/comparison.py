@@ -5,7 +5,7 @@ strategy to hybrid, and returns just the retrieval metrics the comparison
 view needs.
 
 Why sequential rather than parallel: three concurrent /query calls against
-a single Render dyno (running embedding + cross-encoder per request) plus
+a single HF Space container (running embedding + cross-encoder per request) plus
 shared Groq tokens-per-day limits made the parallel version drop random
 columns. Sequential is slower (~30-45s wall) but each call gets resources
 to itself and completes reliably.
@@ -120,7 +120,7 @@ def fetch_chunker_comparison(
     Per-call errors (transport failures, HTTP 4xx/5xx, unexpected response
     shapes) are isolated to that corpus's entry; the loop keeps going so
     the other corpora still get a chance to return. Cold-start safe — per-call
-    timeout defaults to 90s (Render dynos can take 30–60s to wake).
+    timeout defaults to 90s (HF Spaces can take 30–60s to wake).
     """
     t0 = time.monotonic()
     results: dict[str, dict[str, Any]] = {}

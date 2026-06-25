@@ -1596,7 +1596,7 @@ if active_prompt:
             result = {
                 "error": (
                     f"Backend not reachable at {BACKEND_URL}. "
-                    "If this is the Render demo, wait ~30 s and retry."
+                    "If the HF Space is waking from sleep, wait ~30 s and retry."
                 )
             }
             status = 0

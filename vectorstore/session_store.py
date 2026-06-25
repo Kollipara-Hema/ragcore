@@ -85,7 +85,7 @@ class SessionStore:
       - Sync FastAPI handler in the threadpool: the threading.Lock covers it.
       - Multi-worker uvicorn (N > 1): out of scope. SessionStore is per-
         process by design; cross-worker sessions would need Redis-backed
-        state. Render runs --workers 1.
+        state. The HF Space runs --workers 1.
     """
 
     def __init__(self, root: Path | str) -> None:
@@ -296,12 +296,15 @@ def _release_chroma_cache_for_path(persist_dir: Path) -> None:
     delete still runs, the consequence is a transient RAM leak until
     process restart.
 
-    RAM reclamation is LOAD-BEARING for the 2 GB Render box: probe-verified
+    RAM reclamation keeps the per-session working set bounded: probe-verified
     on Linux/glibc 2.41 that the cache-release alone reclaims ~33% of the
     per-session working set, while cache-release + malloc_trim reclaims
-    ~90%. Without malloc_trim, a few dozen evict-and-respawn cycles would
-    OOM the process. See scripts/rss_probe_linux.py for the measurement,
-    including the ru_maxrss-vs-VmRSS gotcha that makes naive probes report
+    ~90%. This was LOAD-BEARING on Render's 2 GB box, where without
+    malloc_trim a few dozen evict-and-respawn cycles would OOM the process;
+    the HF Space (CPU Basic, 16 GB) has far more headroom, but the
+    reclamation still bounds growth under sustained load. See
+    scripts/rss_probe_linux.py for the measurement, including the
+    ru_maxrss-vs-VmRSS gotcha that makes naive probes report
     a false-negative.
 
     On non-glibc systems (macOS dev), libc.so.6 doesn't load and the

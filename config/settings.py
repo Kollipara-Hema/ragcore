@@ -114,9 +114,10 @@ class Settings(BaseSettings):
                     "faiss_data_dir and chroma_persist_dir so session cleanup "
                     "can never touch curated corpora.",
     )
-    # The three caps below are scaffolding shaped for the 2 GB Render box.
-    # HF migration bumps these via env vars (RAGCORE_SESSION_MAX_*), not by
-    # editing this file — keep values out of code.
+    # The three caps below are scaffolding originally shaped for Render's 2 GB
+    # box. The HF Space (CPU Basic, 16 GB) has more headroom; raise these via
+    # env vars (RAGCORE_SESSION_MAX_*), not by editing this file — keep values
+    # out of code.
     ragcore_session_max_file_bytes: int = Field(
         default=1 * 1024 * 1024,
         description="Per-file size cap inside a session ingest. Tighter than "
