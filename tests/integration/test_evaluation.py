@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from evaluation.evaluator import RAGEvaluator, EvalSample
 from evaluation.dataset import get_sample_dataset
 from monitoring.tracer import get_tracer, reset_tracer, LangfuseTracer, NoOpTracer
-from agent.graph import build_graph
+import agent.graph
 from agent.state import initial_state
 from config.settings import settings
 
@@ -167,7 +167,7 @@ class TestObservabilityIntegration:
         })
 
         with patch('agent.graph.build_graph', return_value=mock_graph):
-            graph = build_graph()
+            graph = agent.graph.build_graph()
             assert hasattr(graph, 'ainvoke')
 
             # Test invocation
