@@ -500,9 +500,9 @@ Instrumentator().instrument(app).expose(app)
 # MIDDLEWARE — Code that runs on EVERY request before and after the handler
 # =============================================================================
 
-# CORS Middleware — allows browsers from any origin to call this API
-# In production, replace allow_origins=["*"] with your specific frontend URL
-# e.g. allow_origins=["https://your-app.com"]
+# CORS Middleware — allows the configured origins (settings.cors_origins) to
+# call this API. Default is ["http://localhost:8501"]; override via the
+# CORS_ORIGINS env var (comma-separated, e.g. "https://app.example.com").
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -927,12 +927,14 @@ async def ingest_file(
         # and embedder.py:199-230), so allocating one per request is fine.
         #
         # INVARIANT: record.store is captured here for the duration of the
-        # ingest (use-after-free). A concurrent session reaper that evicts
-        # this session between this line and pipeline.ingest_file()
-        # returning would upsert into a deleted store. No reaper exists
-        # yet — when one is added, it MUST pin the session for the request
-        # duration at this site AND at _resolve_query_target AND at
-        # ingest_text below. Grep "use-after-free" to find all three.
+        # ingest (use-after-free). The session reaper (spawned at startup,
+        # see reaper_loop) could otherwise evict this session between this
+        # line and pipeline.ingest_file() returning and upsert into a
+        # deleted store. The session is pinned for the request duration —
+        # acquired with a pin above and released via session_store.unpin()
+        # in the finally below — so the reaper cannot evict mid-ingest. The
+        # same pinning applies at _resolve_query_target AND at ingest_text
+        # below. Grep "use-after-free" to find all three.
         pipeline = IngestionPipeline(vector_store=record.store)
         actual_doc_id, chunk_count = await pipeline.ingest_file(tmp_path, metadata)
     except HTTPException:
