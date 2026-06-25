@@ -7,13 +7,13 @@ All your settings go in the .env file.
 
 New settings added for Phases 1-5:
     CHUNKING_STRATEGY   — now includes: propositional, table_aware, structure
-    GENERATION_STRATEGY — new: basic | self_rag | flare | agentic
+    GENERATION_STRATEGY — accepted: basic | self_rag | flare (agentic not yet wired)
 =============================================================================
 """
 
 from enum import Enum
 from typing import Literal, Optional
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, EnvSettingsSource, DotEnvSettingsSource
 
 
@@ -204,12 +204,23 @@ class Settings(BaseSettings):
     max_expanded_queries: int = 3
     hybrid_alpha: float = 0.7
 
-    # Generation Strategy
+    # Generation Strategy — accepted values: basic | self_rag | flare
     # basic    = standard RAG (fast, cheapest)                         ← start here
     # self_rag = verify claims after generation (2-3x cost, better accuracy)
     # flare    = retrieve mid-generation when uncertain (best for long answers)
-    # agentic  = multi-turn agent (most powerful, slowest)
+    # agentic  = NOT yet wired; rejected at startup until implemented
     generation_strategy: str = "basic"
+
+    @field_validator("generation_strategy")
+    @classmethod
+    def _validate_generation_strategy(cls, v: str) -> str:
+        allowed = {"basic", "self_rag", "flare"}
+        if v not in allowed:
+            raise ValueError(
+                f"generation_strategy must be one of {sorted(allowed)}, got {v!r}. "
+                "(agentic is not yet wired; see generation/advanced_generation.py.)"
+            )
+        return v
 
     # Self-RAG settings
     self_rag_max_additional_retrievals: int = 2
