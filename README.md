@@ -44,7 +44,7 @@ finding.
 
 **[ragcore.streamlit.app](https://ragcore.streamlit.app)** — try the deployed demo
 
-Indexed on [FiQA-2018](https://huggingface.co/datasets/explodinggradients/fiqa) (380 chunks of personal-finance Q&A). Llama 3.3 70B via Groq for generation, FAISS + BM25 hybrid retrieval, ms-marco cross-encoder reranking. Optional Self-RAG verification toggle in the sidebar.
+Indexed on [FiQA-2018](https://huggingface.co/datasets/explodinggradients/fiqa) (380 chunks of personal-finance Q&A). GPT-OSS 120B via Groq for generation, FAISS + BM25 hybrid retrieval, ms-marco cross-encoder reranking. Optional Self-RAG verification toggle in the sidebar.
 
 After the Space has been idle, the first request may take ~30s while it wakes.
 
@@ -633,7 +633,7 @@ For current counts, run `pytest tests/unit/ --collect-only -q` and
 - Query routing: heuristic regex + LLM fallback, dispatches to 5 of 6
   retrieval strategies; parent-child is enumerated but not wired
 - Basic and Self-RAG generation paths, configurable via `GENERATION_STRATEGY`
-- FLARE-inspired iterative generation: dollar-token novelty between response and retrieved chunks triggers re-retrieval; configurable via `GENERATION_STRATEGY=flare`. Heuristic deviates from Jiang et al. 2023 (which uses token logprobs unavailable on Groq's Llama 3.3 70B endpoint); see the `FLAREGenerator` docstring for rationale.
+- FLARE-inspired iterative generation: dollar-token novelty between response and retrieved chunks triggers re-retrieval; configurable via `GENERATION_STRATEGY=flare`. Heuristic deviates from Jiang et al. 2023 (which uses token logprobs unavailable on Groq's chat completions endpoint); see the `FLAREGenerator` docstring for rationale.
 - Retrieval evaluation: MRR, NDCG@5, hit@5, precision@5, recall@5 — all
   correctly bounded after dedup fix (see debugging notes)
 - LLM-judged faithfulness via RAGAS (gpt-4o-mini judge) on the same 50 FiQA

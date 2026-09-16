@@ -372,7 +372,7 @@ class FLAREGenerator:
 
     The paper (Jiang et al. 2023) checks per-token confidence via logprobs and
     re-retrieves when a sentence's average log-prob falls below a threshold.
-    Groq's Llama 3.3 70B endpoint does not expose per-token logprobs.
+    Groq's chat completions endpoint does not expose per-token logprobs.
 
     The original [UNCERTAIN: topic] self-signaling approach was abandoned:
     Llama 3.3 70B's RLHF fine-tuning causes it to emit confident, complete

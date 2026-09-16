@@ -1373,7 +1373,7 @@ with st.sidebar:
             chunk_n = selected_info.get("doc_count") or 0
             corpus_about = f"{_corpus_label(selected_corpus)} ({chunk_n} chunks). "
         st.markdown(
-            "Llama 3.3 70B via Groq for generation. FAISS dense + BM25 sparse hybrid retrieval. "
+            "GPT-OSS 120B via Groq for generation. FAISS dense + BM25 sparse hybrid retrieval. "
             "ms-marco cross-encoder reranking. " + corpus_about +
             "Self-RAG verification when enabled."
         )
@@ -1535,7 +1535,7 @@ if st.session_state.session_id is None:
 # M5. Stack subtitle
 st.markdown(
     f'<p style="text-align:center;font-size:11px;color:{TEXT_MUTED};margin-top:24px">'
-    f'Powered by Llama 3.3 70B via Groq · {_corpus_vector_store(selected_corpus)} · '
+    f'Powered by GPT-OSS 120B via Groq · {_corpus_vector_store(selected_corpus)} · '
     f'ms-marco cross-encoder</p>',
     unsafe_allow_html=True,
 )
