@@ -348,7 +348,7 @@ class GroqLLM(BaseLLM):
     """Free LLM via Groq API. Get key at console.groq.com"""
 
     def __init__(self, model: str = None):
-        self.model = model or settings.llm_model or "llama-3.3-70b-versatile"
+        self.model = model or settings.llm_model or "openai/gpt-oss-120b"
 
     async def generate(self, prompt: ConstructedPrompt) -> tuple[str, int]:
         try:
