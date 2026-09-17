@@ -350,8 +350,9 @@ curl http://localhost:8000/corpora
   active corpus.
 - `GET /health`, `GET /health/live`, `GET /health/ready` — basic, liveness,
   and readiness probes. The last runs a vector-store ping, an embedder
-  smoke test, and an LLM API-key presence check; returns 200 all-pass or
-  503 with per-check failure reasons.
+  smoke test, and an LLM usability check — key present, key accepted, and
+  `LLM_MODEL` still served by the provider; returns 200 all-pass or 503
+  with per-check failure reasons.
 - `GET /metrics` — Prometheus scrape endpoint (5 custom `ragcore_*` metrics
   plus RED metrics on every route; see [Monitoring](#monitoring)).
 - `POST /agent/query`, `GET /agent/trace/{trace_id}`, `GET /trace/{trace_id}` —
@@ -658,9 +659,14 @@ For current counts, run `pytest tests/unit/ --collect-only -q` and
   intervals; Grafana dashboard with overview panels preloaded via
   provisioning.
 - Deep health checks: `/health/live` (process alive) and
-  `/health/ready` (vector store ping, embedder smoke test, LLM API key
-  validation). Returns 200 all-pass or 503 with structured per-check
-  failures. Original `/health` retained for the HuggingFace Space's container health probe.
+  `/health/ready` (vector store ping, embedder smoke test, LLM usability).
+  The LLM check lists the provider's models and fails readiness when
+  `LLM_MODEL` is absent from them — key presence alone cannot catch a model
+  decommissioned upstream, which leaves the key valid and every `/query`
+  failing. Verdicts are cached (5 min) so probes do not hammer the provider,
+  and an unreachable provider reports `model_verified: false` without failing
+  readiness, so a provider blip does not restart healthy containers.
+  Returns 200 all-pass or 503 with structured per-check failures. Original `/health` retained for the HuggingFace Space's container health probe.
 - Structured JSON logging via structlog with request-ID correlation.
   `RequestIdMiddleware` honors inbound `X-Request-Id` header or
   generates UUID4; binds into context so every log line during request

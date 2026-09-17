@@ -25,10 +25,12 @@ HOW TO TEST:
 
 # --- Standard library ---
 from __future__ import annotations
+import asyncio     # For offloading the blocking readiness probe off the event loop
 import logging     # For writing log messages
 import os          # For file path operations and environment
 import shutil      # For copytree() when seeding Apple collections onto the persist disk
 import tempfile    # For saving uploaded files temporarily
+import time        # For TTL on the LLM model-availability cache
 import uuid        # For generating unique IDs
 
 import structlog
@@ -599,8 +601,54 @@ _LLM_KEY_MAP: dict[LLMProvider, str] = {
 }
 
 
-def _check_llm_config() -> None:
-    """Raise RuntimeError with a one-line reason if the active LLM provider has no API key."""
+# Model-availability cache: (provider, model) -> (checked_at, failure_reason, ttl).
+# A verified model is cached for _MODEL_OK_TTL; an unreachable provider is cached
+# for the much shorter _MODEL_UNVERIFIED_TTL so a probe storm cannot hammer the
+# provider while it is down, but recovery is still noticed quickly.
+_MODEL_OK_TTL = 300.0
+_MODEL_UNVERIFIED_TTL = 30.0
+_model_check_cache: dict[tuple[str, str], tuple[float, Optional[str], float]] = {}
+
+# Raised by every supported provider SDK when the key itself is rejected. Matched
+# by class name so this module does not have to import all three SDKs.
+_AUTH_ERROR_NAMES = {"AuthenticationError", "PermissionDeniedError"}
+
+
+def _provider_model_ids(provider: LLMProvider, api_key: str) -> set[str]:
+    """Return the model ids the provider currently serves for this key.
+
+    Raises whatever the provider SDK raises; the caller classifies the failure.
+    """
+    if provider is LLMProvider.GROQ:
+        from groq import Groq
+        return {m.id for m in Groq(api_key=api_key).models.list().data}
+    if provider is LLMProvider.OPENAI:
+        from openai import OpenAI
+        return {m.id for m in OpenAI(api_key=api_key).models.list().data}
+    if provider is LLMProvider.ANTHROPIC:
+        from anthropic import Anthropic
+        return {m.id for m in Anthropic(api_key=api_key).models.list().data}
+    raise RuntimeError(f"no model listing implemented for provider {provider.value!r}")
+
+
+def _check_llm_config() -> dict:
+    """Validate that the active LLM configuration can actually serve a request.
+
+    Returns a detail dict for the readiness body. Raises RuntimeError with a
+    one-line reason when the configuration is definitively unusable:
+
+      * no API key for the active provider,
+      * a key the provider rejects,
+      * an LLM_MODEL the provider no longer serves (the deprecation case).
+
+    Key presence alone is not sufficient: a decommissioned model leaves the key
+    valid and every /query failing, which is exactly the outage this check exists
+    to catch. A provider that cannot be reached at all is reported as unverified
+    rather than failed — an unreachable provider is not a misconfiguration, and
+    flapping readiness would restart otherwise-healthy containers.
+
+    Blocking network call; callers on the event loop must offload it to a thread.
+    """
     provider = settings.llm_provider
     field = _LLM_KEY_MAP.get(provider)
     if field is None:
@@ -608,6 +656,36 @@ def _check_llm_config() -> None:
     key = getattr(settings, field, None)
     if not key:
         raise RuntimeError(f"{field.upper()} is not set")
+
+    model = settings.llm_model
+    cache_key = (provider.value, model)
+    now = time.monotonic()
+    cached = _model_check_cache.get(cache_key)
+    if cached is not None and now - cached[0] < cached[2]:
+        if cached[1]:
+            raise RuntimeError(cached[1])
+        return {"model": model, "model_verified": True}
+
+    try:
+        available = _provider_model_ids(provider, key)
+    except Exception as exc:
+        if type(exc).__name__ in _AUTH_ERROR_NAMES:
+            reason = f"{field.upper()} was rejected by {provider.value}: {exc}"
+            _model_check_cache[cache_key] = (now, reason, _MODEL_OK_TTL)
+            raise RuntimeError(reason) from exc
+        _model_check_cache[cache_key] = (now, None, _MODEL_UNVERIFIED_TTL)
+        return {"model": model, "model_verified": False, "reason": f"could not reach {provider.value}: {exc}"}
+
+    if model not in available:
+        reason = (
+            f"LLM_MODEL {model!r} is not served by {provider.value} for this key "
+            f"({len(available)} models available) — it was most likely deprecated"
+        )
+        _model_check_cache[cache_key] = (now, reason, _MODEL_OK_TTL)
+        raise RuntimeError(reason)
+
+    _model_check_cache[cache_key] = (now, None, _MODEL_OK_TTL)
+    return {"model": model, "model_verified": True}
 
 
 @app.get("/health/live", tags=["system"])
@@ -620,7 +698,9 @@ async def health_live():
 async def health_ready():
     """
     Readiness check. Verifies vector store reachability, embedder responsiveness,
-    and LLM API key presence. Returns 200 if all pass, 503 if any fail.
+    and that the configured LLM is usable — key present, key accepted, and
+    LLM_MODEL still served by the provider. Returns 200 if all pass, 503 if any
+    fail.
     Response body includes per-check results and a reason string for any failure.
     """
     checks: dict = {}
@@ -644,10 +724,10 @@ async def health_ready():
         checks["embedder"] = {"ok": False, "reason": str(exc)}
         all_ok = False
 
-    # Check 3: LLM API key present (no live call)
+    # Check 3: LLM usable — key present, accepted, and LLM_MODEL still served
     try:
-        _check_llm_config()
-        checks["llm_config"] = {"ok": True}
+        detail = await asyncio.to_thread(_check_llm_config)
+        checks["llm_config"] = {"ok": True, **detail}
     except Exception as exc:
         checks["llm_config"] = {"ok": False, "reason": str(exc)}
         all_ok = False
