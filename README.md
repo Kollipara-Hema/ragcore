@@ -232,14 +232,11 @@ docker-compose up --build
 # Grafana:    http://localhost:3000
 ```
 
-### UI Frontends
+### UI Frontend
 
 ```bash
 # Streamlit — dashboard with file upload
 cd ui_streamlit && streamlit run app.py
-
-# Chainlit — conversational chat
-cd ui_chainlit && chainlit run app.py
 ```
 
 ---
