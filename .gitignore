@@ -241,3 +241,6 @@ history/
 # requires Git LFS; runtime-unneeded — image excludes data/apple_demo via
 # .dockerignore, Apple corpora seed from bundled chroma_collections).
 data/apple_demo/apple__corporate__environmental_progress_report__2025.pdf
+
+# Runtime upload staging — never source
+uploads/
