@@ -434,7 +434,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 | Setting | Default | Options / Effect |
 |---------|---------|-----------------|
 | `VECTOR_STORE_PROVIDER` | `faiss` | `faiss` · `chroma` |
-| `CHUNKING_STRATEGY` | `semantic` | `fixed` · `semantic` · `hierarchical` · `sentence` |
+| `CHUNKING_STRATEGY` | `semantic` | Basic: `fixed` · `semantic` · `hierarchical` · `sentence`. Advanced: `propositional` · `table_aware` · `structure`. All 7 are accepted by `get_chunker()`; an unrecognized name raises `ValueError` at chunker construction. The `apple_10k_document_structure` corpus was built with `structure`. |
 | `HYBRID_ALPHA` | `0.7` | `0` = keyword only · `1` = vector only |
 | `RETRIEVAL_TOP_K` | `20` | Candidates before reranking |
 | `RERANK_TOP_K` | `5` | Final chunks sent to LLM |
@@ -445,7 +445,7 @@ All settings are environment-variable driven. Copy `.env.example` → `.env`.
 
 | Setting | Default | Options / Effect |
 |---------|---------|-----------------|
-| `LLM_PROVIDER` | `groq` | `groq` and `anthropic` dispatch to dedicated clients in `GenerationService._build_llm()`; `openai` (and Azure OpenAI when `AZURE_OPENAI_ENDPOINT` is set) runs through the OpenAI client, which is also the fallthrough default for any unrecognized value. `ollama` and `demo` are accepted enum placeholders for planned providers — not yet wired to a dedicated client. |
+| `LLM_PROVIDER` | `groq` | `groq`, `anthropic`, and `openai` are the only accepted values — the `LLMProvider` enum rejects anything else at startup, and `GenerationService._build_llm()` raises `ValueError` on an unsupported provider rather than falling through to a default. Each dispatches to a dedicated client; the `openai` path also serves Azure OpenAI when `AZURE_OPENAI_ENDPOINT` is set. |
 | `GROQ_API_KEY` | — | Required if `LLM_PROVIDER=groq` |
 | `OPENAI_API_KEY` | — | Required if `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | — | Required if `LLM_PROVIDER=anthropic` |
@@ -509,7 +509,7 @@ Five security limitations are documented and tracked in [AUDIT.md](AUDIT.md): th
 
 ## Deployment
 
-The backend runs as a HuggingFace **Docker Space** ([kollipara-hema-ragcore.hf.space](https://kollipara-hema-ragcore.hf.space)) on the free CPU Basic tier (2 vCPU, 16 GB) — the source of truth for the live API. The image bakes the built Chroma collections plus a FiQA seed artifact; on boot the lifespan handler seeds them under `/app/data/` (`CHROMA_PERSIST_DIR=/app/data/chroma_db`, `FAISS_DATA_DIR=/app/data/faiss`, `RAGCORE_SESSION_ROOT=/app/data/sessions`), and the process runs as a non-root user (UID 1000, an HF Spaces requirement). The three API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) are configured as HF Space Secrets, kept out of version control. The Space rebuilds and redeploys on pushes to `main`. The Streamlit Cloud app ([ragcore.streamlit.app](https://ragcore.streamlit.app)) is the frontend and points at the Space through its `RAGCORE_BACKEND_URL` secret. **Render is the legacy backend and is being decommissioned** — `render.yaml` remains in the repo until the service is deleted but no longer describes the live deployment.
+The backend runs as a HuggingFace **Docker Space** ([kollipara-hema-ragcore.hf.space](https://kollipara-hema-ragcore.hf.space)) on the free CPU Basic tier (2 vCPU, 16 GB) — the source of truth for the live API. The image bakes the built Chroma collections plus a FiQA seed artifact; on boot the lifespan handler seeds them under `/app/data/` (`CHROMA_PERSIST_DIR=/app/data/chroma_db`, `FAISS_DATA_DIR=/app/data/faiss`, `RAGCORE_SESSION_ROOT=/app/data/sessions`), and the process runs as a non-root user (UID 1000, an HF Spaces requirement). The three API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) are configured as HF Space Secrets, kept out of version control. The Space is a **separate git remote** (`hf`), not a mirror of GitHub — pushing to `origin main` does **not** deploy. Deploying means pushing this repo to the `hf` remote, which rebuilds the image. Because the Space history is a squashed deploy snapshot, that push is a force-push and ships every commit accumulated since the last deploy; check `git log --oneline $(git ls-remote hf refs/heads/main | cut -f1)..HEAD` before deploying. For a config-only change (e.g. `LLM_MODEL`), set it as a Space **Variable** in the HF UI and restart instead — it overrides the baked `settings.py` default without a rebuild. The Streamlit Cloud app ([ragcore.streamlit.app](https://ragcore.streamlit.app)) is the frontend and points at the Space through its `RAGCORE_BACKEND_URL` secret. **Render is the legacy backend and is being decommissioned** — `render.yaml` remains in the repo until the service is deleted but no longer describes the live deployment.
 
 **Vector store split.** The FiQA `"default"` corpus lives on FAISS at `$FAISS_DATA_DIR` (`faiss_index.idx` plus `faiss_metadata.pkl`). The 6 Apple corpora live on Chroma, one per persist directory at `$CHROMA_PERSIST_DIR/<corpus_name>/` — each containing `chroma.sqlite3`, a `bm25_state.pkl` sidecar for hybrid retrieval, and a UUID-named HNSW segment subdir. `GET /corpora` returns all 7 entries from a single backend-agnostic registry, so clients select a corpus by name and never see the FAISS/Chroma split.
 
@@ -576,6 +576,12 @@ ragcore/
 │   ├── unit/               # no external services required
 │   └── integration/        # FAISS in-memory, mocked external services
 │
+├── scripts/                # Admin tooling — fetch_apple_corpus.py · ingest_apple_corpus.py · rss_probe_linux.py
+│
+├── data/                   # Corpora shipped with the deploy — FAISS seed, Chroma collections, session root
+│
+├── ui_streamlit/           # Streamlit frontend — the live demo at ragcore.streamlit.app
+│
 ├── docs/
 │   └── debugging-notes.md
 │
@@ -626,7 +632,7 @@ For current counts, run `pytest tests/unit/ --collect-only -q` and
 - Document ingestion (offline scripts): PDF, DOCX, HTML, CSV, and plain text
   via the loader registry — used by `scripts/ingest_apple_corpus.py` and
   similar admin tooling to build the curated corpora (FiQA `default`, Apple
-  10-K family) that ship with the deploy. Same 4 chunking strategies as the
+  10-K family) that ship with the deploy. Same 7 chunking strategies as the
   API path.
 - Hybrid retrieval: FAISS dense + BM25 sparse with configurable alpha fusion
 - Cross-encoder reranking
