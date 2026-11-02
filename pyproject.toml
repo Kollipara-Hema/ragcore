@@ -42,7 +42,10 @@ dependencies = [
     "langgraph>=1.0.0",
     # Document loaders
     "pdfplumber>=0.10",
-    "pymupdf4llm>=1.27",
+    # Pinned to match the Dockerfile. pymupdf is imported directly, so it is
+    # declared explicitly: pymupdf4llm 2.0 (Oct 2026) no longer installs it.
+    "pymupdf==1.27.2.3",
+    "pymupdf4llm==1.27.2.3",
     "python-docx>=1.1",
     "beautifulsoup4>=4.12",
     # Magic-byte sniff for /ingest/file. Pure-Python, no system libmagic
