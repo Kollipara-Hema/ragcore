@@ -19,6 +19,7 @@ directly so timing is deterministic.
 from __future__ import annotations
 
 import asyncio
+import ctypes
 import gc
 import shutil
 import sys
@@ -324,6 +325,12 @@ def test_F1_rss_reclaimed_on_linux(tmp_path):
     store = _fresh_store(tmp_path)
     record = store.create()
 
+    # Baseline after returning freed heap to the OS. Earlier tests in the
+    # same pytest process leave freed-but-unreturned memory behind; without
+    # this trim, the upsert can reuse it (or a later trim can release it) and
+    # the measured delta goes negative, making the test order-dependent.
+    gc.collect()
+    ctypes.CDLL("libc.so.6").malloc_trim(0)
     rss_before = _vmrss_mb()
 
     # Upsert a meaningful payload — enough to register on RSS.
